@@ -1,0 +1,57 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="Wisp.App.App"
+             RequestedThemeVariant="Default">
+
+  <Application.Resources>
+    <ResourceDictionary>
+      <ResourceDictionary.MergedDictionaries>
+        <ResourceInclude Source="/Theme/Icons.axaml" />
+      </ResourceDictionary.MergedDictionaries>
+
+      <ResourceDictionary.ThemeDictionaries>
+        <ResourceDictionary x:Key="Light">
+          <SolidColorBrush x:Key="WispWindow" Color="#FBFBFC" />
+          <SolidColorBrush x:Key="WispSidebar" Color="#F2F3F6" />
+          <SolidColorBrush x:Key="WispSurface" Color="#FFFFFF" />
+          <SolidColorBrush x:Key="WispBorder" Color="#E4E6EB" />
+          <SolidColorBrush x:Key="WispText" Color="#1D1F24" />
+          <SolidColorBrush x:Key="WispMuted" Color="#6A6F7C" />
+          <SolidColorBrush x:Key="WispHover" Color="#0D000000" />
+          <SolidColorBrush x:Key="WispNoticeBg" Color="#FFF5E1" />
+          <SolidColorBrush x:Key="WispNotice" Color="#8A5200" />
+          <SolidColorBrush x:Key="WispDanger" Color="#C62F3B" />
+          <SolidColorBrush x:Key="WispOk" Color="#2E9D57" />
+        </ResourceDictionary>
+        <ResourceDictionary x:Key="Dark">
+          <SolidColorBrush x:Key="WispWindow" Color="#17181C" />
+          <SolidColorBrush x:Key="WispSidebar" Color="#1E2025" />
+          <SolidColorBrush x:Key="WispSurface" Color="#1B1C21" />
+          <SolidColorBrush x:Key="WispBorder" Color="#2C2E35" />
+          <SolidColorBrush x:Key="WispText" Color="#E7E8EC" />
+          <SolidColorBrush x:Key="WispMuted" Color="#9599A6" />
+          <SolidColorBrush x:Key="WispHover" Color="#14FFFFFF" />
+          <SolidColorBrush x:Key="WispNoticeBg" Color="#3A2E17" />
+          <SolidColorBrush x:Key="WispNotice" Color="#F2C27A" />
+          <SolidColorBrush x:Key="WispDanger" Color="#F06B74" />
+          <SolidColorBrush x:Key="WispOk" Color="#5CC587" />
+        </ResourceDictionary>
+      </ResourceDictionary.ThemeDictionaries>
+
+      <!-- Overwritten at runtime by ThemeManager from the user's settings. -->
+      <SolidColorBrush x:Key="WispAccent" Color="#4F6BED" />
+      <SolidColorBrush x:Key="WispAccentSoft" Color="#294F6BED" />
+      <SolidColorBrush x:Key="WispOnAccent" Color="White" />
+      <FontFamily x:Key="WispFont">avares://Avalonia.Fonts.Inter/Assets#Inter</FontFamily>
+      <x:Double x:Key="WispFontSize">14</x:Double>
+      <x:Double x:Key="WispSmallFontSize">12</x:Double>
+      <x:Double x:Key="WispTitleFontSize">20</x:Double>
+      <Thickness x:Key="WispRowPadding">12,8</Thickness>
+    </ResourceDictionary>
+  </Application.Resources>
+
+  <Application.Styles>
+    <FluentTheme />
+    <StyleInclude Source="/Theme/WispStyles.axaml" />
+  </Application.Styles>
+</Application>

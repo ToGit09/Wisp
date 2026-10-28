@@ -1,0 +1,83 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Wisp.App.ViewModels"
+        xmlns:v="using:Wisp.App.Views"
+        xmlns:a="using:Wisp.Core.Accounts"
+        x:Class="Wisp.App.Views.AccountSetupWindow"
+        x:DataType="vm:AccountSetupViewModel"
+        Title="Konto hinzufügen"
+        Icon="/Assets/wisp.ico"
+        Width="500" SizeToContent="Height" MaxHeight="760" CanResize="False"
+        WindowStartupLocation="CenterOwner">
+
+  <ScrollViewer>
+    <StackPanel Margin="28" Spacing="12">
+
+      <!-- Step 1: who are you? -->
+      <StackPanel Spacing="12" IsVisible="{Binding IsStep1}">
+        <TextBlock Text="Konto hinzufügen" Classes="title" />
+        <TextBlock Classes="hint" Text="Gmail, Outlook, GMX, WEB.DE, iCloud, Yahoo, T-Online und viele mehr werden automatisch erkannt." />
+        <TextBlock Text="Ihr Name" Margin="0,8,0,0" />
+        <TextBox Text="{Binding Name}" PlaceholderText="So sehen Empfänger Sie, z. B. Erika Mustermann" />
+        <TextBlock Text="E-Mail-Adresse" />
+        <TextBox x:Name="EmailBox" Text="{Binding Email}" PlaceholderText="name@beispiel.de" />
+        <Button Classes="primary" Content="Weiter" Command="{Binding NextCommand}" IsDefault="True" HorizontalAlignment="Right" IsEnabled="{Binding !IsBusy}" />
+      </StackPanel>
+
+      <!-- Step 2: log in -->
+      <StackPanel Spacing="12" IsVisible="{Binding IsStep2}">
+        <TextBlock Text="{Binding ProviderName}" Classes="title" />
+        <TextBlock Text="{Binding Email}" Classes="muted" />
+        <Border Classes="notice" IsVisible="{Binding Hint, Converter={x:Static v:Converters.NotNull}}">
+          <StackPanel Spacing="6">
+            <TextBlock Text="{Binding Hint}" TextWrapping="Wrap" />
+            <Button Classes="link" Content="Anleitung beim Anbieter öffnen" Command="{Binding OpenHelpCommand}"
+                    IsVisible="{Binding HelpUrl, Converter={x:Static v:Converters.NotNull}}" />
+          </StackPanel>
+        </Border>
+
+        <StackPanel Spacing="8" IsVisible="{Binding ShowPassword}">
+          <TextBlock Text="{Binding PasswordLabel}" />
+          <TextBox Text="{Binding Password}" PasswordChar="•" RevealPassword="False" />
+        </StackPanel>
+
+        <Button Classes="link" Content="Servereinstellungen anzeigen" Command="{Binding ToggleServersCommand}" IsVisible="{Binding !ShowServers}" />
+        <Border Classes="card" IsVisible="{Binding ShowServers}">
+          <Grid ColumnDefinitions="*,8,90,8,120" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto">
+            <TextBlock Grid.Row="0" Grid.ColumnSpan="5" Text="Posteingang (IMAP)" FontWeight="SemiBold" Margin="0,0,0,6" />
+            <TextBox Grid.Row="1" Grid.Column="0" Text="{Binding ImapHost}" PlaceholderText="imap.beispiel.de" />
+            <NumericUpDown Grid.Row="1" Grid.Column="2" Value="{Binding ImapPort}" Minimum="1" Maximum="65535" FormatString="0" ShowButtonSpinner="False" />
+            <ComboBox Grid.Row="1" Grid.Column="4" ItemsSource="{Binding SecurityChoices}" SelectedItem="{Binding ImapSecurity}" HorizontalAlignment="Stretch">
+</ComboBox>
+            <TextBlock Grid.Row="2" Grid.ColumnSpan="5" Text="Postausgang (SMTP)" FontWeight="SemiBold" Margin="0,12,0,6" />
+            <TextBox Grid.Row="3" Grid.Column="0" Text="{Binding SmtpHost}" PlaceholderText="smtp.beispiel.de" />
+            <NumericUpDown Grid.Row="3" Grid.Column="2" Value="{Binding SmtpPort}" Minimum="1" Maximum="65535" FormatString="0" ShowButtonSpinner="False" />
+            <ComboBox Grid.Row="3" Grid.Column="4" ItemsSource="{Binding SecurityChoices}" SelectedItem="{Binding SmtpSecurity}" HorizontalAlignment="Stretch">
+</ComboBox>
+            <TextBlock Grid.Row="4" Grid.ColumnSpan="5" Text="Benutzername" FontWeight="SemiBold" Margin="0,12,0,6" />
+            <TextBox Grid.Row="5" Grid.ColumnSpan="5" Text="{Binding UserName}" />
+          </Grid>
+        </Border>
+
+        <TextBlock Text="{Binding Progress}" Classes="muted" IsVisible="{Binding Progress, Converter={x:Static v:Converters.NotNull}}" />
+        <TextBlock Text="{Binding Error}" Foreground="{DynamicResource WispDanger}" TextWrapping="Wrap"
+                   IsVisible="{Binding Error, Converter={x:Static v:Converters.NotNull}}" />
+
+        <DockPanel Margin="0,8,0,0">
+          <Button DockPanel.Dock="Left" Content="Zurück" Command="{Binding BackCommand}" IsEnabled="{Binding !IsBusy}" />
+          <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+            <Button Classes="link" Content="{Binding OAuthButtonText}" Command="{Binding ConnectWithOAuthCommand}"
+                    IsVisible="{Binding OAuthAlternative}" IsEnabled="{Binding !IsBusy}" VerticalAlignment="Center" />
+            <Button Classes="primary" Content="{Binding OAuthButtonText}" Command="{Binding ConnectWithOAuthCommand}"
+                    IsVisible="{Binding UsesOAuth}" IsEnabled="{Binding !IsBusy}" />
+            <Button Classes="primary" Content="Verbinden" Command="{Binding ConnectCommand}" IsDefault="True"
+                    IsVisible="{Binding ShowPassword}" IsEnabled="{Binding !IsBusy}" />
+          </StackPanel>
+        </DockPanel>
+      </StackPanel>
+
+      <TextBlock Classes="hint" Margin="0,8,0,0"
+                 Text="Ihr Passwort wird verschlüsselt auf diesem Gerät gespeichert und nur an Ihren Mail-Anbieter übertragen – immer über eine verschlüsselte Verbindung." />
+    </StackPanel>
+  </ScrollViewer>
+</Window>

@@ -1,0 +1,176 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Wisp.App.ViewModels"
+        xmlns:v="using:Wisp.App.Views"
+        xmlns:s="using:Wisp.Core.Settings"
+        x:Class="Wisp.App.Views.SettingsWindow"
+        x:DataType="vm:SettingsViewModel"
+        Title="Einstellungen"
+        Icon="/Assets/wisp.ico"
+        Width="680" Height="620" MinWidth="520" MinHeight="420"
+        WindowStartupLocation="CenterOwner">
+
+  <Window.Styles>
+    <Style Selector="StackPanel.page">
+      <Setter Property="Margin" Value="24,8,24,24" />
+      <Setter Property="Spacing" Value="8" />
+      <Setter Property="MaxWidth" Value="560" />
+      <Setter Property="HorizontalAlignment" Value="Left" />
+    </Style>
+    <Style Selector="ComboBox, NumericUpDown">
+      <Setter Property="MinWidth" Value="240" />
+    </Style>
+  </Window.Styles>
+
+  <TabControl Margin="8,8,8,0" TabStripPlacement="Top">
+
+    <!-- ─────────── Appearance ─────────── -->
+    <TabItem Header="Darstellung">
+      <ScrollViewer>
+        <StackPanel Classes="page">
+          <TextBlock Classes="section" Text="Farbschema" />
+          <ComboBox ItemsSource="{Binding Themes}" SelectedItem="{Binding Theme}">
+</ComboBox>
+
+          <TextBlock Classes="section" Text="Akzentfarbe" />
+          <ItemsControl ItemsSource="{Binding Accents}">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:AccentChoice">
+                <Button Width="34" Height="34" Margin="0,0,8,8" CornerRadius="17" ToolTip.Tip="{Binding Name}"
+                        Background="{Binding Hex, Converter={x:Static v:Converters.HexToBrush}}"
+                        Command="{Binding $parent[Window].((vm:SettingsViewModel)DataContext).PickAccentCommand}"
+                        CommandParameter="{Binding Hex}" />
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+          <StackPanel Orientation="Horizontal" Spacing="10">
+            <TextBlock Text="Eigene Farbe:" VerticalAlignment="Center" Classes="muted" />
+            <TextBox Text="{Binding AccentHex}" Width="110" PlaceholderText="#4F6BED" />
+            <Border Width="28" Height="28" CornerRadius="14" Background="{Binding AccentHex, Converter={x:Static v:Converters.HexToBrush}}" />
+          </StackPanel>
+
+          <TextBlock Classes="section" Text="Schrift" />
+          <ComboBox ItemsSource="{Binding Fonts}" SelectedItem="{Binding Font}">
+</ComboBox>
+          <DockPanel Margin="0,4,0,0">
+            <TextBlock DockPanel.Dock="Right" Text="{Binding FontSizeText}" Width="50" TextAlignment="Right" VerticalAlignment="Center" />
+            <Slider Minimum="11" Maximum="22" TickFrequency="1" IsSnapToTickEnabled="True" Value="{Binding FontSize}" />
+          </DockPanel>
+
+          <TextBlock Classes="section" Text="Abstände in der Liste" />
+          <ComboBox ItemsSource="{Binding Densities}" SelectedItem="{Binding Density}">
+</ComboBox>
+          <CheckBox IsChecked="{Binding ShowPreview}" Content="Vorschautext in der Mail-Liste anzeigen" Margin="0,8,0,0" />
+
+          <Button Classes="link" Content="Auf Standard zurücksetzen" Command="{Binding ResetAppearanceCommand}" Margin="0,20,0,0" />
+        </StackPanel>
+      </ScrollViewer>
+    </TabItem>
+
+    <!-- ─────────── Privacy ─────────── -->
+    <TabItem Header="Datenschutz">
+      <ScrollViewer>
+        <StackPanel Classes="page">
+          <TextBlock Classes="section" Text="HTML-Mails" />
+          <ToggleSwitch IsChecked="{Binding ShowHtml}" OnContent="Originaldarstellung (HTML)" OffContent="Als einfacher Text" />
+          <TextBlock Classes="hint"
+                     Text="Viele Mails (Newsletter, Rechnungen) sind gestaltet. Im Textmodus zeigt Wisp nur den Inhalt – das ist am sichersten. In der Originaldarstellung sehen Mails aus wie vom Absender gestaltet. Skripte werden in beiden Fällen nie ausgeführt. Sie können bei jeder Mail einzeln „Originaldarstellung“ wählen." />
+
+          <TextBlock Classes="section" Text="Externe Bilder" />
+          <ToggleSwitch IsChecked="{Binding LoadRemoteImages}" OnContent="Automatisch laden" OffContent="Blockieren" />
+          <TextBlock Classes="hint"
+                     Text="Bilder aus dem Internet können verraten, wann und wo Sie eine Mail geöffnet haben (Tracking-Pixel). Wenn sie blockiert sind, können Sie sie bei einzelnen Mails mit „Bilder laden“ trotzdem anzeigen. Gilt nur für die Originaldarstellung." />
+        </StackPanel>
+      </ScrollViewer>
+    </TabItem>
+
+    <!-- ─────────── Offline ─────────── -->
+    <TabItem Header="Offline">
+      <ScrollViewer>
+        <StackPanel Classes="page">
+          <TextBlock Classes="hint" Margin="0,8,0,0"
+                     Text="Wisp hält Ihre Mails lokal bereit, damit Sie auch ohne Internet lesen, sortieren und schreiben können. Änderungen werden übertragen, sobald wieder eine Verbindung besteht. Lokales Aufräumen löscht nie etwas auf dem Server." />
+          <TextBlock Classes="section" Text="Mails der letzten … Tage komplett offline verfügbar halten" />
+          <NumericUpDown Value="{Binding OfflineDays}" Minimum="0" Maximum="3650" Increment="7" FormatString="0" />
+          <TextBlock Classes="section" Text="Größere Mails erst beim Öffnen laden (ab MB)" />
+          <NumericUpDown Value="{Binding PrefetchMaxMb}" Minimum="1" Maximum="100" Increment="1" FormatString="0" />
+          <TextBlock Classes="section" Text="Höchstens so viele Mails pro Ordner anzeigen" />
+          <NumericUpDown Value="{Binding HeadersPerFolder}" Minimum="100" Maximum="100000" Increment="500" FormatString="0" />
+          <TextBlock Classes="section" Text="Alle Ordner prüfen alle … Minuten" />
+          <NumericUpDown Value="{Binding PollMinutes}" Minimum="1" Maximum="120" Increment="1" FormatString="0" />
+          <TextBlock Classes="hint" Text="Neue Mails im Posteingang erscheinen bei den meisten Anbietern sofort, unabhängig von diesem Wert." />
+        </StackPanel>
+      </ScrollViewer>
+    </TabItem>
+
+    <!-- ─────────── Accounts ─────────── -->
+    <TabItem Header="Konten">
+      <ScrollViewer>
+        <StackPanel Classes="page">
+          <ItemsControl ItemsSource="{Binding AccountList}" Margin="0,8,0,0">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:AccountEntry">
+                <Border Classes="card" Margin="0,0,0,8" Padding="14">
+                  <DockPanel>
+                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="14" VerticalAlignment="Center">
+                      <Button Classes="link" Content="Passwort ändern" IsVisible="{Binding !UsesOAuth}"
+                              Command="{Binding $parent[Window].((vm:SettingsViewModel)DataContext).BeginPasswordChangeCommand}" CommandParameter="{Binding}" />
+                      <Button Classes="link" Content="Neu anmelden" IsVisible="{Binding UsesOAuth}"
+                              Command="{Binding $parent[Window].((vm:SettingsViewModel)DataContext).ReauthorizeCommand}" CommandParameter="{Binding}" />
+                      <Button Classes="link" Content="Entfernen" Foreground="{DynamicResource WispDanger}"
+                              Command="{Binding $parent[Window].((vm:SettingsViewModel)DataContext).RemoveAccountCommand}" CommandParameter="{Binding}" />
+                    </StackPanel>
+                    <StackPanel>
+                      <TextBlock Text="{Binding Email}" FontWeight="SemiBold" />
+                      <TextBlock Text="{Binding Provider}" Classes="muted small" />
+                    </StackPanel>
+                  </DockPanel>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+
+          <Border Classes="card" IsVisible="{Binding PasswordAccount, Converter={x:Static v:Converters.NotNull}}">
+            <StackPanel Spacing="8">
+              <TextBlock Text="{Binding PasswordAccount.Email, StringFormat='Neues Passwort für {0}', FallbackValue=''}" FontWeight="SemiBold" />
+              <TextBox Text="{Binding PasswordForAccount}" PasswordChar="•" />
+              <Button Classes="primary" Content="Prüfen und speichern" Command="{Binding SavePasswordCommand}" HorizontalAlignment="Left" />
+            </StackPanel>
+          </Border>
+          <TextBlock Text="{Binding AccountMessage}" TextWrapping="Wrap" IsVisible="{Binding AccountMessage, Converter={x:Static v:Converters.NotNull}}" />
+
+          <Button Classes="primary" Content="Konto hinzufügen" Command="{Binding AddAccountCommand}" HorizontalAlignment="Left" Margin="0,8,0,0" />
+          <TextBlock Classes="hint" Margin="0,8,0,0"
+                     Text="Ein Konto zu entfernen löscht nur die Daten auf diesem Gerät. Ihre Mails beim Anbieter bleiben unverändert." />
+        </StackPanel>
+      </ScrollViewer>
+    </TabItem>
+
+    <!-- ─────────── Security ─────────── -->
+    <TabItem Header="Sicherheit">
+      <ScrollViewer>
+        <StackPanel Classes="page">
+          <TextBlock Classes="section" Text="Verschlüsselung" />
+          <TextBlock Text="{Binding ProtectionText}" TextWrapping="Wrap" />
+          <TextBlock Classes="hint"
+                     Text="Passwörter, Mails, Anhänge und Ordnernamen werden mit AES-256 verschlüsselt gespeichert. Nur Datum, Größe und Gelesen-Status liegen unverschlüsselt vor, damit die Liste schnell sortiert werden kann." />
+
+          <TextBlock Classes="section" Text="Master-Passwort" />
+          <TextBlock Classes="hint"
+                     Text="Mit einem Master-Passwort fragt Wisp bei jedem Start danach. Dann kann auch niemand, der an Ihrem entsperrten Benutzerkonto sitzt, Ihre Mails in Wisp öffnen. Wichtig: Ein vergessenes Master-Passwort kann niemand wiederherstellen." />
+          <TextBox Text="{Binding CurrentMasterPassword}" PasswordChar="•" PlaceholderText="Aktuelles Master-Passwort" IsVisible="{Binding HasMasterPassword}" />
+          <TextBox Text="{Binding NewMasterPassword}" PasswordChar="•" PlaceholderText="Neues Master-Passwort (mind. 8 Zeichen)" />
+          <TextBox Text="{Binding NewMasterPasswordRepeat}" PasswordChar="•" PlaceholderText="Neues Master-Passwort wiederholen" />
+          <StackPanel Orientation="Horizontal" Spacing="12">
+            <Button Classes="primary" Content="Master-Passwort festlegen" Command="{Binding SetMasterPasswordCommand}" />
+            <Button Content="Master-Passwort entfernen" Command="{Binding RemoveMasterPasswordCommand}" IsVisible="{Binding CanRemoveMasterPassword}" />
+          </StackPanel>
+          <TextBlock Text="{Binding SecurityMessage}" TextWrapping="Wrap" IsVisible="{Binding SecurityMessage, Converter={x:Static v:Converters.NotNull}}" />
+        </StackPanel>
+      </ScrollViewer>
+    </TabItem>
+  </TabControl>
+</Window>

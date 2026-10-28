@@ -1,0 +1,298 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Wisp.App.ViewModels"
+        xmlns:v="using:Wisp.App.Views"
+        xmlns:t="using:Wisp.App.Theme"
+        x:Class="Wisp.App.Views.MainWindow"
+        x:DataType="vm:MainViewModel"
+        Title="Wisp"
+        Icon="/Assets/wisp.ico"
+        MinWidth="760" MinHeight="480">
+
+  <Window.Styles>
+    <Style Selector="ListBox.sidebar > ListBoxItem" x:DataType="vm:SidebarItem">
+      <Setter Property="IsHitTestVisible" Value="{Binding IsSelectable}" />
+      <Setter Property="Focusable" Value="{Binding IsSelectable}" />
+    </Style>
+    <Style Selector="TextBlock.header">
+      <Setter Property="FontSize" Value="{DynamicResource WispSmallFontSize}" />
+      <Setter Property="Foreground" Value="{DynamicResource WispMuted}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+  </Window.Styles>
+
+  <Window.KeyBindings>
+    <KeyBinding Gesture="Ctrl+N" Command="{Binding ComposeCommand}" />
+    <KeyBinding Gesture="Ctrl+R" Command="{Binding ReplyCommand}" />
+    <KeyBinding Gesture="Ctrl+Shift+R" Command="{Binding ReplyAllCommand}" />
+    <KeyBinding Gesture="Ctrl+L" Command="{Binding ForwardCommand}" />
+    <KeyBinding Gesture="F5" Command="{Binding RefreshCommand}" />
+    <KeyBinding Gesture="Ctrl+U" Command="{Binding ToggleReadCommand}" />
+  </Window.KeyBindings>
+
+  <Grid>
+    <Grid ColumnDefinitions="230,1,360,1,*">
+
+      <!-- ─────────── Sidebar ─────────── -->
+      <Border Grid.Column="0" Background="{DynamicResource WispSidebar}">
+        <DockPanel>
+          <StackPanel DockPanel.Dock="Top" Margin="14,16,14,8" Spacing="14">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <Image Source="/Assets/wisp.png" Width="22" Height="22" />
+              <TextBlock Text="Wisp" FontWeight="SemiBold" FontSize="16" VerticalAlignment="Center" />
+            </StackPanel>
+            <Button Classes="primary" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                    Command="{Binding ComposeCommand}" IsEnabled="{Binding HasAccounts}" ToolTip.Tip="Neue Mail (Strg+N)">
+              <StackPanel Orientation="Horizontal" Spacing="8">
+                <t:WispIcon Data="{StaticResource IconCompose}" />
+                <TextBlock Text="Neue Mail" />
+              </StackPanel>
+            </Button>
+          </StackPanel>
+
+          <Border DockPanel.Dock="Bottom" BorderBrush="{DynamicResource WispBorder}" BorderThickness="0,1,0,0" Padding="10,8">
+            <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto">
+              <Ellipse Width="8" Height="8" Margin="4,0,8,0" VerticalAlignment="Center"
+                       Fill="{Binding StatusKind, Converter={x:Static v:Converters.StatusBrush}}" />
+              <TextBlock Grid.Column="1" Text="{Binding StatusText}" Classes="muted small" VerticalAlignment="Center"
+                         TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding StatusText}" />
+              <Button Grid.Column="2" Classes="icon" Command="{Binding RefreshCommand}" ToolTip.Tip="Aktualisieren (F5)">
+                <t:WispIcon Data="{StaticResource IconRefresh}" />
+              </Button>
+              <Button Grid.Column="3" Classes="icon" Command="{Binding AddAccountCommand}" ToolTip.Tip="Konto hinzufügen">
+                <t:WispIcon Data="{StaticResource IconPlus}" />
+              </Button>
+              <Button Grid.Column="4" Classes="icon" Command="{Binding OpenSettingsCommand}" ToolTip.Tip="Einstellungen">
+                <t:WispIcon Data="{StaticResource IconSettings}" />
+              </Button>
+            </Grid>
+          </Border>
+
+          <ListBox Classes="sidebar" ItemsSource="{Binding Sidebar}" SelectedItem="{Binding SelectedSidebarItem}">
+            <ListBox.ItemTemplate>
+              <DataTemplate x:DataType="vm:SidebarItem">
+                <Grid ColumnDefinitions="Auto,*,Auto" Margin="{Binding Indent}">
+                  <t:WispIcon Data="{Binding Icon}" IsVisible="{Binding IsSelectable}" Margin="0,0,10,0"
+                              Foreground="{DynamicResource WispMuted}" VerticalAlignment="Center" />
+                  <TextBlock Grid.Column="1" Text="{Binding Name}" Classes.header="{Binding IsHeader}"
+                             TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                  <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                    <TextBlock Text="!" Foreground="{DynamicResource WispDanger}" FontWeight="Bold"
+                               IsVisible="{Binding Status, Converter={x:Static v:Converters.NotNull}}" />
+                    <TextBlock Text="{Binding Unread}" IsVisible="{Binding HasUnread}" Classes="small"
+                               Foreground="{DynamicResource WispAccent}" FontWeight="SemiBold" />
+                  </StackPanel>
+                </Grid>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+        </DockPanel>
+      </Border>
+
+      <GridSplitter Grid.Column="1" ResizeDirection="Columns" />
+
+      <!-- ─────────── Message list ─────────── -->
+      <DockPanel Grid.Column="2" Background="{DynamicResource WispSurface}">
+        <StackPanel DockPanel.Dock="Top" Margin="16,16,16,8" Spacing="10">
+          <TextBlock Text="{Binding FolderTitle}" Classes="title" TextTrimming="CharacterEllipsis" />
+          <TextBox Text="{Binding SearchText}" PlaceholderText="Suchen …" IsVisible="{Binding !IsOutboxSelected}" />
+          <Border Classes="notice" IsVisible="{Binding FolderWarning, Converter={x:Static v:Converters.NotNull}}">
+            <StackPanel Spacing="8">
+              <TextBlock Text="{Binding FolderWarning}" TextWrapping="Wrap" />
+              <Button Classes="link" Content="Ja, diese Mails wurden wirklich gelöscht" Command="{Binding ApproveMassDeleteCommand}" />
+            </StackPanel>
+          </Border>
+        </StackPanel>
+
+        <Grid>
+          <ListBox x:Name="MessageList" Classes="messages" ItemsSource="{Binding Messages}" SelectionMode="Multiple"
+                   IsVisible="{Binding !IsOutboxSelected}">
+            <ListBox.ItemTemplate>
+              <DataTemplate x:DataType="vm:MessageItem">
+                <Grid ColumnDefinitions="12,*,Auto" RowDefinitions="Auto,Auto,Auto">
+                  <Ellipse Width="7" Height="7" Fill="{DynamicResource WispAccent}" IsVisible="{Binding IsUnread}"
+                           VerticalAlignment="Center" HorizontalAlignment="Left" />
+                  <TextBlock Grid.Column="1" Text="{Binding From}" FontWeight="{Binding Weight}" TextTrimming="CharacterEllipsis" />
+                  <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6" Margin="8,0,0,0">
+                    <t:WispIcon Data="{StaticResource IconClock}" Width="12" Height="12" IsVisible="{Binding IsPending}"
+                                Foreground="{DynamicResource WispMuted}" ToolTip.Tip="Änderung wird übertragen, sobald eine Verbindung besteht" />
+                    <t:WispIcon Data="{StaticResource IconAttach}" Width="12" Height="12" IsVisible="{Binding HasAttachments}"
+                                Foreground="{DynamicResource WispMuted}" />
+                    <t:WispIcon Data="{StaticResource IconStar}" Width="12" Height="12" IsVisible="{Binding IsFlagged}"
+                                Foreground="{DynamicResource WispAccent}" />
+                    <TextBlock Text="{Binding DateText}" Classes="muted small" VerticalAlignment="Center" />
+                  </StackPanel>
+                  <TextBlock Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Text="{Binding Subject}"
+                             FontWeight="{Binding Weight}" TextTrimming="CharacterEllipsis" Margin="0,2,0,0" />
+                  <TextBlock Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2" Text="{Binding Preview}" Classes="muted small"
+                             TextTrimming="CharacterEllipsis" Margin="0,2,0,0"
+                             IsVisible="{Binding $parent[ListBox].((vm:MainViewModel)DataContext).ShowPreview}" />
+                </Grid>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+
+          <ScrollViewer IsVisible="{Binding IsOutboxSelected}">
+            <ItemsControl ItemsSource="{Binding Outbox}" Margin="12,0">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:OutboxEntry">
+                  <Border Classes="card" Margin="0,0,0,8" Padding="12">
+                    <StackPanel Spacing="4">
+                      <TextBlock Text="{Binding Subject}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                      <TextBlock Text="{Binding To}" Classes="muted small" TextTrimming="CharacterEllipsis" />
+                      <TextBlock Text="{Binding State}" Classes="small" />
+                      <TextBlock Text="{Binding Error}" Classes="hint" IsVisible="{Binding Error, Converter={x:Static v:Converters.NotNull}}" />
+                      <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,4,0,0">
+                        <Button Classes="link" Content="Jetzt senden" IsVisible="{Binding CanRetry}"
+                                Command="{Binding $parent[Window].((vm:MainViewModel)DataContext).RetrySendCommand}" CommandParameter="{Binding}" />
+                        <Button Classes="link" Content="Verwerfen" IsVisible="{Binding CanDiscard}"
+                                Command="{Binding $parent[Window].((vm:MainViewModel)DataContext).DiscardSendCommand}" CommandParameter="{Binding}" />
+                      </StackPanel>
+                    </StackPanel>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </ScrollViewer>
+
+          <TextBlock Text="Keine Mails" Classes="muted" HorizontalAlignment="Center" VerticalAlignment="Center"
+                     IsVisible="{Binding IsListEmpty}" />
+        </Grid>
+      </DockPanel>
+
+      <GridSplitter Grid.Column="3" ResizeDirection="Columns" />
+
+      <!-- ─────────── Reader ─────────── -->
+      <Grid Grid.Column="4" RowDefinitions="Auto,Auto,Auto,*">
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="12,10" Spacing="2" IsVisible="{Binding HasSelection}">
+          <Button Classes="icon" Command="{Binding ReplyCommand}" ToolTip.Tip="Antworten (Strg+R)"
+                  IsEnabled="{Binding CurrentMail, Converter={x:Static v:Converters.NotNull}}">
+            <t:WispIcon Data="{StaticResource IconReply}" />
+          </Button>
+          <Button Classes="icon" Command="{Binding ReplyAllCommand}" ToolTip.Tip="Allen antworten (Strg+Umschalt+R)"
+                  IsEnabled="{Binding CurrentMail, Converter={x:Static v:Converters.NotNull}}">
+            <t:WispIcon Data="{StaticResource IconReplyAll}" />
+          </Button>
+          <Button Classes="icon" Command="{Binding ForwardCommand}" ToolTip.Tip="Weiterleiten (Strg+L)"
+                  IsEnabled="{Binding CurrentMail, Converter={x:Static v:Converters.NotNull}}">
+            <t:WispIcon Data="{StaticResource IconForward}" />
+          </Button>
+          <Rectangle Width="1" Height="20" Margin="8,0" Fill="{DynamicResource WispBorder}" />
+          <Button Classes="icon" Command="{Binding ArchiveCommand}" ToolTip.Tip="Archivieren" IsVisible="{Binding CanArchive}">
+            <t:WispIcon Data="{StaticResource IconArchive}" />
+          </Button>
+          <Button Classes="icon" ToolTip.Tip="Verschieben">
+            <t:WispIcon Data="{StaticResource IconMove}" />
+            <Button.Flyout>
+              <Flyout Placement="BottomEdgeAlignedLeft">
+                <ScrollViewer MaxHeight="360">
+                  <ItemsControl ItemsSource="{Binding MoveTargets}">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="vm:SidebarItem">
+                        <Button Classes="icon" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                                Command="{Binding $parent[Window].((vm:MainViewModel)DataContext).MoveToCommand}" CommandParameter="{Binding}">
+                          <StackPanel Orientation="Horizontal" Spacing="10">
+                            <t:WispIcon Data="{Binding Icon}" Foreground="{DynamicResource WispMuted}" />
+                            <TextBlock Text="{Binding Name}" />
+                          </StackPanel>
+                        </Button>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </ScrollViewer>
+              </Flyout>
+            </Button.Flyout>
+          </Button>
+          <Button Classes="icon" Command="{Binding DeleteCommand}" ToolTip.Tip="Löschen (Entf)">
+            <t:WispIcon Data="{StaticResource IconTrash}" />
+          </Button>
+          <Rectangle Width="1" Height="20" Margin="8,0" Fill="{DynamicResource WispBorder}" />
+          <Button Classes="icon" Command="{Binding ToggleReadCommand}" ToolTip.Tip="Gelesen / ungelesen (Strg+U)">
+            <t:WispIcon Data="{StaticResource IconMail}" />
+          </Button>
+          <Button Classes="icon" Command="{Binding ToggleFlagCommand}" ToolTip.Tip="Markieren">
+            <t:WispIcon Data="{StaticResource IconStar}" />
+          </Button>
+        </StackPanel>
+
+        <StackPanel Grid.Row="1" Margin="24,4,24,8" Spacing="6" IsVisible="{Binding CurrentMail, Converter={x:Static v:Converters.NotNull}}">
+          <SelectableTextBlock Text="{Binding CurrentMail.Subject, FallbackValue=''}" Classes="title" TextWrapping="Wrap" />
+          <SelectableTextBlock Text="{Binding CurrentMail.From, FallbackValue=''}" FontWeight="SemiBold" />
+          <SelectableTextBlock Classes="muted" TextWrapping="Wrap">
+            <Run Text="An: " /><Run Text="{Binding CurrentMail.To, FallbackValue=''}" />
+          </SelectableTextBlock>
+          <SelectableTextBlock Classes="muted" TextWrapping="Wrap" IsVisible="{Binding CurrentMail.Cc, Converter={x:Static v:Converters.NotNull}, FallbackValue=False}">
+            <Run Text="Cc: " /><Run Text="{Binding CurrentMail.Cc, FallbackValue=''}" />
+          </SelectableTextBlock>
+          <TextBlock x:Name="DateText" Classes="muted small" />
+        </StackPanel>
+
+        <StackPanel Grid.Row="2" Margin="24,0,24,8" Spacing="8">
+          <Border Classes="notice" IsVisible="{Binding ShowRemoteImageBanner}">
+            <DockPanel>
+              <Button DockPanel.Dock="Right" Classes="link" Content="Bilder laden" Command="{Binding LoadImagesCommand}" />
+              <TextBlock Text="Externe Bilder wurden blockiert, damit der Absender nicht sieht, dass Sie die Mail geöffnet haben."
+                         TextWrapping="Wrap" Margin="0,0,12,0" />
+            </DockPanel>
+          </Border>
+          <Border Classes="notice" IsVisible="{Binding ShowHtmlBanner}">
+            <DockPanel>
+              <Button DockPanel.Dock="Right" Classes="link" Content="Originaldarstellung" Command="{Binding ShowOriginalCommand}" />
+              <TextBlock Text="Diese Mail wird als einfacher Text angezeigt." TextWrapping="Wrap" Margin="0,0,12,0" />
+            </DockPanel>
+          </Border>
+          <ItemsControl ItemsSource="{Binding Attachments}">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:AttachmentItem">
+                <Button Classes="chip" Margin="0,0,6,6" ToolTip.Tip="Speichern unter …"
+                        Command="{Binding $parent[Window].((vm:MainViewModel)DataContext).SaveAttachmentCommand}" CommandParameter="{Binding}">
+                  <StackPanel Orientation="Horizontal" Spacing="6">
+                    <t:WispIcon Data="{StaticResource IconAttach}" Width="13" Height="13" />
+                    <TextBlock Text="{Binding Name}" MaxWidth="240" TextTrimming="CharacterEllipsis" />
+                    <TextBlock Text="{Binding SizeText}" Classes="muted small" VerticalAlignment="Center" />
+                  </StackPanel>
+                </Button>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+
+        <Border Grid.Row="3" BorderBrush="{DynamicResource WispBorder}" BorderThickness="0,1,0,0">
+          <Grid>
+            <ContentControl x:Name="ReaderBody" />
+            <TextBlock Text="Keine Mail ausgewählt" Classes="muted" HorizontalAlignment="Center" VerticalAlignment="Center"
+                       IsVisible="{Binding !HasSelection}" />
+            <TextBlock Text="Wird geladen …" Classes="muted" HorizontalAlignment="Center" VerticalAlignment="Center"
+                       IsVisible="{Binding IsLoadingMail}" />
+            <TextBlock Text="{Binding ReaderProblem}" Classes="muted" TextWrapping="Wrap" MaxWidth="380" TextAlignment="Center"
+                       HorizontalAlignment="Center" VerticalAlignment="Center"
+                       IsVisible="{Binding ReaderProblem, Converter={x:Static v:Converters.NotNull}}" />
+          </Grid>
+        </Border>
+      </Grid>
+    </Grid>
+
+    <!-- Welcome screen without accounts -->
+    <Border Background="{DynamicResource WispWindow}" IsVisible="{Binding !HasAccounts}">
+      <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="16" MaxWidth="420">
+        <Image Source="/Assets/wisp.png" Width="72" Height="72" />
+        <TextBlock Text="Willkommen bei Wisp" Classes="title" HorizontalAlignment="Center" />
+        <TextBlock Text="Ein leichter, sicherer Mail-Client. Ihre Mails und Passwörter werden verschlüsselt auf diesem Gerät gespeichert."
+                   Classes="muted" TextWrapping="Wrap" TextAlignment="Center" />
+        <Button Classes="primary" HorizontalAlignment="Center" Content="Konto hinzufügen" Command="{Binding AddAccountCommand}" />
+      </StackPanel>
+    </Border>
+
+    <!-- Toast -->
+    <Border Classes="card" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="20" MaxWidth="420" Padding="14,10"
+            IsVisible="{Binding Notice, Converter={x:Static v:Converters.NotNull}}">
+      <DockPanel>
+        <Button DockPanel.Dock="Right" Classes="link" Content="OK" Margin="12,0,0,0" Command="{Binding DismissNoticeCommand}" />
+        <TextBlock Text="{Binding Notice}" TextWrapping="Wrap" />
+      </DockPanel>
+    </Border>
+  </Grid>
+</Window>

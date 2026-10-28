@@ -1,0 +1,101 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Wisp.App.ViewModels"
+        xmlns:v="using:Wisp.App.Views"
+        xmlns:t="using:Wisp.App.Theme"
+        x:Class="Wisp.App.Views.ComposeWindow"
+        x:DataType="vm:ComposeViewModel"
+        Title="{Binding WindowTitle}"
+        Icon="/Assets/wisp.ico"
+        Width="720" Height="620" MinWidth="480" MinHeight="380">
+
+  <Window.KeyBindings>
+    <KeyBinding Gesture="Ctrl+Enter" Command="{Binding SendCommand}" />
+  </Window.KeyBindings>
+
+  <DockPanel Margin="20">
+    <Grid DockPanel.Dock="Top" ColumnDefinitions="70,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto" Margin="0,0,0,12">
+      <Grid.Styles>
+        <Style Selector="TextBlock.label">
+          <Setter Property="Foreground" Value="{DynamicResource WispMuted}" />
+          <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style Selector="TextBox, ComboBox">
+          <Setter Property="Margin" Value="0,0,0,8" />
+        </Style>
+      </Grid.Styles>
+
+      <TextBlock Grid.Row="0" Classes="label" Text="Von" IsVisible="{Binding HasMultipleAccounts}" Margin="0,0,0,8" />
+      <ComboBox Grid.Row="0" Grid.Column="1" ItemsSource="{Binding Accounts}" SelectedItem="{Binding From}"
+                HorizontalAlignment="Stretch" IsVisible="{Binding HasMultipleAccounts}">
+        <ComboBox.ItemTemplate>
+          <DataTemplate x:DataType="vm:AccountChoice">
+            <TextBlock Text="{Binding Label}" />
+          </DataTemplate>
+        </ComboBox.ItemTemplate>
+      </ComboBox>
+
+      <TextBlock Grid.Row="1" Classes="label" Text="An" Margin="0,0,0,8" />
+      <DockPanel Grid.Row="1" Grid.Column="1">
+        <Button DockPanel.Dock="Right" Classes="link" Content="Cc/Bcc" Margin="10,0,0,8" Command="{Binding ToggleCcCommand}" />
+        <TextBox Text="{Binding To}" PlaceholderText="name@beispiel.de, …" />
+      </DockPanel>
+
+      <TextBlock Grid.Row="2" Classes="label" Text="Cc" IsVisible="{Binding ShowCc}" Margin="0,0,0,8" />
+      <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding Cc}" IsVisible="{Binding ShowCc}" />
+      <TextBlock Grid.Row="3" Classes="label" Text="Bcc" IsVisible="{Binding ShowCc}" Margin="0,0,0,8" />
+      <TextBox Grid.Row="3" Grid.Column="1" Text="{Binding Bcc}" IsVisible="{Binding ShowCc}" />
+
+      <TextBlock Grid.Row="4" Classes="label" Text="Betreff" Margin="0,0,0,8" />
+      <TextBox Grid.Row="4" Grid.Column="1" Text="{Binding Subject}" />
+    </Grid>
+
+    <StackPanel DockPanel.Dock="Bottom" Spacing="10" Margin="0,12,0,0">
+      <TextBlock Text="{Binding Error}" Foreground="{DynamicResource WispDanger}" TextWrapping="Wrap"
+                 IsVisible="{Binding Error, Converter={x:Static v:Converters.NotNull}}" />
+      <TextBlock Classes="hint" Text="Die Anhänge der ursprünglichen Mail werden mitgesendet." IsVisible="{Binding IsForwardingAttachments}" />
+      <ItemsControl ItemsSource="{Binding AttachmentPaths}">
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="x:String">
+            <Button Classes="chip" Margin="0,0,6,6" ToolTip.Tip="Entfernen"
+                    Command="{Binding $parent[Window].((vm:ComposeViewModel)DataContext).RemoveAttachmentCommand}" CommandParameter="{Binding}">
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <t:WispIcon Data="{StaticResource IconAttach}" Width="13" Height="13" />
+                <TextBlock Text="{Binding Converter={x:Static v:ComposeWindow.FileName}}" />
+                <TextBlock Text="×" Classes="muted" />
+              </StackPanel>
+            </Button>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+      <DockPanel>
+        <Button DockPanel.Dock="Right" Classes="primary" Command="{Binding SendCommand}" ToolTip.Tip="Senden (Strg+Enter)">
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <t:WispIcon Data="{StaticResource IconSent}" />
+            <TextBlock Text="Senden" />
+          </StackPanel>
+        </Button>
+        <StackPanel Orientation="Horizontal" Spacing="4">
+          <Button x:Name="AttachButton" Classes="icon" ToolTip.Tip="Datei anhängen">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <t:WispIcon Data="{StaticResource IconAttach}" />
+              <TextBlock Text="Anhängen" />
+            </StackPanel>
+          </Button>
+          <Button x:Name="DiscardButton" Classes="icon" ToolTip.Tip="Verwerfen">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <t:WispIcon Data="{StaticResource IconTrash}" />
+              <TextBlock Text="Verwerfen" />
+            </StackPanel>
+          </Button>
+        </StackPanel>
+      </DockPanel>
+    </StackPanel>
+
+    <TextBox Text="{Binding Body}" AcceptsReturn="True" TextWrapping="Wrap" x:Name="BodyBox"
+             VerticalContentAlignment="Top" PlaceholderText="Ihre Nachricht …" />
+  </DockPanel>
+</Window>

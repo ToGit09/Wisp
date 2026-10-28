@@ -1,0 +1,132 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:t="using:Wisp.App.Theme">
+
+  <Style Selector="Window">
+    <Setter Property="Background" Value="{DynamicResource WispWindow}" />
+    <Setter Property="Foreground" Value="{DynamicResource WispText}" />
+    <Setter Property="FontFamily" Value="{DynamicResource WispFont}" />
+    <Setter Property="FontSize" Value="{DynamicResource WispFontSize}" />
+  </Style>
+
+  <Style Selector="TextBlock.muted, SelectableTextBlock.muted">
+    <Setter Property="Foreground" Value="{DynamicResource WispMuted}" />
+  </Style>
+  <Style Selector="TextBlock.small">
+    <Setter Property="FontSize" Value="{DynamicResource WispSmallFontSize}" />
+  </Style>
+  <Style Selector="TextBlock.title, SelectableTextBlock.title">
+    <Setter Property="FontSize" Value="{DynamicResource WispTitleFontSize}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+  <Style Selector="TextBlock.section">
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Margin" Value="0,16,0,6" />
+  </Style>
+  <Style Selector="TextBlock.hint">
+    <Setter Property="Foreground" Value="{DynamicResource WispMuted}" />
+    <Setter Property="FontSize" Value="{DynamicResource WispSmallFontSize}" />
+    <Setter Property="TextWrapping" Value="Wrap" />
+  </Style>
+
+  <!-- Quiet icon buttons for toolbars -->
+  <Style Selector="Button.icon">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Padding" Value="8" />
+    <Setter Property="CornerRadius" Value="6" />
+    <Setter Property="Foreground" Value="{DynamicResource WispText}" />
+  </Style>
+  <Style Selector="Button.icon:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource WispHover}" />
+  </Style>
+  <Style Selector="Button.icon:disabled">
+    <Setter Property="Opacity" Value="0.4" />
+  </Style>
+
+  <Style Selector="Button.link">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="Foreground" Value="{DynamicResource WispAccent}" />
+    <Setter Property="Cursor" Value="Hand" />
+  </Style>
+  <Style Selector="Button.link:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="Transparent" />
+  </Style>
+
+  <Style Selector="Button.primary">
+    <Setter Property="Background" Value="{DynamicResource WispAccent}" />
+    <Setter Property="Foreground" Value="{DynamicResource WispOnAccent}" />
+    <Setter Property="CornerRadius" Value="8" />
+    <Setter Property="Padding" Value="14,8" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+  <Style Selector="Button.primary:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource WispAccent}" />
+    <Setter Property="Foreground" Value="{DynamicResource WispOnAccent}" />
+    <Setter Property="Opacity" Value="0.9" />
+  </Style>
+
+  <Style Selector="Button.chip">
+    <Setter Property="Background" Value="{DynamicResource WispSidebar}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource WispBorder}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="14" />
+    <Setter Property="Padding" Value="10,4" />
+  </Style>
+
+  <Style Selector="TextBox, ComboBox, NumericUpDown">
+    <Setter Property="CornerRadius" Value="6" />
+  </Style>
+
+  <!-- Lists: no heavy Fluent chrome, soft accent selection -->
+  <Style Selector="ListBox">
+    <Setter Property="Background" Value="Transparent" />
+  </Style>
+  <Style Selector="ListBox.messages > ListBoxItem">
+    <Setter Property="Padding" Value="{DynamicResource WispRowPadding}" />
+    <Setter Property="Margin" Value="6,1" />
+    <Setter Property="CornerRadius" Value="8" />
+  </Style>
+  <Style Selector="ListBox.sidebar > ListBoxItem">
+    <Setter Property="Padding" Value="10,6" />
+    <Setter Property="Margin" Value="6,0" />
+    <Setter Property="CornerRadius" Value="6" />
+    <Setter Property="MinHeight" Value="0" />
+  </Style>
+  <Style Selector="ListBox > ListBoxItem:selected /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource WispAccentSoft}" />
+  </Style>
+  <Style Selector="ListBox > ListBoxItem:selected:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource WispAccentSoft}" />
+  </Style>
+  <Style Selector="ListBox > ListBoxItem:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource WispHover}" />
+  </Style>
+  <Style Selector="ListBox > ListBoxItem:selected">
+    <Setter Property="Foreground" Value="{DynamicResource WispText}" />
+  </Style>
+
+  <Style Selector="GridSplitter">
+    <Setter Property="Background" Value="{DynamicResource WispBorder}" />
+    <Setter Property="MinWidth" Value="1" />
+  </Style>
+
+  <Style Selector="Border.notice">
+    <Setter Property="Background" Value="{DynamicResource WispNoticeBg}" />
+    <Setter Property="CornerRadius" Value="8" />
+    <Setter Property="Padding" Value="12,8" />
+  </Style>
+  <Style Selector="Border.notice TextBlock">
+    <Setter Property="Foreground" Value="{DynamicResource WispNotice}" />
+  </Style>
+
+  <Style Selector="Border.card">
+    <Setter Property="Background" Value="{DynamicResource WispSurface}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource WispBorder}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="10" />
+    <Setter Property="Padding" Value="16" />
+  </Style>
+</Styles>
