@@ -119,6 +119,8 @@ public sealed partial class MainViewModel : ObservableObject
         FolderTitle = value.Name;
         SearchText = "";
         if (value.FolderId is long folderId) _mail.FolderOpened(folderId);
+        // A different folder starts empty, so the list opens at the top (newest mail), never somewhere below.
+        Messages.Clear();
         ReloadMessages();
         ReloadMoveTargets();
         ClearReader();
@@ -282,7 +284,29 @@ public sealed partial class MainViewModel : ObservableObject
         }
 
         var fresh = _mail.ListMessages(folderId, SearchText);
-        var existing = Messages.ToDictionary(m => m.Id);
+        SyncMessages(fresh);
+        IsListEmpty = Messages.Count == 0;
+
+        if (CurrentMessageId is long current && _mail.GetMessage(current) is { } m)
+        {
+            CurrentIsUnread = !m.IsSeen;
+            CurrentIsFlagged = m.IsFlagged;
+        }
+    }
+
+    /// <summary>
+    /// Brings the visible list in line with <paramref name="fresh"/> with as few changes as possible:
+    /// removals first, then insertions, moves only if the order really changed. Deleting one mail is
+    /// one removal, so the list does not scroll. (Shifting every following row one by one made the list
+    /// follow the moved rows down to the very end.)
+    /// </summary>
+    void SyncMessages(IReadOnlyList<MessageListItem> fresh)
+    {
+        var freshIds = fresh.Select(m => m.Id).ToHashSet();
+        for (var i = Messages.Count - 1; i >= 0; i--)
+            if (!freshIds.Contains(Messages[i].Id)) Messages.RemoveAt(i);
+
+        var existing = Messages.Select(m => m.Id).ToHashSet();
         for (var i = 0; i < fresh.Count; i++)
         {
             var source = fresh[i];
@@ -291,11 +315,12 @@ public sealed partial class MainViewModel : ObservableObject
                 Messages[i].Update(source);
                 continue;
             }
-            if (existing.TryGetValue(source.Id, out var item))
+            if (existing.Contains(source.Id))
             {
-                var oldIndex = Messages.IndexOf(item);
-                if (oldIndex >= 0) Messages.Move(oldIndex, i);
-                item.Update(source);
+                // Order changed (rare, e.g. a date correction): move this one row into place.
+                var oldIndex = IndexOf(source.Id, i);
+                Messages.Move(oldIndex, i);
+                Messages[i].Update(source);
             }
             else
             {
@@ -303,13 +328,13 @@ public sealed partial class MainViewModel : ObservableObject
             }
         }
         while (Messages.Count > fresh.Count) Messages.RemoveAt(Messages.Count - 1);
-        IsListEmpty = Messages.Count == 0;
+    }
 
-        if (CurrentMessageId is long current && _mail.GetMessage(current) is { } m)
-        {
-            CurrentIsUnread = !m.IsSeen;
-            CurrentIsFlagged = m.IsFlagged;
-        }
+    int IndexOf(long id, int from)
+    {
+        for (var j = from; j < Messages.Count; j++)
+            if (Messages[j].Id == id) return j;
+        return Messages.IndexOf(Messages.First(m => m.Id == id));
     }
 
     void ReloadMoveTargets()
@@ -481,9 +506,11 @@ public sealed partial class MainViewModel : ObservableObject
     [RelayCommand]
     async Task Delete()
     {
-        var ids = Targets;
+        var ids = Targets.ToList();
         if (ids.Count == 0) return;
-        if (_mail.Delete(ids) == DeleteOutcome.NeedsConfirmation)
+        var from = SelectedSidebarItem?.FolderId;
+        var outcome = _mail.Delete(ids);
+        if (outcome == DeleteOutcome.NeedsConfirmation)
         {
             var text = ids.Count == 1 ? "Diese Mail wird endgültig gelöscht – auch auf dem Server." : $"{ids.Count} Mails werden endgültig gelöscht – auch auf dem Server.";
             if (await _dialogs.ConfirmAsync("Endgültig löschen?", text, "Endgültig löschen", danger: true))
@@ -492,6 +519,17 @@ public sealed partial class MainViewModel : ObservableObject
         }
         ClearReader();
         ReloadMessages();
+
+        if (outcome == DeleteOutcome.MovedToTrash && from is long folderId)
+        {
+            // Visible confirmation plus a way back, until the next action replaces the toast.
+            var what = ids.Count == 1 ? "Mail" : $"{ids.Count} Mails";
+            ShowNotice($"{what} in den Papierkorb verschoben.", "Rückgängig", () =>
+            {
+                _mail.Move(ids, folderId);
+                ReloadMessages();
+            }, TimeSpan.FromSeconds(10));
+        }
     }
 
     [RelayCommand]

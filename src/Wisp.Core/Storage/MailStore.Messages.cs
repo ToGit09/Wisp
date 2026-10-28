@@ -305,6 +305,12 @@ public sealed partial class MailStore
         return due;
     });
 
+    /// <summary>When the next postponed operation becomes due (so the worker does not sleep past it).</summary>
+    public DateTimeOffset? NextOpAttempt(long accountId) => Read<DateTimeOffset?>(() =>
+        Scalar("SELECT MIN(next_attempt) FROM pending_ops WHERE account_id = $a AND next_attempt > $n", ("$a", accountId), ("$n", Now())) is long t
+            ? DateTimeOffset.FromUnixTimeSeconds(t)
+            : null);
+
     public int CountPendingOps(long accountId) => Read(() =>
         Convert.ToInt32(Scalar("SELECT COUNT(*) FROM pending_ops WHERE account_id = $a", ("$a", accountId))));
 

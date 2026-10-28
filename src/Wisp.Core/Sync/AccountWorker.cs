@@ -196,7 +196,11 @@ public sealed partial class AccountWorker : IAsyncDisposable
                 .Where(o => o.State == OutboxState.Queued && o.NextAttempt > DateTimeOffset.UtcNow)
                 .Select(o => o.NextAttempt - DateTimeOffset.UtcNow + TimeSpan.FromMilliseconds(500))
                 .DefaultIfEmpty(wait).Min();
-            await IdleAsync(imap, nextSend < wait ? nextSend : wait, ct);
+            if (nextSend < wait) wait = nextSend;
+            // Same for postponed operations, so a retry happens on time and not only at the next poll.
+            if (_store.NextOpAttempt(_accountId) is { } nextOp && nextOp - DateTimeOffset.UtcNow + TimeSpan.FromSeconds(1) is var untilOp && untilOp < wait)
+                wait = untilOp;
+            await IdleAsync(imap, wait, ct);
         }
     }
 

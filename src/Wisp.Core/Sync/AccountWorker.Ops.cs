@@ -73,19 +73,25 @@ public sealed partial class AccountWorker
             _store.CompleteOp(op.Id); // message no longer cached: nothing left to sync
             return;
         }
-        if (msg.SrcFolderId is not null || msg.Uid == 0)
+        // A message whose move is still queued lives in its old folder on the server: set the flag there,
+        // it travels along with the move. (Waiting for the move would deadlock: the move is queued
+        // behind this operation.)
+        var (path, uid) = msg.SrcFolderId is long src && _store.GetFolder(src) is { } srcFolder
+            ? (srcFolder.Path, msg.SrcUid ?? 0)
+            : (msg.FolderPath, msg.Uid);
+        if (uid == 0)
         {
-            _store.RetryOpLater(op.Id, WaitForUid); // its move has to land first
+            _store.RetryOpLater(op.Id, WaitForUid); // moved without UIDPLUS: the next sync of the target finds its UID
             return;
         }
 
-        var folder = await imap.GetFolderAsync(msg.FolderPath, ct);
+        var folder = await imap.GetFolderAsync(path, ct);
         await folder.OpenAsync(FolderAccess.ReadWrite, ct);
         if (folder.UidValidity == msg.UidValidity)
         {
             var request = new StoreFlagsRequest(op.Kind == OpKind.AddFlags ? StoreAction.Add : StoreAction.Remove,
                 ImapMapping.ToServer(op.Payload.Flags)) { Silent = true };
-            await folder.StoreAsync(new UniqueId(msg.UidValidity, msg.Uid), request, ct);
+            await folder.StoreAsync(new UniqueId(msg.UidValidity, uid), request, ct);
         }
         // UIDVALIDITY changed: the UID is meaningless now. The next sync re-reads the server's flags.
         _store.CompleteOp(op.Id);
