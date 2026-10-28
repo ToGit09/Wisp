@@ -160,14 +160,21 @@ public sealed partial class MainViewModel : ObservableObject
                 Name = account.Config.Email,
                 Status = status.State is ConnectionState.AuthFailed or ConnectionState.Error ? "!" : null,
             });
+            // Special folders appear once per account; any further folder keeps its own, unambiguous name.
+            var roles = new HashSet<FolderRole>();
+            var names = new Dictionary<string, int>(StringComparer.CurrentCultureIgnoreCase);
             foreach (var folder in _mail.GetFolders(account.Id))
             {
+                var role = folder.Role != FolderRole.None && roles.Add(folder.Role) ? folder.Role : FolderRole.None;
+                var name = SidebarItem.DisplayName(role, folder.Name);
+                names[name] = names.GetValueOrDefault(name) + 1;
+                if (names[name] > 1) name = $"{name} ({names[name]})";
                 items.Add(new SidebarItem
                 {
-                    Kind = SidebarKind.Folder, AccountId = account.Id, FolderId = folder.Id, Role = folder.Role,
-                    Depth = folder.Role == FolderRole.None ? folder.Depth : 0,
-                    Name = SidebarItem.DisplayName(folder),
-                    Unread = folder.Role is FolderRole.Sent or FolderRole.Trash or FolderRole.Drafts or FolderRole.All ? 0 : folder.Unread,
+                    Kind = SidebarKind.Folder, AccountId = account.Id, FolderId = folder.Id, Role = role,
+                    Depth = role == FolderRole.None ? folder.Depth : 0,
+                    Name = name,
+                    Unread = role is FolderRole.Sent or FolderRole.Trash or FolderRole.Drafts or FolderRole.All ? 0 : folder.Unread,
                     Status = folder.MassDeleteWarning ? "!" : null,
                 });
             }

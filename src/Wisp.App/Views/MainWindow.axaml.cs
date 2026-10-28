@@ -180,16 +180,15 @@ public partial class MainWindow : Window, IDialogs
 
     Control HtmlView(RenderedMail mail)
     {
-        // HTML mails are designed for a light background; show them on "paper" in dark mode too.
-        var html = new HtmlPanel
+        var view = new HtmlMailView(mail.Html!,
+            "body { font-family: Segoe UI, Ubuntu, Cantarell, sans-serif; font-size: 10.5pt; color: #1d1f24; } a { color: #3557d4; }",
+            _mail.Settings.Appearance.MailZoom);
+        view.ZoomChanged += zoom =>
         {
-            Text = mail.Html,
-            Background = Brushes.White,
-            Padding = new Thickness(20),
-            IsContextMenuEnabled = false,
-            BaseStylesheet = "body { font-family: Segoe UI, Ubuntu, Cantarell, sans-serif; font-size: 10.5pt; color: #1d1f24; } " +
-                             "a { color: #3557d4; } img { max-width: 100%; }",
+            _mail.Settings.Appearance.MailZoom = zoom;
+            try { _mail.SaveSettings(); } catch (IOException) { }
         };
+        var html = view.Html;
 
         html.ImageLoad += (_, e) =>
         {
@@ -227,7 +226,7 @@ public partial class MainWindow : Window, IDialogs
             var known = mail.Links.FirstOrDefault(l => l.Url == url);
             await OpenLinkAsync(url, known?.Suspicious ?? false);
         };
-        return html;
+        return view;
     }
 
     static Bitmap? TryBitmap(byte[] data)

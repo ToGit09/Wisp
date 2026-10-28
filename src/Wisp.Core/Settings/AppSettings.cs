@@ -15,6 +15,8 @@ public sealed class AppearanceSettings
     public double FontSize { get; set; } = 14;
     public Density Density { get; set; } = Density.Normal;
     public bool ShowPreview { get; set; } = true;
+    /// <summary>Zoom of HTML mails (1.0 = 100 %). Mails wider than the reader are shrunk to fit on top of this.</summary>
+    public double MailZoom { get; set; } = 1.0;
 }
 
 public sealed class PrivacySettings

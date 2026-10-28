@@ -25,12 +25,16 @@ public sealed partial class AccountWorker
         if (!folders.Any(f => f.FullName.Equals(imap.Inbox.FullName, StringComparison.OrdinalIgnoreCase)))
             folders.Insert(0, imap.Inbox);
 
+        folders = folders
+            .Where(f => !f.Attributes.HasFlag(FolderAttributes.NonExistent) && !f.Attributes.HasFlag(FolderAttributes.NoSelect))
+            .ToList();
+        var roles = ImapMapping.RolesFor(folders);
+
         var present = new HashSet<long>();
-        foreach (var folder in folders)
+        for (var i = 0; i < folders.Count; i++)
         {
-            if (folder.Attributes.HasFlag(FolderAttributes.NonExistent) || folder.Attributes.HasFlag(FolderAttributes.NoSelect))
-                continue;
-            var role = ImapMapping.RoleOf(folder);
+            var folder = folders[i];
+            var role = roles[i];
             var depth = folder.DirectorySeparator == '\0' ? 0 : folder.FullName.Count(c => c == folder.DirectorySeparator);
             var syncByDefault = role is not (FolderRole.All or FolderRole.Flagged);
             present.Add(_store.UpsertFolder(_accountId, folder.FullName, folder.Name, depth, role, syncByDefault));

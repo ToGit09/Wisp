@@ -40,7 +40,7 @@ public sealed partial class SidebarItem : ObservableObject
 
     partial void OnUnreadChanged(int value) => OnPropertyChanged(nameof(HasUnread));
 
-    public static string DisplayName(FolderRow folder) => folder.Role switch
+    public static string DisplayName(FolderRole role, string name) => role switch
     {
         FolderRole.Inbox => "Posteingang",
         FolderRole.Sent => "Gesendet",
@@ -50,7 +50,7 @@ public sealed partial class SidebarItem : ObservableObject
         FolderRole.Archive => "Archiv",
         FolderRole.All => "Alle Nachrichten",
         FolderRole.Flagged => "Markiert",
-        _ => folder.Name,
+        _ => name,
     };
 
     internal static Geometry? Find(string key) =>
