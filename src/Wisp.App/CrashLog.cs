@@ -11,8 +11,12 @@ static class CrashLog
     const long MaxBytes = 256 * 1024;
     static readonly object Gate = new();
 
+    /// <summary>Settings → Datenschutz → "Fehlerprotokoll schreiben".</summary>
+    public static bool Enabled { get; set; } = true;
+
     public static void Write(Exception exception)
     {
+        if (!Enabled) return;
         try
         {
             var path = Path.Combine(AppPaths.DataDir, "crash.log");

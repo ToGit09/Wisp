@@ -35,15 +35,19 @@ public sealed partial class MainViewModel : ObservableObject
         {
             _noticeTimer!.Stop();
             Notice = null;
+            NoticeActionLabel = null;
+            _noticeAction = null;
         });
         _mail.Changed += OnChanged;
         ReloadSidebar();
         UpdateStatus();
-        SelectedSidebarItem = Sidebar.FirstOrDefault(s => s.Kind == SidebarKind.Folder && s.Role == FolderRole.Inbox)
-                              ?? Sidebar.FirstOrDefault(s => s.IsSelectable);
+        SelectedSidebarItem = Pinned.FirstOrDefault() ?? Sidebar.FirstOrDefault(s => s.IsSelectable);
     }
 
+    /// <summary>Inboxes, pinned above the scrolling folder list.</summary>
+    public ObservableCollection<SidebarItem> Pinned { get; } = [];
     public ObservableCollection<SidebarItem> Sidebar { get; } = [];
+    IEnumerable<SidebarItem> AllSidebar => Pinned.Concat(Sidebar);
     public ObservableCollection<MessageItem> Messages { get; } = [];
     public ObservableCollection<OutboxEntry> Outbox { get; } = [];
     public ObservableCollection<AttachmentItem> Attachments { get; } = [];
@@ -52,6 +56,13 @@ public sealed partial class MainViewModel : ObservableObject
 
     public bool HasAccounts => _mail.GetAccounts().Count > 0;
     public bool ShowPreview => _mail.Settings.Appearance.ShowPreview;
+    public bool ShowAvatars => _mail.Settings.Appearance.ShowAvatars;
+    public bool SidebarAlwaysOpen => !_mail.Settings.Appearance.AutoCollapseSidebar;
+
+    [ObservableProperty] public partial string WindowTitle { get; set; } = "Wisp";
+    /// <summary>Optional button in the toast, e.g. "Rückgängig" after sending.</summary>
+    [ObservableProperty] public partial string? NoticeActionLabel { get; set; }
+    Action? _noticeAction;
 
     [ObservableProperty] public partial SidebarItem? SelectedSidebarItem { get; set; }
     [ObservableProperty] public partial string FolderTitle { get; set; } = "";
@@ -75,6 +86,15 @@ public sealed partial class MainViewModel : ObservableObject
     /// <summary>Per-mail override of the global "show HTML" setting.</summary>
     [ObservableProperty] public partial bool ShowHtmlForCurrent { get; set; }
     [ObservableProperty] public partial bool ImagesAllowedForCurrent { get; set; }
+
+    public bool ShowSidebarMailActions => HasSelection && _mail.Settings.Appearance.SidebarMailActions;
+    public bool ShowContextMenu => _mail.Settings.Appearance.ContextMenu;
+    public string FlagActionText => CurrentIsFlagged ? "Markierung entfernen" : "Markieren";
+    public string ReadActionText => CurrentIsUnread ? "Als gelesen markieren" : "Als ungelesen markieren";
+
+    partial void OnHasSelectionChanged(bool value) => OnPropertyChanged(nameof(ShowSidebarMailActions));
+    partial void OnCurrentIsFlaggedChanged(bool value) => OnPropertyChanged(nameof(FlagActionText));
+    partial void OnCurrentIsUnreadChanged(bool value) => OnPropertyChanged(nameof(ReadActionText));
 
     public bool ShowRemoteImageBanner => CurrentMail is { HasRemoteImages: true, RemoteImagesAllowed: false } && ShowHtmlForCurrent;
     public bool ShowHtmlBanner => CurrentMail is { HasHtml: true } && !ShowHtmlForCurrent;
@@ -144,14 +164,21 @@ public sealed partial class MainViewModel : ObservableObject
         UpdateStatus();
         OnPropertyChanged(nameof(HasAccounts));
         OnPropertyChanged(nameof(ShowPreview));
-        if (SelectedSidebarItem is null || !Sidebar.Contains(SelectedSidebarItem))
-            SelectedSidebarItem = Sidebar.FirstOrDefault(s => s.IsSelectable);
+        OnPropertyChanged(nameof(ShowAvatars));
+        OnPropertyChanged(nameof(SidebarAlwaysOpen));
+        OnPropertyChanged(nameof(ShowSidebarMailActions));
+        OnPropertyChanged(nameof(ShowContextMenu));
+        if (SelectedSidebarItem is null || !AllSidebar.Contains(SelectedSidebarItem))
+            SelectedSidebarItem = AllSidebar.FirstOrDefault(s => s.IsSelectable);
     }
 
     void ReloadSidebar()
     {
         var items = new List<SidebarItem>();
-        foreach (var account in _mail.GetAccounts())
+        var pinned = new List<SidebarItem>();
+        var accounts = _mail.GetAccounts();
+        var inboxUnread = 0;
+        foreach (var account in accounts)
         {
             var status = _mail.GetStatus(account.Id);
             items.Add(new SidebarItem
@@ -169,47 +196,37 @@ public sealed partial class MainViewModel : ObservableObject
                 var name = SidebarItem.DisplayName(role, folder.Name);
                 names[name] = names.GetValueOrDefault(name) + 1;
                 if (names[name] > 1) name = $"{name} ({names[name]})";
-                items.Add(new SidebarItem
+                var item = new SidebarItem
                 {
                     Kind = SidebarKind.Folder, AccountId = account.Id, FolderId = folder.Id, Role = role,
                     Depth = role == FolderRole.None ? folder.Depth : 0,
                     Name = name,
                     Unread = role is FolderRole.Sent or FolderRole.Trash or FolderRole.Drafts or FolderRole.All ? 0 : folder.Unread,
                     Status = folder.MassDeleteWarning ? "!" : null,
-                });
+                    Subtitle = role == FolderRole.Inbox && accounts.Count > 1 ? account.Config.Email : null,
+                };
+                if (role == FolderRole.Inbox)
+                {
+                    pinned.Add(item);
+                    inboxUnread += item.Unread;
+                }
+                else items.Add(item);
             }
         }
         var outbox = _mail.GetOutbox();
         if (outbox.Count > 0)
             items.Add(new SidebarItem { Kind = SidebarKind.Outbox, Name = "Postausgang", Unread = outbox.Count });
 
-        // Update in place where possible so the selection survives.
         var keep = SelectedSidebarItem;
-        for (var i = 0; i < items.Count; i++)
+        SyncInto(Pinned, pinned);
+        SyncInto(Sidebar, items);
+        if (keep is not null && !AllSidebar.Contains(keep))
         {
-            var fresh = items[i];
-            if (i < Sidebar.Count && SameEntry(Sidebar[i], fresh))
-            {
-                Sidebar[i].Name = fresh.Name;
-                Sidebar[i].Unread = fresh.Unread;
-                Sidebar[i].Status = fresh.Status;
-            }
-            else if (i < Sidebar.Count)
-            {
-                Sidebar[i] = fresh;
-            }
-            else
-            {
-                Sidebar.Add(fresh);
-            }
+            var replacement = AllSidebar.FirstOrDefault(s => SameEntry(s, keep));
+            SelectedSidebarItem = replacement ?? AllSidebar.FirstOrDefault(s => s.IsSelectable);
         }
-        while (Sidebar.Count > items.Count) Sidebar.RemoveAt(Sidebar.Count - 1);
 
-        if (keep is not null && !Sidebar.Contains(keep))
-        {
-            var replacement = Sidebar.FirstOrDefault(s => SameEntry(s, keep));
-            SelectedSidebarItem = replacement ?? Sidebar.FirstOrDefault(s => s.IsSelectable);
-        }
+        WindowTitle = _mail.Settings.Appearance.UnreadInTitle && inboxUnread > 0 ? $"Wisp ({inboxUnread})" : "Wisp";
         if (SelectedSidebarItem?.FolderId is long folderId)
         {
             var folder = _mail.GetFolder(folderId);
@@ -221,6 +238,24 @@ public sealed partial class MainViewModel : ObservableObject
 
     static bool SameEntry(SidebarItem a, SidebarItem b) =>
         a.Kind == b.Kind && a.AccountId == b.AccountId && a.FolderId == b.FolderId;
+
+    /// <summary>Updates the list in place where possible, so the selection survives a refresh.</summary>
+    static void SyncInto(ObservableCollection<SidebarItem> target, List<SidebarItem> items)
+    {
+        for (var i = 0; i < items.Count; i++)
+        {
+            var fresh = items[i];
+            if (i < target.Count && SameEntry(target[i], fresh))
+            {
+                target[i].Name = fresh.Name;
+                target[i].Unread = fresh.Unread;
+                target[i].Status = fresh.Status;
+            }
+            else if (i < target.Count) target[i] = fresh;
+            else target.Add(fresh);
+        }
+        while (target.Count > items.Count) target.RemoveAt(target.Count - 1);
+    }
 
     void ReloadMessages()
     {
@@ -287,7 +322,7 @@ public sealed partial class MainViewModel : ObservableObject
     {
         MoveTargets.Clear();
         if (SelectedSidebarItem is not { Kind: SidebarKind.Folder } current) return;
-        foreach (var folder in Sidebar.Where(s => s.Kind == SidebarKind.Folder && s.AccountId == current.AccountId && s.FolderId != current.FolderId))
+        foreach (var folder in AllSidebar.Where(s => s.Kind == SidebarKind.Folder && s.AccountId == current.AccountId && s.FolderId != current.FolderId))
             MoveTargets.Add(folder);
     }
 
@@ -326,12 +361,28 @@ public sealed partial class MainViewModel : ObservableObject
         }
     }
 
-    public void ShowNotice(string? text)
+    public void ShowNotice(string? text) => ShowNotice(text, null, null, TimeSpan.FromSeconds(8));
+
+    /// <summary>Shows a toast, optionally with one action button (e.g. "Rückgängig").</summary>
+    public void ShowNotice(string? text, string? actionLabel, Action? action, TimeSpan duration)
     {
         if (string.IsNullOrWhiteSpace(text)) return;
         Notice = text;
+        NoticeActionLabel = actionLabel;
+        _noticeAction = action;
         _noticeTimer.Stop();
+        _noticeTimer.Interval = duration;
         _noticeTimer.Start();
+    }
+
+    [RelayCommand]
+    void NoticeAction()
+    {
+        var action = _noticeAction;
+        Notice = null;
+        NoticeActionLabel = null;
+        _noticeAction = null;
+        action?.Invoke();
     }
 
     // ───────────────────────── Selection & reading ─────────────────────────
@@ -423,7 +474,7 @@ public sealed partial class MainViewModel : ObservableObject
     {
         if (CurrentMail is not { } mail || CurrentMessageId is not long id || _mail.GetMessage(id) is not { } item) return;
         var own = _mail.GetAccounts().First(a => a.Id == item.AccountId).Config.Email;
-        _dialogs.OpenCompose(Composer.Reply(mail, item.AccountId, own, all, id));
+        _dialogs.OpenCompose(Composer.Reply(mail, item.AccountId, own, all, id, quote: _mail.Settings.Compose.QuoteOnReply));
     }
 
     [RelayCommand]
@@ -553,5 +604,10 @@ public sealed partial class MainViewModel : ObservableObject
     }
 
     [RelayCommand]
-    void DismissNotice() => Notice = null;
+    void DismissNotice()
+    {
+        Notice = null;
+        NoticeActionLabel = null;
+        _noticeAction = null;
+    }
 }

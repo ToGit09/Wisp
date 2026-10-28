@@ -222,8 +222,9 @@ public sealed partial class AccountWorker
 
         using (smtp)
         {
+            // Claim it atomically: if the user pressed "Rückgängig" meanwhile, it is gone and nothing is sent.
+            if (!_store.TryBeginSending(item.Id, item.Attempts + 1)) return;
             var message = MimeMessage.Load(new MemoryStream(_store.GetOutboxRaw(item.Id)));
-            _store.UpdateOutbox(item.Id, OutboxState.Sending, item.Attempts + 1, DateTimeOffset.UtcNow, null);
             Raise(ChangeKind.Outbox);
             try
             {

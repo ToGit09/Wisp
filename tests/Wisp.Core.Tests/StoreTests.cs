@@ -153,6 +153,32 @@ public sealed class StoreTests : IDisposable
     }
 
     [Fact]
+    public void Undo_send_wins_only_before_sending_starts()
+    {
+        var summary = new OutboxSummary("bob@example.org", "Hallo", "1@example.org");
+        var a = _store.AddToOutbox(_account, [1], summary, DateTimeOffset.UtcNow.AddSeconds(5));
+        var b = _store.AddToOutbox(_account, [2], summary, DateTimeOffset.UtcNow.AddSeconds(5));
+
+        // a: taken back first → the sender can no longer claim it
+        Assert.True(_store.TryCancelQueued(a));
+        Assert.False(_store.TryBeginSending(a, 1));
+
+        // b: sender claimed it first → too late to take it back
+        Assert.True(_store.TryBeginSending(b, 1));
+        Assert.False(_store.TryCancelQueued(b));
+        Assert.Equal(OutboxState.Sending, _store.GetOutbox().Single(o => o.Id == b).State);
+    }
+
+    [Fact]
+    public void Delayed_mail_waits_in_the_outbox_until_its_time()
+    {
+        var id = _store.AddToOutbox(_account, [1], new OutboxSummary("bob@example.org", "Hallo", "1@example.org"),
+            DateTimeOffset.UtcNow.AddSeconds(30));
+
+        Assert.True(_store.GetOutbox().Single(o => o.Id == id).NextAttempt > DateTimeOffset.UtcNow.AddSeconds(20));
+    }
+
+    [Fact]
     public void Tampered_ciphertext_is_rejected()
     {
         using var crypto = new Crypto(RandomNumberGenerator.GetBytes(32));

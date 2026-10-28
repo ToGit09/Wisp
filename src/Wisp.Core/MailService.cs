@@ -14,6 +14,9 @@ public enum DeleteOutcome { MovedToTrash, NeedsConfirmation, Nothing }
 
 public sealed record OpenResult(RenderedMail? Mail, string? Problem);
 
+/// <summary>Error text (null on success), the outbox entry, and how long it can still be taken back.</summary>
+public sealed record SendResult(string? Error, long? OutboxId, TimeSpan UndoWindow);
+
 /// <summary>
 /// The only entry point for the UI. Reads come from the local store (instant, work offline);
 /// writes are queued and executed by the account workers in the background.
@@ -173,7 +176,7 @@ public sealed class MailService : IAsyncDisposable
                 : "Die Mail konnte gerade nicht geladen werden. Bitte später erneut versuchen.");
         }
 
-        if (!item.IsSeen) SetSeen([messageId], true);
+        if (!item.IsSeen && Settings.Reading.MarkReadOnOpen) SetSeen([messageId], true);
         var options = new RenderOptions(showHtml ?? Settings.Privacy.ShowHtml, allowRemoteImages ?? Settings.Privacy.LoadRemoteImages);
         return new OpenResult(await Task.Run(() => MailRenderer.Render(raw, options), ct), null);
     }
@@ -237,30 +240,52 @@ public sealed class MailService : IAsyncDisposable
 
     // ───────────────────────── Sending ─────────────────────────
 
-    /// <summary>Puts the message into the encrypted outbox. Returns an error text, or null on success.</summary>
-    public string? Send(Draft draft)
+    /// <summary>
+    /// Puts the message into the encrypted outbox. With a send delay (settings) it waits there, so
+    /// <see cref="TryUndoSend"/> can still take it back. Returns an error text, or the outbox id.
+    /// </summary>
+    public SendResult Send(Draft draft)
     {
-        if (Composer.Validate(draft) is { } problem) return problem;
+        if (Composer.Validate(draft) is { } problem) return new SendResult(problem, null, TimeSpan.Zero);
         var account = _store.GetAccount(draft.AccountId) ?? throw new InvalidOperationException("Unbekanntes Konto.");
 
         MimeKit.MimeMessage? forwardSource = null;
         if (draft.ForwardsAttachmentsOf is long source)
         {
             var raw = _store.GetBody(source);
-            if (raw is null) return "Die weitergeleitete Mail ist nicht offline verfügbar; ihre Anhänge können nicht mitgeschickt werden.";
+            if (raw is null) return new SendResult("Die weitergeleitete Mail ist nicht offline verfügbar; ihre Anhänge können nicht mitgeschickt werden.", null, TimeSpan.Zero);
             forwardSource = MailRenderer.Parse(raw);
         }
 
         var message = Composer.Build(draft, account.Config, forwardSource);
         using var buffer = new MemoryStream();
         message.WriteTo(buffer);
-        _store.AddToOutbox(draft.AccountId, buffer.ToArray(),
-            new OutboxSummary(string.Join(", ", message.To.Mailboxes.Select(m => m.Address)), message.Subject ?? "", message.MessageId!));
+        var delay = TimeSpan.FromSeconds(Math.Clamp(Settings.Compose.SendDelaySeconds, 0, 60));
+        var id = _store.AddToOutbox(draft.AccountId, buffer.ToArray(),
+            new OutboxSummary(string.Join(", ", message.To.Mailboxes.Select(m => m.Address)), message.Subject ?? "", message.MessageId!),
+            delay > TimeSpan.Zero ? DateTimeOffset.UtcNow + delay : null);
         if (draft.RepliesTo is long replied) _store.SetFlagLocally([replied], MessageFlags.Answered, true);
 
         Changed?.Invoke(new WorkerChange(draft.AccountId, ChangeKind.Outbox));
-        Worker(draft.AccountId)?.Wake();
-        return null;
+        Worker(draft.AccountId)?.Wake(); // re-plans its wait so the mail goes out right after the delay
+        return new SendResult(null, id, delay);
+    }
+
+    /// <summary>"Rückgängig": takes a mail back that has not started sending yet.</summary>
+    public bool TryUndoSend(long outboxId, Draft draft)
+    {
+        if (!_store.TryCancelQueued(outboxId)) return false;
+        if (draft.RepliesTo is long replied) _store.SetFlagLocally([replied], MessageFlags.Answered, false);
+        Changed?.Invoke(new WorkerChange(draft.AccountId, ChangeKind.Outbox));
+        return true;
+    }
+
+    /// <summary>Turns automatic sync of one folder on or off. The inbox always syncs.</summary>
+    public void SetFolderSync(long folderId, bool enabled)
+    {
+        if (_store.GetFolder(folderId) is not { } folder || folder.Role == FolderRole.Inbox) return;
+        _store.SetFolderSyncEnabled(folderId, enabled);
+        if (enabled) Worker(folder.AccountId)?.RequestFolder(folderId);
     }
 
     public IReadOnlyList<OutboxItem> GetOutbox() => _store.GetOutbox();

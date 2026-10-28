@@ -45,6 +45,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         HeadersPerFolder = _s.Sync.HeadersPerFolder;
         PollMinutes = _s.Sync.PollMinutes;
         ReloadAccounts();
+        LoadFolderSync();
     }
 
     public IReadOnlyList<Choice<ThemeMode>> Themes { get; } =
@@ -121,6 +122,12 @@ public sealed partial class SettingsViewModel : ObservableObject
         Density = Densities.First(d => d.Value == defaults.Density);
         ShowPreview = defaults.ShowPreview;
         AccentHex = defaults.Accent;
+        ShowAvatars = defaults.ShowAvatars;
+        AutoCollapseSidebar = defaults.AutoCollapseSidebar;
+        UnreadInTitle = defaults.UnreadInTitle;
+        SidebarMailActions = defaults.SidebarMailActions;
+        ContextMenu = defaults.ContextMenu;
+        HtmlZoomPercent = defaults.HtmlZoom * 100;
     }
 
     void Apply()
@@ -150,6 +157,7 @@ public sealed partial class SettingsViewModel : ObservableObject
     {
         await _dialogs.OpenAccountSetupAsync();
         ReloadAccounts();
+        LoadFolderSync();
     }
 
     [RelayCommand]

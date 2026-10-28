@@ -378,10 +378,24 @@ public sealed partial class MailStore
 
     // ───────────────────────── Outbox ─────────────────────────
 
-    public long AddToOutbox(long accountId, byte[] raw, OutboxSummary summary) => Tx(() =>
-        Convert.ToInt64(Scalar("INSERT INTO outbox(account_id, raw, summary, created) VALUES($a, $r, $s, $c) RETURNING id",
+    /// <param name="sendAfter">Earliest send time; until then the user can still take the mail back.</param>
+    public long AddToOutbox(long accountId, byte[] raw, OutboxSummary summary, DateTimeOffset? sendAfter = null) => Tx(() =>
+        Convert.ToInt64(Scalar("INSERT INTO outbox(account_id, raw, summary, created, next_attempt) VALUES($a, $r, $s, $c, $n) RETURNING id",
             ("$a", accountId), ("$r", _crypto.Encrypt(raw, "outbox.raw")),
-            ("$s", _crypto.EncryptJson(summary, "outbox.summary")), ("$c", Now()))));
+            ("$s", _crypto.EncryptJson(summary, "outbox.summary")), ("$c", Now()),
+            ("$n", sendAfter?.ToUnixTimeSeconds() ?? 0))));
+
+    /// <summary>
+    /// Claims a queued mail for sending. Atomic, so a mail that the user just took back ("Rückgängig")
+    /// can never be sent, and a mail that is being sent can no longer be taken back.
+    /// </summary>
+    public bool TryBeginSending(long id, int attempts) => Tx(() =>
+        Exec("UPDATE outbox SET state = $s, attempts = $a, last_error = NULL WHERE id = $id AND state = $q",
+            ("$s", (int)OutboxState.Sending), ("$a", attempts), ("$id", id), ("$q", (int)OutboxState.Queued)) == 1);
+
+    /// <summary>Takes back a mail that has not started sending yet. Returns false if it is too late.</summary>
+    public bool TryCancelQueued(long id) => Tx(() =>
+        Exec("DELETE FROM outbox WHERE id = $id AND state = $q", ("$id", id), ("$q", (int)OutboxState.Queued)) == 1);
 
     public IReadOnlyList<OutboxItem> GetOutbox(long? accountId = null) => Read(() => Query(
         "SELECT id, account_id, state, summary, created, attempts, next_attempt, last_error FROM outbox" +

@@ -15,6 +15,8 @@ public sealed record Draft
     public string Bcc { get; init; } = "";
     public string Subject { get; init; } = "";
     public string Body { get; init; } = "";
+    /// <summary>Source from the Advanced editor (see <see cref="HtmlEditing"/>). Null for a plain text mail.</summary>
+    public string? HtmlSource { get; init; }
     public IReadOnlyList<string> AttachmentPaths { get; init; } = [];
     public string? InReplyTo { get; init; }
     public IReadOnlyList<string> References { get; init; } = [];
@@ -58,6 +60,13 @@ public static class Composer
         foreach (var reference in draft.References) message.References.Add(reference);
 
         var builder = new BodyBuilder { TextBody = draft.Body };
+        if (draft.HtmlSource is { } source)
+        {
+            // multipart/alternative: recipients without HTML get a readable text version.
+            var html = ToMailHtml(source);
+            builder.HtmlBody = html;
+            builder.TextBody = HtmlEditing.HtmlToText(html);
+        }
         foreach (var path in draft.AttachmentPaths) builder.Attachments.Add(path);
         if (forwardSource is not null)
         {
@@ -68,7 +77,29 @@ public static class Composer
         return message;
     }
 
-    public static Draft Reply(RenderedMail mail, long accountId, string ownAddress, bool all, long messageId)
+    /// <summary>
+    /// The HTML that is actually sent: the user's source with line breaks applied, cleaned of anything
+    /// active (pasted scripts, forms …) and wrapped in a minimal, widely compatible document.
+    /// </summary>
+    public static string ToMailHtml(string source)
+    {
+        var body = HtmlSanitizer.Sanitize(HtmlEditing.SourceToHtml(source)).Html;
+        return "<!DOCTYPE html><html><head><meta charset=\"utf-8\"></head>" +
+               "<body style=\"font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.5;color:#1d1f24\">" +
+               body + "</body></html>";
+    }
+
+    /// <summary>
+    /// Puts the signature where the user starts typing: above a quoted original, below an empty line.
+    /// Uses the standard "-- " separator so mail programs can recognise and strip it in replies.
+    /// </summary>
+    public static string WithSignature(string body, string? signature)
+    {
+        if (string.IsNullOrWhiteSpace(signature)) return body;
+        return "\n\n-- \n" + signature.ReplaceLineEndings("\n").TrimEnd() + body;
+    }
+
+    public static Draft Reply(RenderedMail mail, long accountId, string ownAddress, bool all, long messageId, bool quote = true)
     {
         var reply = mail.Reply;
         var to = reply.ReplyTo.Count > 0 ? string.Join(", ", reply.ReplyTo) : Format(reply.FromName, reply.FromAddress);
@@ -90,7 +121,7 @@ public static class Composer
             To = to,
             Cc = cc,
             Subject = Prefixed("Re: ", reply.Subject, "re:", "aw:"),
-            Body = $"\n\nAm {reply.Date.ToLocalTime().ToString("dd.MM.yyyy 'um' HH:mm", German)} schrieb {(reply.FromName.Length > 0 ? reply.FromName : reply.FromAddress)}:\n"
+            Body = !quote ? "" : $"\n\nAm {reply.Date.ToLocalTime().ToString("dd.MM.yyyy 'um' HH:mm", German)} schrieb {(reply.FromName.Length > 0 ? reply.FromName : reply.FromAddress)}:\n"
                    + Quote(reply.QuotableText),
             InReplyTo = reply.MessageId,
             References = references,

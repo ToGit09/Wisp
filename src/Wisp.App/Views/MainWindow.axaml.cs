@@ -9,6 +9,7 @@ using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using TheArtOfDev.HtmlRenderer.Avalonia;
 using Wisp.App.ViewModels;
 using Wisp.Core;
@@ -49,6 +50,14 @@ public partial class MainWindow : Window, IDialogs
             if (e.Key == Key.Delete) _vm.DeleteCommand.Execute(null);
         };
 
+        MessageList.ContextRequested += OnMessageContextRequested;
+
+        // Two lists (pinned inboxes + folders) act as one selection.
+        PinnedList.SelectionChanged += (_, _) => OnSidebarListSelected(PinnedList, FolderList);
+        FolderList.SelectionChanged += (_, _) => OnSidebarListSelected(FolderList, PinnedList);
+        ShowSidebarSelection();
+        ApplySidebarMode();
+
         Opened += async (_, _) =>
         {
             if (!_vm.HasAccounts) await OpenAccountSetupAsync();
@@ -66,8 +75,98 @@ public partial class MainWindow : Window, IDialogs
 
     void OnViewModelChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName is nameof(MainViewModel.CurrentMail)) RenderBody(_vm.CurrentMail);
+        switch (e.PropertyName)
+        {
+            case nameof(MainViewModel.CurrentMail): RenderBody(_vm.CurrentMail); break;
+            case nameof(MainViewModel.SelectedSidebarItem): ShowSidebarSelection(); break;
+            case nameof(MainViewModel.SidebarAlwaysOpen): ApplySidebarMode(); break;
+        }
     }
+
+    // ───────────────────────── Right-click menu ─────────────────────────
+
+    void OnMessageContextRequested(object? sender, ContextRequestedEventArgs e)
+    {
+        e.Handled = true;
+        if (!_vm.ShowContextMenu) return;
+
+        // Right-clicking a mail that is not selected selects it (like in Explorer).
+        var clicked = (e.Source as Control)?.FindAncestorOfType<ListBoxItem>(includeSelf: true)?.DataContext as MessageItem;
+        if (clicked is null) return;
+        if (MessageList.SelectedItems?.Contains(clicked) != true) MessageList.SelectedItem = clicked;
+
+        var single = MessageList.SelectedItems?.Count == 1;
+        var menu = new ContextMenu
+        {
+            ItemsSource = new Control[]
+            {
+                MenuEntry("Antworten", "IconReply", _vm.ReplyCommand, gesture: "Ctrl+R", enabled: single),
+                MenuEntry("Allen antworten", "IconReplyAll", _vm.ReplyAllCommand, gesture: "Ctrl+Shift+R", enabled: single),
+                MenuEntry("Weiterleiten", "IconForward", _vm.ForwardCommand, gesture: "Ctrl+L", enabled: single),
+                new Separator(),
+                MenuEntry(clicked.IsUnread ? "Als gelesen markieren" : "Als ungelesen markieren", "IconMail", _vm.ToggleReadCommand, gesture: "Ctrl+U"),
+                MenuEntry(clicked.IsFlagged ? "Markierung entfernen" : "Markieren", "IconStar", _vm.ToggleFlagCommand),
+                new Separator(),
+                MoveMenu(),
+                MenuEntry("Archivieren", "IconArchive", _vm.ArchiveCommand, enabled: _vm.CanArchive),
+                MenuEntry("Löschen", "IconTrash", _vm.DeleteCommand, gesture: "Delete"),
+            },
+        };
+        menu.Open(MessageList);
+    }
+
+    MenuItem MoveMenu()
+    {
+        var item = new MenuItem { Header = "Verschieben", Icon = MenuIcon("IconMove") };
+        item.ItemsSource = _vm.MoveTargets
+            .Select(target => new MenuItem
+            {
+                Header = target.Name,
+                Icon = new Theme.WispIcon { Data = target.Icon },
+                Command = _vm.MoveToCommand,
+                CommandParameter = target,
+            })
+            .ToList();
+        item.IsEnabled = _vm.MoveTargets.Count > 0;
+        return item;
+    }
+
+    MenuItem MenuEntry(string header, string icon, System.Windows.Input.ICommand command, string? gesture = null, bool enabled = true) => new()
+    {
+        Header = header,
+        Icon = MenuIcon(icon),
+        Command = command,
+        InputGesture = gesture is null ? null : KeyGesture.Parse(gesture),
+        IsEnabled = enabled,
+    };
+
+    Theme.WispIcon MenuIcon(string key) => new() { Data = this.FindResource(key) as Geometry };
+
+    // ───────────────────────── Sidebar ─────────────────────────
+
+    bool _syncingSidebar;
+
+    void OnSidebarListSelected(ListBox source, ListBox other)
+    {
+        if (_syncingSidebar || source.SelectedItem is not SidebarItem item) return;
+        _syncingSidebar = true;
+        other.SelectedItem = null;
+        _syncingSidebar = false;
+        _vm.SelectedSidebarItem = item;
+    }
+
+    void ShowSidebarSelection()
+    {
+        _syncingSidebar = true;
+        var selected = _vm.SelectedSidebarItem;
+        PinnedList.SelectedItem = selected is not null && _vm.Pinned.Contains(selected) ? selected : null;
+        FolderList.SelectedItem = selected is not null && _vm.Sidebar.Contains(selected) ? selected : null;
+        _syncingSidebar = false;
+    }
+
+    /// <summary>Always-open sidebar takes its own column; the auto-collapsing one overlays the list.</summary>
+    void ApplySidebarMode() =>
+        MainGrid.ColumnDefinitions[0].Width = new GridLength(_vm.SidebarAlwaysOpen ? 240 : 64);
 
     // ───────────────────────── Reader body ─────────────────────────
 
@@ -147,7 +246,7 @@ public partial class MainWindow : Window, IDialogs
             panel.Children.Add(new TextBlock { Text = "(Diese Mail hat keinen Textinhalt.)", Foreground = muted });
 
         var links = mail.Links.Where(l => l.Url.StartsWith("http", StringComparison.OrdinalIgnoreCase)).ToList();
-        if (links.Count > 0)
+        if (links.Count > 0 && _mail.Settings.Reading.ShowLinkList)
         {
             panel.Children.Add(new TextBlock { Text = "Links in dieser Mail", FontWeight = FontWeight.SemiBold, Margin = new Thickness(0, 16, 0, 0) });
             foreach (var link in links)
@@ -161,7 +260,7 @@ public partial class MainWindow : Window, IDialogs
                 };
                 button.Click += async (_, _) => await OpenLinkAsync(link.Url, link.Suspicious);
                 row.Children.Add(button);
-                if (link.Suspicious)
+                if (link.Suspicious && _mail.Settings.Reading.WarnSuspiciousLinks)
                 {
                     row.Children.Add(new TextBlock
                     {
@@ -182,10 +281,10 @@ public partial class MainWindow : Window, IDialogs
     {
         var view = new HtmlMailView(mail.Html!,
             "body { font-family: Segoe UI, Ubuntu, Cantarell, sans-serif; font-size: 10.5pt; color: #1d1f24; } a { color: #3557d4; }",
-            _mail.Settings.Appearance.MailZoom);
+            _mail.Settings.Appearance.HtmlZoom);
         view.ZoomChanged += zoom =>
         {
-            _mail.Settings.Appearance.MailZoom = zoom;
+            _mail.Settings.Appearance.HtmlZoom = zoom;
             try { _mail.SaveSettings(); } catch (IOException) { }
         };
         var html = view.Html;
@@ -263,10 +362,25 @@ public partial class MainWindow : Window, IDialogs
     public Task<bool> ConfirmAsync(string title, string message, string confirm, bool danger = false) =>
         ConfirmDialog.ShowAsync(this, title, message, confirm, danger);
 
-    public void OpenCompose(Draft draft)
+    public void OpenCompose(Draft draft) => OpenCompose(draft, restored: false);
+
+    void OpenCompose(Draft draft, bool restored)
     {
-        var window = new ComposeWindow(new ComposeViewModel(_mail, draft));
-        window.Show(this);
+        var vm = new ComposeViewModel(_mail, draft, restored);
+        vm.Sent += (result, sent) =>
+        {
+            if (result.OutboxId is not long id || result.UndoWindow <= TimeSpan.Zero)
+            {
+                _vm.ShowNotice("Die Mail wird gesendet.");
+                return;
+            }
+            _vm.ShowNotice($"Die Mail wird in {result.UndoWindow.TotalSeconds:0} Sekunden gesendet.", "Rückgängig", () =>
+            {
+                if (_mail.TryUndoSend(id, sent)) OpenCompose(sent, restored: true);
+                else _vm.ShowNotice("Zu spät – die Mail ist bereits unterwegs.");
+            }, result.UndoWindow);
+        };
+        new ComposeWindow(vm).Show(this);
     }
 
     public async Task OpenSettingsAsync() => await new SettingsWindow(new SettingsViewModel(_mail, _vault, this)).ShowDialog(this);
@@ -298,10 +412,19 @@ public partial class MainWindow : Window, IDialogs
         }
         if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) || uri.Scheme is not ("http" or "https")) return;
 
-        if (suspicious && !await ConfirmAsync("Verdächtiger Link",
-                $"Dieser Link führt nicht dorthin, wo sein Text vermuten lässt.\n\nTatsächliches Ziel:\n{uri.Host}\n\n{url}\n\nNur öffnen, wenn Sie dem Absender vertrauen.",
-                "Trotzdem öffnen", danger: true))
+        var reading = _mail.Settings.Reading;
+        if (suspicious && reading.WarnSuspiciousLinks)
+        {
+            if (!await ConfirmAsync("Verdächtiger Link",
+                    $"Dieser Link führt nicht dorthin, wo sein Text vermuten lässt.\n\nTatsächliches Ziel:\n{uri.Host}\n\n{url}\n\nNur öffnen, wenn Sie dem Absender vertrauen.",
+                    "Trotzdem öffnen", danger: true))
+                return;
+        }
+        else if (reading.ConfirmLinks == Core.Settings.LinkConfirmation.Always &&
+                 !await ConfirmAsync("Link öffnen?", $"Ziel: {uri.Host}\n\n{url}", "Öffnen"))
+        {
             return;
+        }
 
         await Launcher.LaunchUriAsync(uri);
     }

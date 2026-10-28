@@ -19,11 +19,33 @@ public sealed partial class SidebarItem : ObservableObject
     [ObservableProperty] public partial string Name { get; set; } = "";
     [ObservableProperty] public partial int Unread { get; set; }
     [ObservableProperty] public partial string? Status { get; set; }
+    /// <summary>Second line, e.g. the account of a pinned inbox when there are several accounts.</summary>
+    public string? Subtitle { get; init; }
 
     public bool IsHeader => Kind == SidebarKind.Account;
     public bool IsSelectable => !IsHeader;
     public bool HasUnread => Unread > 0;
-    public Thickness Indent => new(IsHeader ? 4 : 0 + Depth * 14, IsHeader ? 14 : 0, 0, IsHeader ? 4 : 0);
+    // Capped so that sub-folder icons still fit into the collapsed strip.
+    public double IndentWidth => Math.Min(Depth, 2) * 10;
+
+    /// <summary>Special folders and the outbox have a symbol; the user's own folders show their initial.</summary>
+    public bool HasIcon => Kind == SidebarKind.Outbox || Role != FolderRole.None;
+
+    /// <summary>First letter or digit of the name ("[Gmail]/Reisen" → "R", "2026 Steuer" → "2").</summary>
+    public string Initial => Name.FirstOrDefault(char.IsLetterOrDigit) is var c and not '\0'
+        ? char.ToUpper(c, System.Globalization.CultureInfo.CurrentCulture).ToString()
+        : "#";
+
+    // Each name keeps its colour, so "Projekte" and "Privat" are told apart at a glance.
+    public IBrush BadgeForeground => new SolidColorBrush(BadgeColors.For(Name));
+    public IBrush BadgeBackground => new SolidColorBrush(BadgeColors.For(Name), 0.16);
+
+    partial void OnNameChanged(string value)
+    {
+        OnPropertyChanged(nameof(Initial));
+        OnPropertyChanged(nameof(BadgeForeground));
+        OnPropertyChanged(nameof(BadgeBackground));
+    }
 
     public Geometry? Icon => Kind == SidebarKind.Outbox ? Find("IconClock") : Role switch
     {
@@ -57,6 +79,20 @@ public sealed partial class SidebarItem : ObservableObject
         Application.Current?.TryGetResource(key, null, out var value) == true ? value as Geometry : null;
 }
 
+/// <summary>A stable colour per name (folder initials, sender avatars).</summary>
+static class BadgeColors
+{
+    static readonly Color[] Palette = new[] { "#4F6BED", "#7C5CFA", "#0F9D9A", "#2E9D57", "#E07A1F", "#D64545", "#D6458F", "#5B6170" }
+        .Select(Color.Parse).ToArray();
+
+    public static Color For(string text)
+    {
+        var hash = 17;
+        foreach (var c in text.ToLowerInvariant()) hash = unchecked(hash * 31 + c);
+        return Palette[(hash & 0x7FFFFFFF) % Palette.Length];
+    }
+}
+
 public sealed partial class MessageItem : ObservableObject
 {
     static readonly CultureInfo German = CultureInfo.GetCultureInfo("de-DE");
@@ -79,6 +115,22 @@ public sealed partial class MessageItem : ObservableObject
 
     public FontWeight Weight => IsUnread ? FontWeight.SemiBold : FontWeight.Normal;
 
+    [ObservableProperty] public partial string Initials { get; set; } = "";
+    [ObservableProperty] public partial IBrush? AvatarForeground { get; set; }
+    [ObservableProperty] public partial IBrush? AvatarBackground { get; set; }
+
+    /// <summary>"Anna Schmidt" → "AS", "info@paket.example" → "I".</summary>
+    static string InitialsOf(string name)
+    {
+        var words = name.Split([' ', '.', '-', '_', '@'], StringSplitOptions.RemoveEmptyEntries)
+            .Select(w => w.FirstOrDefault(char.IsLetterOrDigit))
+            .Where(c => c != '\0')
+            .ToList();
+        if (words.Count == 0) return "?";
+        var first = char.ToUpperInvariant(words[0]).ToString();
+        return name.Contains('@') || words.Count == 1 ? first : first + char.ToUpperInvariant(words[^1]);
+    }
+
     partial void OnIsUnreadChanged(bool value) => OnPropertyChanged(nameof(Weight));
 
     public void Update(MessageListItem m)
@@ -86,6 +138,13 @@ public sealed partial class MessageItem : ObservableObject
         Id = m.Id;
         AccountId = m.AccountId;
         FolderId = m.FolderId;
+        if (From != m.Envelope.FromDisplay || AvatarForeground is null)
+        {
+            var color = BadgeColors.For(m.Envelope.FromAddress.Length > 0 ? m.Envelope.FromAddress : m.Envelope.FromDisplay);
+            Initials = InitialsOf(m.Envelope.FromDisplay);
+            AvatarForeground = new SolidColorBrush(color);
+            AvatarBackground = new SolidColorBrush(color, 0.16);
+        }
         From = m.Envelope.FromDisplay;
         Subject = string.IsNullOrWhiteSpace(m.Envelope.Subject) ? "(kein Betreff)" : m.Envelope.Subject;
         Preview = m.Envelope.Preview;

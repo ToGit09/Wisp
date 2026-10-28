@@ -22,6 +22,7 @@ public partial class App : Application
         {
             var settings = AppSettings.Load(AppPaths.SettingsFile);
             ThemeManager.Apply(settings.Appearance);
+            CrashLog.Enabled = settings.Privacy.WriteCrashLog;
             desktop.ShutdownMode = ShutdownMode.OnExplicitShutdown;
             desktop.ShutdownRequested += (_, _) => Shutdown();
             InstallSafetyNet(desktop);

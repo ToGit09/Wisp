@@ -189,8 +189,14 @@ public sealed partial class AccountWorker : IAsyncDisposable
             SetState(ConnectionState.Online, null);
 
             if (_morePrefetch || _store.GetDueOps(_accountId).Count > 0) continue;
-            var untilFullSync = poll - (DateTimeOffset.UtcNow - _lastFullSync);
-            await IdleAsync(imap, untilFullSync < IdleRenewal ? untilFullSync : IdleRenewal, ct);
+            var wait = poll - (DateTimeOffset.UtcNow - _lastFullSync);
+            if (wait > IdleRenewal) wait = IdleRenewal;
+            // A mail held back for "Rückgängig" goes out right when its delay is over.
+            var nextSend = _store.GetOutbox(_accountId)
+                .Where(o => o.State == OutboxState.Queued && o.NextAttempt > DateTimeOffset.UtcNow)
+                .Select(o => o.NextAttempt - DateTimeOffset.UtcNow + TimeSpan.FromMilliseconds(500))
+                .DefaultIfEmpty(wait).Min();
+            await IdleAsync(imap, nextSend < wait ? nextSend : wait, ct);
         }
     }
 
@@ -210,7 +216,7 @@ public sealed partial class AccountWorker : IAsyncDisposable
             try { done.Cancel(); } catch (ObjectDisposedException) { }
         }
 
-        if (!imap.Capabilities.HasFlag(ImapCapabilities.Idle))
+        if (!_settings().Sync.UsePush || !imap.Capabilities.HasFlag(ImapCapabilities.Idle))
         {
             try { await Task.Delay(Timeout.InfiniteTimeSpan, done.Token); }
             catch (OperationCanceledException) when (!ct.IsCancellationRequested) { }

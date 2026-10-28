@@ -11,6 +11,10 @@ Ein leichter, sicherer E-Mail-Client für Windows und Linux.
   live und ohne Programmierkenntnisse.
 - **Datenschutz:** HTML-Darstellung und externe Bilder sind standardmäßig aus und lassen sich in den
   Einstellungen oder pro Mail einschalten. Verdächtige Links (Text zeigt andere Domain als das Ziel) werden markiert.
+- **Schreiben:** Editor „Light“ (Text) oder „Advanced“ (HTML mit Formatierungsleiste und Vorschau), Signatur,
+  Senden mit „Rückgängig“.
+- **Abschaltbar:** Fast alles lässt sich in den Einstellungen an- und ausschalten – Seitenleiste mit
+  Auto-Einklappen, Mail-Aktionen in der Seitenleiste, Rechtsklick-Menü, Absender-Kürzel, Push, einzelne Ordner u. v. m.
 
 Unterstützt Gmail, Outlook.com, Yahoo, iCloud, GMX, WEB.DE, T-Online, Posteo, mailbox.org, AOL, freenet
 und jeden anderen IMAP/SMTP-Anbieter – siehe [docs/ANBIETER.md](docs/ANBIETER.md).
