@@ -20,6 +20,35 @@
       <Setter Property="FontWeight" Value="SemiBold" />
     </Style>
 
+    <!-- Quick actions in the selected mail row -->
+    <Style Selector="ListBox.messages > ListBoxItem Border.quick">
+      <Setter Property="Width" Value="0" />
+    </Style>
+    <Style Selector="ListBox.messages > ListBoxItem:selected Border.quick">
+      <Setter Property="Width" Value="130" />
+    </Style>
+    <!-- The colour sits on an inner Border, so Fluent's hover/pressed backgrounds do not replace it. -->
+    <Style Selector="Button.tile">
+      <Setter Property="Width" Value="38" />
+      <Setter Property="VerticalAlignment" Value="Stretch" />
+      <Setter Property="MinHeight" Value="44" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="CornerRadius" Value="8" />
+      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+      <Setter Property="VerticalContentAlignment" Value="Stretch" />
+    </Style>
+    <Style Selector="Button.tile > Border">
+      <Setter Property="CornerRadius" Value="8" />
+    </Style>
+    <Style Selector="Button.tile:pointerover > Border">
+      <Setter Property="Opacity" Value="0.85" />
+    </Style>
+    <Style Selector="Button.tile:pressed > Border">
+      <Setter Property="Opacity" Value="0.7" />
+    </Style>
+
     <!-- Sidebar: narrow strip of icons, expands over the message list while the mouse is on it. -->
     <Style Selector="Border#Sidebar">
       <Setter Property="Width" Value="64" />
@@ -79,6 +108,54 @@
             <ListBox.ItemTemplate>
               <DataTemplate x:DataType="vm:MessageItem">
                 <DockPanel>
+                <!-- Quick actions like in Apple Mail: when the mail is selected, its row gets narrower and the
+                     buttons slide in on the right (width animates from 0, see Window.Styles). -->
+                <Border DockPanel.Dock="Right" Classes="quick" ClipToBounds="True" HorizontalAlignment="Right"
+                        IsVisible="{Binding $parent[ListBox].((vm:MainViewModel)DataContext).ShowQuickActions}">
+                  <Border.Transitions>
+                    <Transitions>
+                      <DoubleTransition Property="Width" Duration="0:0:0.16" Easing="CubicEaseOut" />
+                    </Transitions>
+                  </Border.Transitions>
+                  <StackPanel Orientation="Horizontal" Spacing="4" Margin="8,0,0,0" HorizontalAlignment="Right" Width="122">
+                    <Button Classes="tile" ToolTip.Tip="{Binding FlagActionText}"
+                            Command="{Binding $parent[ListBox].((vm:MainViewModel)DataContext).ToggleFlagCommand}">
+                      <Border Background="#E39B1B">
+                        <t:WispIcon Data="{StaticResource IconStar}" Width="18" Height="18" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                      </Border>
+                    </Button>
+                    <Button Classes="tile" ToolTip.Tip="Verschieben">
+                      <Border Background="{DynamicResource WispAccent}">
+                        <t:WispIcon Data="{StaticResource IconMove}" Width="18" Height="18" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                      </Border>
+                      <Button.Flyout>
+                        <Flyout Placement="BottomEdgeAlignedRight">
+                          <ScrollViewer MaxHeight="420">
+                            <ItemsControl ItemsSource="{Binding $parent[Window].((vm:MainViewModel)DataContext).MoveTargets}">
+                              <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:SidebarItem">
+                                  <Button Classes="icon" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                                          Command="{Binding $parent[Window].((vm:MainViewModel)DataContext).MoveToCommand}" CommandParameter="{Binding}">
+                                    <StackPanel Orientation="Horizontal" Spacing="10">
+                                      <t:WispIcon Data="{Binding Icon}" Foreground="{DynamicResource WispMuted}" />
+                                      <TextBlock Text="{Binding Name}" />
+                                    </StackPanel>
+                                  </Button>
+                                </DataTemplate>
+                              </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                          </ScrollViewer>
+                        </Flyout>
+                      </Button.Flyout>
+                    </Button>
+                    <Button Classes="tile" ToolTip.Tip="Löschen (Entf)"
+                            Command="{Binding $parent[ListBox].((vm:MainViewModel)DataContext).DeleteCommand}">
+                      <Border Background="{DynamicResource WispDanger}">
+                        <t:WispIcon Data="{StaticResource IconTrash}" Width="18" Height="18" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                      </Border>
+                    </Button>
+                  </StackPanel>
+                </Border>
                 <!-- Sender initials (optional, see settings) -->
                 <Border DockPanel.Dock="Left" Width="34" Height="34" CornerRadius="17" Margin="0,2,10,0" VerticalAlignment="Top"
                         Background="{Binding AvatarBackground}"
@@ -335,76 +412,6 @@
                 <t:WispIcon Data="{StaticResource IconPlus}" />
               </Button>
             </Grid>
-          </Border>
-
-          <!-- Actions for the open mail (optional, see settings). Docked above the status bar so the folders never move. -->
-          <Border DockPanel.Dock="Bottom" BorderBrush="{DynamicResource WispBorder}" BorderThickness="0,1,0,0" Padding="6,6"
-                  IsVisible="{Binding ShowSidebarMailActions}">
-            <StackPanel Spacing="2">
-              <StackPanel.Styles>
-                <Style Selector="Button.action">
-                  <Setter Property="Background" Value="Transparent" />
-                  <Setter Property="BorderThickness" Value="0" />
-                  <Setter Property="CornerRadius" Value="6" />
-                  <Setter Property="Padding" Value="10,7" />
-                  <Setter Property="HorizontalAlignment" Value="Stretch" />
-                  <Setter Property="HorizontalContentAlignment" Value="Left" />
-                </Style>
-                <Style Selector="Button.action:pointerover /template/ ContentPresenter">
-                  <Setter Property="Background" Value="{DynamicResource WispHover}" />
-                </Style>
-              </StackPanel.Styles>
-              <TextBlock Classes="header wide" Text="Diese Mail" Height="18" Margin="10,0,0,2" />
-              <Button Classes="action" Command="{Binding DeleteCommand}" ToolTip.Tip="Löschen (Entf)">
-                <StackPanel Orientation="Horizontal" Spacing="12">
-                  <t:WispIcon Data="{StaticResource IconTrash}" Width="18" Height="18" Foreground="{DynamicResource WispDanger}" Margin="3,0" />
-                  <TextBlock Classes="wide" Text="Löschen" VerticalAlignment="Center" />
-                </StackPanel>
-              </Button>
-              <Button Classes="action" ToolTip.Tip="Verschieben">
-                <StackPanel Orientation="Horizontal" Spacing="12">
-                  <t:WispIcon Data="{StaticResource IconMove}" Width="18" Height="18" Margin="3,0" />
-                  <TextBlock Classes="wide" Text="Verschieben …" VerticalAlignment="Center" />
-                </StackPanel>
-                <Button.Flyout>
-                  <Flyout Placement="RightEdgeAlignedBottom">
-                    <ScrollViewer MaxHeight="420">
-                      <ItemsControl ItemsSource="{Binding MoveTargets}">
-                        <ItemsControl.ItemTemplate>
-                          <DataTemplate x:DataType="vm:SidebarItem">
-                            <Button Classes="icon" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
-                                    Command="{Binding $parent[Window].((vm:MainViewModel)DataContext).MoveToCommand}" CommandParameter="{Binding}">
-                              <StackPanel Orientation="Horizontal" Spacing="10">
-                                <t:WispIcon Data="{Binding Icon}" Foreground="{DynamicResource WispMuted}" />
-                                <TextBlock Text="{Binding Name}" />
-                              </StackPanel>
-                            </Button>
-                          </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                      </ItemsControl>
-                    </ScrollViewer>
-                  </Flyout>
-                </Button.Flyout>
-              </Button>
-              <Button Classes="action" Command="{Binding ToggleFlagCommand}" ToolTip.Tip="{Binding FlagActionText}">
-                <StackPanel Orientation="Horizontal" Spacing="12">
-                  <t:WispIcon Data="{StaticResource IconStar}" Width="18" Height="18" Foreground="{DynamicResource WispAccent}" Margin="3,0" />
-                  <TextBlock Classes="wide" Text="{Binding FlagActionText}" VerticalAlignment="Center" />
-                </StackPanel>
-              </Button>
-              <Button Classes="action" Command="{Binding ToggleReadCommand}" ToolTip.Tip="{Binding ReadActionText}">
-                <StackPanel Orientation="Horizontal" Spacing="12">
-                  <t:WispIcon Data="{StaticResource IconMail}" Width="18" Height="18" Margin="3,0" />
-                  <TextBlock Classes="wide" Text="{Binding ReadActionText}" VerticalAlignment="Center" />
-                </StackPanel>
-              </Button>
-              <Button Classes="action" Command="{Binding ArchiveCommand}" IsVisible="{Binding CanArchive}" ToolTip.Tip="Archivieren">
-                <StackPanel Orientation="Horizontal" Spacing="12">
-                  <t:WispIcon Data="{StaticResource IconArchive}" Width="18" Height="18" Margin="3,0" />
-                  <TextBlock Classes="wide" Text="Archivieren" VerticalAlignment="Center" />
-                </StackPanel>
-              </Button>
-            </StackPanel>
           </Border>
 
           <ListBox x:Name="FolderList" Classes="sidebar" ItemsSource="{Binding Sidebar}"

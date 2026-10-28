@@ -59,7 +59,7 @@ public sealed partial class SettingsViewModel
     public bool ShowAvatars { get => A.ShowAvatars; set => Set(A.ShowAvatars, value, v => A.ShowAvatars = v); }
     public bool AutoCollapseSidebar { get => A.AutoCollapseSidebar; set => Set(A.AutoCollapseSidebar, value, v => A.AutoCollapseSidebar = v); }
     public bool UnreadInTitle { get => A.UnreadInTitle; set => Set(A.UnreadInTitle, value, v => A.UnreadInTitle = v); }
-    public bool SidebarMailActions { get => A.SidebarMailActions; set => Set(A.SidebarMailActions, value, v => A.SidebarMailActions = v); }
+    public bool QuickActions { get => A.QuickActions; set => Set(A.QuickActions, value, v => A.QuickActions = v); }
     public bool ContextMenu { get => A.ContextMenu; set => Set(A.ContextMenu, value, v => A.ContextMenu = v); }
 
     /// <summary>Zoom of HTML mails in percent (slider 50–200).</summary>

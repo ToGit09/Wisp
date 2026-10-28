@@ -194,10 +194,10 @@
               <Border Classes="divider" />
               <Grid Classes="row" ColumnDefinitions="*,Auto">
                 <StackPanel>
-                  <TextBlock Classes="label" Text="Mail-Aktionen in der Seitenleiste" />
-                  <TextBlock Classes="hint" Text="Bei geöffneter Mail: große Knöpfe zum Löschen, Verschieben und Markieren." />
+                  <TextBlock Classes="label" Text="Schnellaktionen in der Mail-Liste" />
+                  <TextBlock Classes="hint" Text="Wie bei Apple Mail: Die ausgewählte Mail wird schmaler und zeigt Knöpfe zum Markieren, Verschieben und Löschen." />
                 </StackPanel>
-                <ToggleSwitch Grid.Column="1" IsChecked="{Binding SidebarMailActions}" />
+                <ToggleSwitch Grid.Column="1" IsChecked="{Binding QuickActions}" />
               </Grid>
               <Border Classes="divider" />
               <Grid Classes="row" ColumnDefinitions="*,Auto">

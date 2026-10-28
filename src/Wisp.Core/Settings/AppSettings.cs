@@ -22,8 +22,8 @@ public sealed class AppearanceSettings
     public bool AutoCollapseSidebar { get; set; } = true;
     /// <summary>"Wisp (3)" in the window title / taskbar.</summary>
     public bool UnreadInTitle { get; set; } = true;
-    /// <summary>While a mail is open, the sidebar offers big buttons to delete, move and flag it.</summary>
-    public bool SidebarMailActions { get; set; } = true;
+    /// <summary>Like Apple Mail: the selected mail row shrinks and offers buttons to flag, move and delete it.</summary>
+    public bool QuickActions { get; set; } = true;
     /// <summary>Right-click menu on mails in the list and in the reader.</summary>
     public bool ContextMenu { get; set; } = true;
     /// <summary>Zoom of HTML mails (0.9 = 90 %). Mails wider than the reader are shrunk to fit on top of this.</summary>

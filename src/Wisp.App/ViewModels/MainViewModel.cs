@@ -87,14 +87,8 @@ public sealed partial class MainViewModel : ObservableObject
     [ObservableProperty] public partial bool ShowHtmlForCurrent { get; set; }
     [ObservableProperty] public partial bool ImagesAllowedForCurrent { get; set; }
 
-    public bool ShowSidebarMailActions => HasSelection && _mail.Settings.Appearance.SidebarMailActions;
+    public bool ShowQuickActions => _mail.Settings.Appearance.QuickActions;
     public bool ShowContextMenu => _mail.Settings.Appearance.ContextMenu;
-    public string FlagActionText => CurrentIsFlagged ? "Markierung entfernen" : "Markieren";
-    public string ReadActionText => CurrentIsUnread ? "Als gelesen markieren" : "Als ungelesen markieren";
-
-    partial void OnHasSelectionChanged(bool value) => OnPropertyChanged(nameof(ShowSidebarMailActions));
-    partial void OnCurrentIsFlaggedChanged(bool value) => OnPropertyChanged(nameof(FlagActionText));
-    partial void OnCurrentIsUnreadChanged(bool value) => OnPropertyChanged(nameof(ReadActionText));
 
     public bool ShowRemoteImageBanner => CurrentMail is { HasRemoteImages: true, RemoteImagesAllowed: false } && ShowHtmlForCurrent;
     public bool ShowHtmlBanner => CurrentMail is { HasHtml: true } && !ShowHtmlForCurrent;
@@ -166,7 +160,7 @@ public sealed partial class MainViewModel : ObservableObject
         OnPropertyChanged(nameof(ShowPreview));
         OnPropertyChanged(nameof(ShowAvatars));
         OnPropertyChanged(nameof(SidebarAlwaysOpen));
-        OnPropertyChanged(nameof(ShowSidebarMailActions));
+        OnPropertyChanged(nameof(ShowQuickActions));
         OnPropertyChanged(nameof(ShowContextMenu));
         if (SelectedSidebarItem is null || !AllSidebar.Contains(SelectedSidebarItem))
             SelectedSidebarItem = AllSidebar.FirstOrDefault(s => s.IsSelectable);

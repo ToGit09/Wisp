@@ -125,7 +125,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         ShowAvatars = defaults.ShowAvatars;
         AutoCollapseSidebar = defaults.AutoCollapseSidebar;
         UnreadInTitle = defaults.UnreadInTitle;
-        SidebarMailActions = defaults.SidebarMailActions;
+        QuickActions = defaults.QuickActions;
         ContextMenu = defaults.ContextMenu;
         HtmlZoomPercent = defaults.HtmlZoom * 100;
     }

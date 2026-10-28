@@ -133,6 +133,10 @@ public sealed partial class MessageItem : ObservableObject
 
     partial void OnIsUnreadChanged(bool value) => OnPropertyChanged(nameof(Weight));
 
+    public string FlagActionText => IsFlagged ? "Markierung entfernen" : "Markieren";
+
+    partial void OnIsFlaggedChanged(bool value) => OnPropertyChanged(nameof(FlagActionText));
+
     public void Update(MessageListItem m)
     {
         Id = m.Id;
