@@ -18,11 +18,17 @@ public sealed class HtmlMailView : Grid
     const double Step = 0.1;
     const double PaperPadding = 20;
 
+    /// <summary>Content this much wider than the space it was given counts as fixed-width and gets shrunk.</summary>
+    const double OverflowTolerance = 8;
+
     readonly ScrollViewer _scroll;
     readonly LayoutTransformControl _transform;
     readonly TextBlock _zoomText;
+    readonly string _html;
+    readonly TheArtOfDev.HtmlRenderer.Core.CssData _css;
     double _zoom;
     double _available;
+    bool _refitQueued;
 
     /// <summary>The renderer itself; the window hooks image loading and link clicks onto it.</summary>
     public HtmlLabel Html { get; }
@@ -33,6 +39,8 @@ public sealed class HtmlMailView : Grid
     public HtmlMailView(string html, string baseStylesheet, double zoom)
     {
         _zoom = Math.Clamp(zoom, MinZoom, MaxZoom);
+        _html = html;
+        _css = HtmlRender.ParseStyleSheet(baseStylesheet, true);
 
         // HTML mails are designed for a light background; show them on "paper" in dark mode too.
         Html = new HtmlLabel
@@ -79,8 +87,8 @@ public sealed class HtmlMailView : Grid
         };
         Children.Add(zoomBar);
 
-        _scroll.SizeChanged += (_, _) => Refit(force: false);
-        Html.LayoutUpdated += (_, _) => GrowToContent();
+        // Never resize from inside a layout pass: queue it, so layout always settles in one go.
+        _scroll.SizeChanged += (_, _) => QueueRefit();
         // Ctrl + mouse wheel zooms, like in a browser.
         _scroll.AddHandler(PointerWheelChangedEvent, (_, e) =>
         {
@@ -118,33 +126,56 @@ public sealed class HtmlMailView : Grid
         ZoomChanged?.Invoke(zoom);
     }
 
-    /// <summary>Lays the mail out for the reader width at the chosen zoom.</summary>
-    void Refit(bool force)
+    void QueueRefit()
     {
-        var available = _scroll.Bounds.Width - 2; // keep clear of rounding into a horizontal scrollbar
-        if (available <= 0 || (!force && Math.Abs(available - _available) < 1)) return;
-        _available = available;
-        Html.Width = available / _zoom;
-        Apply(_zoom);
+        if (_refitQueued) return;
+        _refitQueued = true;
+        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+        {
+            _refitQueued = false;
+            Refit(force: false);
+        }, Avalonia.Threading.DispatcherPriority.Background);
     }
 
     /// <summary>
-    /// After layout: if the mail is wider than the space it got (fixed-width tables, large images),
-    /// give it its natural width and shrink it to fit. Only ever grows, so it cannot oscillate.
+    /// Lays the mail out for the reader width at the chosen zoom. The mail is measured once, up front,
+    /// at the width it would get; if it needs more (fixed-width tables, large images) it gets its natural
+    /// width and is shrunk to fit. Width and scale are set in one step, never adjusted from layout callbacks.
     /// </summary>
-    void GrowToContent()
+    void Refit(bool force)
     {
-        if (_available <= 0 || Html.Container is not { } container) return;
-        var natural = container.ActualSize.Width + Html.Padding.Left + Html.Padding.Right;
-        if (natural <= Html.Width + 1) return;
-        Html.Width = Math.Ceiling(natural);
-        Apply(Math.Max(MinZoom / 2, Math.Min(_zoom, _available / Html.Width)));
-    }
+        var available = Math.Floor(_scroll.Bounds.Width) - 2; // keep clear of rounding into a horizontal scrollbar
+        if (available <= 0 || (!force && Math.Abs(available - _available) < 1)) return;
+        _available = available;
 
-    void Apply(double scale)
-    {
+        var padding = Html.Padding.Left + Html.Padding.Right;
+        var width = available / _zoom;
+        var natural = MeasureContent(width - padding) + padding;
+        var scale = _zoom;
+        if (natural > width + OverflowTolerance)
+        {
+            width = Math.Ceiling(natural);
+            scale = Math.Max(MinZoom / 2, Math.Min(_zoom, available / width));
+        }
+
+        Html.Width = width;
         _transform.LayoutTransform = new ScaleTransform(scale, scale);
         UpdateZoomText(scale);
+    }
+
+    /// <summary>Width the mail needs when given <paramref name="maxWidth"/>. Blocks all images and style sheets while measuring.</summary>
+    double MeasureContent(double maxWidth)
+    {
+        try
+        {
+            return HtmlRender.Measure(_html, Math.Max(1, maxWidth), _css,
+                (_, e) => e.SetStyleSheet = "",
+                (_, e) => { e.Handled = true; e.Callback(); }).Width;
+        }
+        catch (Exception)
+        {
+            return maxWidth; // unmeasurable: just show it at the reader width
+        }
     }
 
     void UpdateZoomText(double scale) => _zoomText.Text = $"{Math.Round(scale * 100):0} %";

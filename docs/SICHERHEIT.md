@@ -60,6 +60,11 @@ Unter Linux werden Daten-Verzeichnisse mit Rechten `700` angelegt.
 - Anhänge werden nur auf ausdrücklichen Wunsch an einem selbst gewählten Ort gespeichert.
   Wisp öffnet Anhänge nicht automatisch.
 
+## Fehlerprotokoll
+
+Bei einem Programmfehler schreibt Wisp `crash.log` in den Datenordner. Es enthält nur
+Fehlertyp und Stacktrace, keine Fehlermeldungen, Adressen oder Mailinhalte.
+
 ## Bekannte Grenzen
 
 - Wer als derselbe Benutzer am entsperrten Rechner sitzt, kann Wisp öffnen (außer mit

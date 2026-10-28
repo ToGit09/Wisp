@@ -326,7 +326,7 @@ public sealed partial class MainViewModel : ObservableObject
         }
     }
 
-    void ShowNotice(string? text)
+    public void ShowNotice(string? text)
     {
         if (string.IsNullOrWhiteSpace(text)) return;
         Notice = text;

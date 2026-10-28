@@ -200,12 +200,12 @@ public partial class MainWindow : Window, IDialogs
             if (src.StartsWith("cid:", StringComparison.OrdinalIgnoreCase))
             {
                 if (mail.InlineImages.TryGetValue(src[4..].Trim('<', '>'), out var bytes) && TryBitmap(bytes) is { } inline) args.Callback(inline);
-                else args.Callback();
+                else args.Callback(Blank);
                 return;
             }
             if (!mail.RemoteImagesAllowed || !HtmlSanitizer.IsRemote(src))
             {
-                args.Callback(); // blocked: nothing is contacted
+                args.Callback(Blank); // blocked: nothing is contacted, and no "broken image" icon either
                 return;
             }
             _ = Task.Run(async () =>
@@ -214,7 +214,7 @@ public partial class MainWindow : Window, IDialogs
                 await Dispatcher.UIThread.InvokeAsync(() =>
                 {
                     if (data is not null && TryBitmap(data) is { } bitmap) args.Callback(bitmap);
-                    else args.Callback();
+                    else args.Callback(Blank);
                 });
             });
         };
@@ -233,6 +233,29 @@ public partial class MainWindow : Window, IDialogs
     {
         try { return new Bitmap(new MemoryStream(data)); }
         catch { return null; } // corrupt or unsupported (e.g. SVG)
+    }
+
+    /// <summary>A fresh transparent 1×1 image; the renderer may dispose what it is given.</summary>
+    static Bitmap Blank
+    {
+        get
+        {
+            var bitmap = new WriteableBitmap(new PixelSize(1, 1), new Vector(96, 96), Avalonia.Platform.PixelFormat.Bgra8888, Avalonia.Platform.AlphaFormat.Premul);
+            using (var frame = bitmap.Lock())
+                System.Runtime.InteropServices.Marshal.WriteInt32(frame.Address, 0);
+            return bitmap;
+        }
+    }
+
+    /// <summary>
+    /// Called when drawing the reader failed (see App). Falls back to the plain text view of the same mail
+    /// instead of letting one odd mail take the whole app down.
+    /// </summary>
+    public void RecoverFromRenderError()
+    {
+        if (ReaderBody.Content is not HtmlMailView || _vm.CurrentMail is not { } mail) return;
+        ReaderBody.Content = TextView(mail);
+        _vm.ShowNotice("Diese Mail ließ sich nicht im Originalformat darstellen und wird als Text angezeigt.");
     }
 
     // ───────────────────────── IDialogs ─────────────────────────

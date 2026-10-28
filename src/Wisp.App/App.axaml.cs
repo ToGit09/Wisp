@@ -24,9 +24,33 @@ public partial class App : Application
             ThemeManager.Apply(settings.Appearance);
             desktop.ShutdownMode = ShutdownMode.OnExplicitShutdown;
             desktop.ShutdownRequested += (_, _) => Shutdown();
+            InstallSafetyNet(desktop);
             _ = StartAsync(desktop, settings);
         }
         base.OnFrameworkInitializationCompleted();
+    }
+
+    /// <summary>
+    /// An error while drawing one mail must not close the app. UI errors are logged and the reader
+    /// falls back to text; background errors are only logged. All state is on disk, so nothing is lost.
+    /// </summary>
+    static void InstallSafetyNet(IClassicDesktopStyleApplicationLifetime desktop)
+    {
+        Avalonia.Threading.Dispatcher.UIThread.UnhandledException += (_, e) =>
+        {
+            CrashLog.Write(e.Exception);
+            e.Handled = true;
+            (desktop.MainWindow as MainWindow)?.RecoverFromRenderError();
+        };
+        TaskScheduler.UnobservedTaskException += (_, e) =>
+        {
+            CrashLog.Write(e.Exception);
+            e.SetObserved();
+        };
+        AppDomain.CurrentDomain.UnhandledException += (_, e) =>
+        {
+            if (e.ExceptionObject is Exception ex) CrashLog.Write(ex);
+        };
     }
 
     async Task StartAsync(IClassicDesktopStyleApplicationLifetime desktop, AppSettings settings)
