@@ -17,12 +17,16 @@ public sealed class HtmlMailView : Grid
     public const double MaxZoom = 2.0;
     const double Step = 0.1;
     const double PaperPadding = 20;
+    const double PaperMargin = 14;
+    /// <summary>Widest the paper gets at 100 % (like a printed page); wider readers centre it.</summary>
+    const double MaxPaperWidth = 860;
 
     /// <summary>Content this much wider than the space it was given counts as fixed-width and gets shrunk.</summary>
     const double OverflowTolerance = 8;
 
     readonly ScrollViewer _scroll;
     readonly LayoutTransformControl _transform;
+    readonly Border _paper;
     readonly TextBlock _zoomText;
     readonly string _html;
     readonly TheArtOfDev.HtmlRenderer.Core.CssData _css;
@@ -42,7 +46,9 @@ public sealed class HtmlMailView : Grid
         _html = html;
         _css = HtmlRender.ParseStyleSheet(baseStylesheet, true);
 
-        // HTML mails are designed for a light background; show them on "paper" in dark mode too.
+        // No Padding on the renderer itself: HtmlLabel lays its content out at (0,0) but only applies the
+        // padding offset when painting, so the first frame can come out shifted and clipped at the top left.
+        // The margin lives on the surrounding "paper" instead.
         Html = new HtmlLabel
         {
             Text = html,
@@ -50,18 +56,32 @@ public sealed class HtmlMailView : Grid
             AutoSize = false,
             AutoSizeHeightOnly = true,
             Background = Brushes.White,
-            Padding = new Thickness(PaperPadding),
             IsContextMenuEnabled = false,
-            HorizontalAlignment = HorizontalAlignment.Left,
         };
-        _transform = new LayoutTransformControl { Child = Html, HorizontalAlignment = HorizontalAlignment.Left };
+        // HTML mails are designed for a light background; show them on a white sheet of "paper",
+        // centred in the reader, in dark mode too.
+        _paper = new Border
+        {
+            Background = Brushes.White,
+            Padding = new Thickness(PaperPadding),
+            CornerRadius = new CornerRadius(8),
+            BorderThickness = new Thickness(1),
+            BorderBrush = new SolidColorBrush(Color.Parse("#E4E6EB")),
+            Child = Html,
+        };
+        _transform = new LayoutTransformControl
+        {
+            Child = _paper,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            Margin = new Thickness(PaperMargin, PaperMargin, PaperMargin, PaperMargin * 2),
+        };
         _scroll = new ScrollViewer
         {
             Content = _transform,
             HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Auto,
             VerticalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Auto,
-            Background = Brushes.White,
         };
+        _scroll.Bind(BackgroundProperty, _scroll.GetResourceObservable("WispSurface"));
         Children.Add(_scroll);
 
         _zoomText = new TextBlock { VerticalAlignment = VerticalAlignment.Center, MinWidth = 44, TextAlignment = TextAlignment.Center };
@@ -144,12 +164,13 @@ public sealed class HtmlMailView : Grid
     /// </summary>
     void Refit(bool force)
     {
-        var available = Math.Floor(_scroll.Bounds.Width) - 2; // keep clear of rounding into a horizontal scrollbar
+        // Minus the margin around the paper, and a little slack so rounding never forces a horizontal scrollbar.
+        var available = Math.Floor(_scroll.Bounds.Width) - 2 * PaperMargin - 2;
         if (available <= 0 || (!force && Math.Abs(available - _available) < 1)) return;
         _available = available;
 
-        var padding = Html.Padding.Left + Html.Padding.Right;
-        var width = available / _zoom;
+        var padding = _paper.Padding.Left + _paper.Padding.Right + _paper.BorderThickness.Left + _paper.BorderThickness.Right;
+        var width = Math.Min(available / _zoom, MaxPaperWidth);
         var natural = MeasureContent(width - padding) + padding;
         var scale = _zoom;
         if (natural > width + OverflowTolerance)
@@ -158,7 +179,7 @@ public sealed class HtmlMailView : Grid
             scale = Math.Max(MinZoom / 2, Math.Min(_zoom, available / width));
         }
 
-        Html.Width = width;
+        _paper.Width = width;
         _transform.LayoutTransform = new ScaleTransform(scale, scale);
         UpdateZoomText(scale);
     }
