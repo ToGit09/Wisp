@@ -331,16 +331,15 @@
           </Button>
         </StackPanel>
 
-        <StackPanel Grid.Row="1" Margin="24,4,24,8" Spacing="6" IsVisible="{Binding CurrentMail, Converter={x:Static v:Converters.NotNull}}">
-          <SelectableTextBlock Text="{Binding CurrentMail.Subject, FallbackValue=''}" Classes="title" TextWrapping="Wrap" />
-          <SelectableTextBlock Text="{Binding CurrentMail.From, FallbackValue=''}" FontWeight="SemiBold" />
-          <SelectableTextBlock Classes="muted" TextWrapping="Wrap">
-            <Run Text="An: " /><Run Text="{Binding CurrentMail.To, FallbackValue=''}" />
-          </SelectableTextBlock>
-          <SelectableTextBlock Classes="muted" TextWrapping="Wrap" IsVisible="{Binding CurrentMail.Cc, Converter={x:Static v:Converters.NotNull}, FallbackValue=False}">
-            <Run Text="Cc: " /><Run Text="{Binding CurrentMail.Cc, FallbackValue=''}" />
-          </SelectableTextBlock>
-          <TextBlock x:Name="DateText" Classes="muted small" />
+        <!-- Compact header: subject, then sender with the date on the right, then recipients in one small line.
+             Double-clicking an address selects all of it (see MainWindow.axaml.cs). -->
+        <StackPanel Grid.Row="1" Margin="24,0,24,6" Spacing="2" IsVisible="{Binding CurrentMail, Converter={x:Static v:Converters.NotNull}}">
+          <SelectableTextBlock Text="{Binding CurrentMail.Subject, FallbackValue=''}" FontSize="17" FontWeight="SemiBold" TextWrapping="Wrap" />
+          <DockPanel>
+            <TextBlock x:Name="DateText" DockPanel.Dock="Right" Classes="muted small" VerticalAlignment="Center" Margin="12,0,0,0" />
+            <SelectableTextBlock x:Name="FromText" Text="{Binding CurrentMail.From, FallbackValue=''}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+          </DockPanel>
+          <SelectableTextBlock x:Name="RecipientsText" Text="{Binding Recipients}" Classes="muted small" TextWrapping="Wrap" />
         </StackPanel>
 
         <StackPanel Grid.Row="2" Margin="24,0,24,8" Spacing="8">

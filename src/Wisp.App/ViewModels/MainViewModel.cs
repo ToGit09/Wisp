@@ -108,8 +108,14 @@ public sealed partial class MainViewModel : ObservableObject
     public bool ShowHtmlBanner => CurrentMail is { HasHtml: true } && !ShowHtmlForCurrent;
     public bool CanArchive => SelectedSidebarItem is { } s && _mail.ArchiveFolder(s.AccountId) is { } a && a.Id != s.FolderId;
 
+    /// <summary>"An: … · Cc: …" in one line of the reader header.</summary>
+    public string Recipients => CurrentMail is not { } mail ? ""
+        : mail.Cc is { Length: > 0 } cc ? $"An: {mail.To}  ·  Cc: {cc}"
+        : $"An: {mail.To}";
+
     partial void OnCurrentMailChanged(RenderedMail? value)
     {
+        OnPropertyChanged(nameof(Recipients));
         OnPropertyChanged(nameof(ShowRemoteImageBanner));
         OnPropertyChanged(nameof(ShowHtmlBanner));
     }

@@ -57,8 +57,11 @@ public partial class MainWindow : Window, IDialogs
         FolderList.SelectionChanged += (_, _) => OnSidebarListSelected(FolderList, PinnedList);
         ShowSidebarSelection();
         ApplySidebarMode();
-        // Choosing an account (or "Konto hinzufügen") closes the account list.
-        AccountMenu.AddHandler(Button.ClickEvent, (_, _) => AccountSwitcher.Flyout?.Hide());
+        // Choosing an account (or "Konto hinzufügen") closes the account list. Only afterwards: Click comes before
+        // the button runs its command, and closing detaches the button, which loses its $parent[Window] command.
+        AccountMenu.AddHandler(Button.ClickEvent, (_, _) => Dispatcher.UIThread.Post(() => AccountSwitcher.Flyout?.Hide()));
+        SelectAddressOnDoubleClick(FromText);
+        SelectAddressOnDoubleClick(RecipientsText);
 
         Opened += async (_, _) =>
         {
@@ -173,6 +176,30 @@ public partial class MainWindow : Window, IDialogs
     void ApplySidebarMode() =>
         MainGrid.ColumnDefinitions[0].Width = new GridLength(_vm.SidebarAlwaysOpen ? 240 : 64);
 
+    // ───────────────────────── Reader header ─────────────────────────
+
+    /// <summary>
+    /// Double-clicking an address selects all of it ("anna.m-schmidt@web.de"), not just the word between dots
+    /// and dashes. Runs after the control's own word selection and replaces it; other words behave as usual.
+    /// </summary>
+    static void SelectAddressOnDoubleClick(SelectableTextBlock block) =>
+        block.AddHandler(PointerPressedEvent, (_, e) =>
+        {
+            if (e.ClickCount != 2 || block.Text is not { Length: > 0 } text) return;
+            var index = Math.Clamp(block.TextLayout.HitTestPoint(e.GetPosition(block)).TextPosition, 0, text.Length - 1);
+            if (!IsAddressChar(text[index])) return;
+            var start = index;
+            while (start > 0 && IsAddressChar(text[start - 1])) start--;
+            var end = index;
+            while (end < text.Length && IsAddressChar(text[end])) end++;
+            while (end > start && text[end - 1] is '.' or '-') end--;
+            if (text.AsSpan(start, end - start).IndexOf('@') < 0) return;
+            block.SelectionStart = start;
+            block.SelectionEnd = end;
+        }, handledEventsToo: true);
+
+    static bool IsAddressChar(char c) => char.IsLetterOrDigit(c) || c is '@' or '.' or '-' or '_' or '+' or '%' or '\'';
+
     // ───────────────────────── Reader body ─────────────────────────
 
     void RenderBody(RenderedMail? mail)
@@ -183,7 +210,9 @@ public partial class MainWindow : Window, IDialogs
             DateText.Text = "";
             return;
         }
-        DateText.Text = mail.Date.ToLocalTime().ToString("dddd, d. MMMM yyyy, HH:mm", German);
+        var date = mail.Date.ToLocalTime();
+        DateText.Text = date.ToString("ddd, dd.MM.yyyy, HH:mm", German);
+        ToolTip.SetTip(DateText, date.ToString("dddd, d. MMMM yyyy, HH:mm", German));
         ReaderBody.Content = mail.Html is not null ? HtmlView(mail) : TextView(mail);
     }
 
