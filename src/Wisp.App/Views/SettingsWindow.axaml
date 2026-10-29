@@ -1,0 +1,512 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Wisp.App.ViewModels"
+        xmlns:v="using:Wisp.App.Views"
+        xmlns:t="using:Wisp.App.Theme"
+        x:Class="Wisp.App.Views.SettingsWindow"
+        x:DataType="vm:SettingsViewModel"
+        Title="Einstellungen"
+        Icon="/Assets/wisp.ico"
+        Width="900" Height="660" MinWidth="680" MinHeight="460"
+        WindowStartupLocation="CenterOwner">
+
+  <Window.Resources>
+    <v:EqualsConverter x:Key="Is" />
+  </Window.Resources>
+
+  <Window.Styles>
+    <!-- A page: heading, then cards ("groups") with one row per option -->
+    <Style Selector="StackPanel.page">
+      <Setter Property="Margin" Value="32,28,32,32" />
+      <Setter Property="Spacing" Value="10" />
+      <Setter Property="MaxWidth" Value="640" />
+      <Setter Property="HorizontalAlignment" Value="Left" />
+    </Style>
+    <Style Selector="TextBlock.pagehint">
+      <Setter Property="Foreground" Value="{DynamicResource WispMuted}" />
+      <Setter Property="TextWrapping" Value="Wrap" />
+      <Setter Property="Margin" Value="0,0,0,8" />
+    </Style>
+    <Style Selector="TextBlock.grouptitle">
+      <Setter Property="FontSize" Value="{DynamicResource WispSmallFontSize}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{DynamicResource WispMuted}" />
+      <Setter Property="Margin" Value="4,14,0,2" />
+    </Style>
+    <Style Selector="Border.group">
+      <Setter Property="Background" Value="{DynamicResource WispSurface}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource WispBorder}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="10" />
+    </Style>
+    <Style Selector="Grid.row">
+      <Setter Property="Margin" Value="16,12" />
+    </Style>
+    <Style Selector="Border.divider">
+      <Setter Property="Height" Value="1" />
+      <Setter Property="Background" Value="{DynamicResource WispBorder}" />
+      <Setter Property="Margin" Value="16,0" />
+    </Style>
+    <Style Selector="TextBlock.label">
+      <Setter Property="FontWeight" Value="Medium" />
+      <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+    <Style Selector="Grid.row TextBlock.hint">
+      <Setter Property="Margin" Value="0,2,0,0" />
+    </Style>
+    <Style Selector="Grid.row > StackPanel:nth-child(1)">
+      <Setter Property="Margin" Value="0,0,20,0" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="ToggleSwitch">
+      <Setter Property="OnContent" Value="" />
+      <Setter Property="OffContent" Value="" />
+      <Setter Property="MinWidth" Value="0" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Grid.row ComboBox, Grid.row NumericUpDown">
+      <Setter Property="MinWidth" Value="200" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+
+    <Style Selector="ListBox.nav > ListBoxItem">
+      <Setter Property="Padding" Value="12,9" />
+      <Setter Property="Margin" Value="8,1" />
+      <Setter Property="CornerRadius" Value="8" />
+    </Style>
+  </Window.Styles>
+
+  <Grid ColumnDefinitions="230,*">
+
+    <!-- ─────────── Navigation ─────────── -->
+    <Border Background="{DynamicResource WispSidebar}" BorderBrush="{DynamicResource WispBorder}" BorderThickness="0,0,1,0">
+      <DockPanel>
+        <TextBlock DockPanel.Dock="Top" Text="Einstellungen" Classes="title" Margin="20,24,20,16" />
+        <ListBox Classes="nav" ItemsSource="{Binding Sections}" SelectedIndex="{Binding SectionIndex}">
+          <ListBox.ItemTemplate>
+            <DataTemplate x:DataType="vm:SettingsSection">
+              <StackPanel Orientation="Horizontal" Spacing="12">
+                <t:WispIcon Data="{Binding IconData}" Foreground="{DynamicResource WispMuted}" />
+                <TextBlock Text="{Binding Title}" VerticalAlignment="Center" />
+              </StackPanel>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+      </DockPanel>
+    </Border>
+
+    <ScrollViewer Grid.Column="1">
+      <Panel>
+
+        <!-- ─────────── Darstellung ─────────── -->
+        <StackPanel Classes="page" IsVisible="{Binding SectionIndex, Converter={StaticResource Is}, ConverterParameter=0}">
+          <TextBlock Text="Darstellung" Classes="title" />
+          <TextBlock Classes="pagehint" Text="Alle Änderungen wirken sofort – probieren Sie einfach aus." />
+
+          <TextBlock Classes="grouptitle" Text="FARBEN" />
+          <Border Classes="group">
+            <StackPanel>
+              <Grid Classes="row" ColumnDefinitions="*,Auto">
+                <StackPanel><TextBlock Classes="label" Text="Farbschema" /></StackPanel>
+                <ComboBox Grid.Column="1" ItemsSource="{Binding Themes}" SelectedItem="{Binding Theme}" />
+              </Grid>
+              <Border Classes="divider" />
+              <StackPanel Margin="16,12" Spacing="10">
+                <TextBlock Classes="label" Text="Akzentfarbe" />
+                <ItemsControl ItemsSource="{Binding Accents}">
+                  <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
+                  </ItemsControl.ItemsPanel>
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:AccentChoice">
+                      <Button Width="30" Height="30" Margin="0,0,10,6" CornerRadius="15" ToolTip.Tip="{Binding Name}"
+                              Background="{Binding Hex, Converter={x:Static v:Converters.HexToBrush}}"
+                              Command="{Binding $parent[Window].((vm:SettingsViewModel)DataContext).PickAccentCommand}"
+                              CommandParameter="{Binding Hex}" />
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <StackPanel Orientation="Horizontal" Spacing="10">
+                  <TextBlock Text="Eigene Farbe" VerticalAlignment="Center" Classes="muted" />
+                  <TextBox Text="{Binding AccentHex}" Width="110" PlaceholderText="#4F6BED" />
+                  <Border Width="26" Height="26" CornerRadius="13" Background="{Binding AccentHex, Converter={x:Static v:Converters.HexToBrush}}" />
+                </StackPanel>
+              </StackPanel>
+            </StackPanel>
+          </Border>
+
+          <TextBlock Classes="grouptitle" Text="SCHRIFT" />
+          <Border Classes="group">
+            <StackPanel>
+              <Grid Classes="row" ColumnDefinitions="*,Auto">
+                <StackPanel><TextBlock Classes="label" Text="Schriftart" /></StackPanel>
+                <ComboBox Grid.Column="1" ItemsSource="{Binding Fonts}" SelectedItem="{Binding Font}" />
+              </Grid>
+              <Border Classes="divider" />
+              <Grid Classes="row" ColumnDefinitions="*,220,50">
+                <StackPanel><TextBlock Classes="label" Text="Schriftgröße" /></StackPanel>
+                <Slider Grid.Column="1" Minimum="11" Maximum="22" TickFrequency="1" IsSnapToTickEnabled="True" Value="{Binding FontSize}" />
+                <TextBlock Grid.Column="2" Text="{Binding FontSizeText}" TextAlignment="Right" VerticalAlignment="Center" />
+              </Grid>
+              <Border Classes="divider" />
+              <Grid Classes="row" ColumnDefinitions="*,220,50">
+                <StackPanel>
+                  <TextBlock Classes="label" Text="Zoom für HTML-Mails" />
+                  <TextBlock Classes="hint" Text="Zu breite Mails werden zusätzlich eingepasst." />
+                </StackPanel>
+                <Slider Grid.Column="1" Minimum="50" Maximum="200" TickFrequency="10" IsSnapToTickEnabled="True" Value="{Binding HtmlZoomPercent}" />
+                <TextBlock Grid.Column="2" Text="{Binding HtmlZoomText}" TextAlignment="Right" VerticalAlignment="Center" />
+              </Grid>
+            </StackPanel>
+          </Border>
+
+          <TextBlock Classes="grouptitle" Text="LAYOUT" />
+          <Border Classes="group">
+            <StackPanel>
+              <Grid Classes="row" ColumnDefinitions="*,Auto">
+                <StackPanel><TextBlock Classes="label" Text="Abstände in der Mail-Liste" /></StackPanel>
+                <ComboBox Grid.Column="1" ItemsSource="{Binding Densities}" SelectedItem="{Binding Density}" />
+              </Grid>
+              <Border Classes="divider" />
+              <Grid Classes="row" ColumnDefinitions="*,Auto">
+                <StackPanel>
+                  <TextBlock Classes="label" Text="Seitenleiste automatisch einklappen" />
+                  <TextBlock Classes="hint" Text="Zeigt nur Symbole und klappt auf, wenn die Maus darüber fährt. Aus: immer ausgeklappt." />
+                </StackPanel>
+                <ToggleSwitch Grid.Column="1" IsChecked="{Binding AutoCollapseSidebar}" />
+              </Grid>
+              <Border Classes="divider" />
+              <Grid Classes="row" ColumnDefinitions="*,Auto">
+                <StackPanel>
+                  <TextBlock Classes="label" Text="Vorschautext in der Mail-Liste" />
+                  <TextBlock Classes="hint" Text="Die ersten Worte jeder Mail unter dem Betreff." />
+                </StackPanel>
+                <ToggleSwitch Grid.Column="1" IsChecked="{Binding ShowPreview}" />
+              </Grid>
+              <Border Classes="divider" />
+              <Grid Classes="row" ColumnDefinitions="*,Auto">
+                <StackPanel>
+                  <TextBlock Classes="label" Text="Absender-Kürzel" />
+                  <TextBlock Classes="hint" Text="Farbige Initialen vor jeder Mail, z. B. „AS“ für Anna Schmidt." />
+                </StackPanel>
+                <ToggleSwitch Grid.Column="1" IsChecked="{Binding ShowAvatars}" />
+              </Grid>
+              <Border Classes="divider" />
+              <Grid Classes="row" ColumnDefinitions="*,Auto">
+                <StackPanel>
+                  <TextBlock Classes="label" Text="Schnellaktionen in der Mail-Liste" />
+                  <TextBlock Classes="hint" Text="Wie bei Apple Mail: Die ausgewählte Mail wird schmaler und zeigt Knöpfe zum Antworten, Verschieben und Löschen." />
+                </StackPanel>
+                <ToggleSwitch Grid.Column="1" IsChecked="{Binding QuickActions}" />
+              </Grid>
+              <Border Classes="divider" />
+              <Grid Classes="row" ColumnDefinitions="*,Auto">
+                <StackPanel>
+                  <TextBlock Classes="label" Text="Rechtsklick-Menü" />
+                  <TextBlock Classes="hint" Text="Antworten, Verschieben, Löschen usw. per Rechtsklick auf eine Mail." />
+                </StackPanel>
+                <ToggleSwitch Grid.Column="1" IsChecked="{Binding ContextMenu}" />
+              </Grid>
+              <Border Classes="divider" />
+              <Grid Classes="row" ColumnDefinitions="*,Auto">
+                <StackPanel>
+                  <TextBlock Classes="label" Text="Ungelesene im Fenstertitel" />
+                  <TextBlock Classes="hint" Text="Zeigt z. B. „Wisp (3)“ in der Taskleiste." />
+                </StackPanel>
+                <ToggleSwitch Grid.Column="1" IsChecked="{Binding UnreadInTitle}" />
+              </Grid>
+            </StackPanel>
+          </Border>
+
+          <Button Classes="link" Content="Darstellung auf Standard zurücksetzen" Command="{Binding ResetAppearanceCommand}" Margin="4,12,0,0" />
+        </StackPanel>
+
+        <!-- ─────────── Lesen ─────────── -->
+        <StackPanel Classes="page" IsVisible="{Binding SectionIndex, Converter={StaticResource Is}, ConverterParameter=1}">
+          <TextBlock Text="Lesen" Classes="title" />
+          <TextBlock Classes="pagehint" Text="Wie Wisp Mails anzeigt und mit Links umgeht." />
+
+          <Border Classes="group">
+            <StackPanel>
+              <Grid Classes="row" ColumnDefinitions="*,Auto">
+                <StackPanel>
+                  <TextBlock Classes="label" Text="Beim Öffnen als gelesen markieren" />
+                  <TextBlock Classes="hint" Text="Aus: Mails bleiben ungelesen, bis Sie sie selbst markieren." />
+                </StackPanel>
+                <ToggleSwitch Grid.Column="1" IsChecked="{Binding MarkReadOnOpen}" />
+              </Grid>
+              <Border Classes="divider" />
+              <Grid Classes="row" ColumnDefinitions="*,Auto">
+                <StackPanel>
+                  <TextBlock Classes="label" Text="Linkliste unter Text-Mails" />
+                  <TextBlock Classes="hint" Text="Alle Links einer Mail mit ihrer echten Zieladresse." />
+                </StackPanel>
+                <ToggleSwitch Grid.Column="1" IsChecked="{Binding ShowLinkList}" />
+              </Grid>
+              <Border Classes="divider" />
+              <Grid Classes="row" ColumnDefinitions="*,Auto">
+                <StackPanel>
+                  <TextBlock Classes="label" Text="Vor verdächtigen Links warnen" />
+                  <TextBlock Classes="hint" Text="Wenn der Linktext eine andere Adresse zeigt als das Ziel – ein typisches Zeichen für Phishing. Empfohlen." />
+                </StackPanel>
+                <ToggleSwitch Grid.Column="1" IsChecked="{Binding WarnSuspiciousLinks}" />
+              </Grid>
+              <Border Classes="divider" />
+              <Grid Classes="row" ColumnDefinitions="*,Auto">
+                <StackPanel>
+                  <TextBlock Classes="label" Text="Vor dem Öffnen eines Links nachfragen" />
+                </StackPanel>
+                <ComboBox Grid.Column="1" ItemsSource="{Binding LinkConfirmations}" SelectedItem="{Binding ConfirmLinks}" />
+              </Grid>
+            </StackPanel>
+          </Border>
+        </StackPanel>
+
+        <!-- ─────────── Schreiben ─────────── -->
+        <StackPanel Classes="page" IsVisible="{Binding SectionIndex, Converter={StaticResource Is}, ConverterParameter=2}">
+          <TextBlock Text="Schreiben" Classes="title" />
+          <TextBlock Classes="pagehint" Text="Editor, Signatur und Verhalten beim Senden." />
+
+          <Border Classes="group">
+            <StackPanel>
+              <Grid Classes="row" ColumnDefinitions="*,Auto">
+                <StackPanel>
+                  <TextBlock Classes="label" Text="Editor beim Öffnen" />
+                  <TextBlock Classes="hint" Text="Im Mail-Fenster jederzeit umschaltbar." />
+                </StackPanel>
+                <ComboBox Grid.Column="1" ItemsSource="{Binding Editors}" SelectedItem="{Binding DefaultEditor}" />
+              </Grid>
+              <Border Classes="divider" />
+              <Grid Classes="row" ColumnDefinitions="*,Auto">
+                <StackPanel>
+                  <TextBlock Classes="label" Text="Senden verzögern" />
+                  <TextBlock Classes="hint" Text="So lange können Sie eine gesendete Mail mit „Rückgängig“ zurückholen." />
+                </StackPanel>
+                <ComboBox Grid.Column="1" ItemsSource="{Binding SendDelays}" SelectedItem="{Binding SendDelay}" />
+              </Grid>
+              <Border Classes="divider" />
+              <Grid Classes="row" ColumnDefinitions="*,Auto">
+                <StackPanel>
+                  <TextBlock Classes="label" Text="Originaltext in Antworten zitieren" />
+                </StackPanel>
+                <ToggleSwitch Grid.Column="1" IsChecked="{Binding QuoteOnReply}" />
+              </Grid>
+              <Border Classes="divider" />
+              <Grid Classes="row" ColumnDefinitions="*,Auto">
+                <StackPanel>
+                  <TextBlock Classes="label" Text="Mit Strg+Enter senden" />
+                </StackPanel>
+                <ToggleSwitch Grid.Column="1" IsChecked="{Binding CtrlEnterSends}" />
+              </Grid>
+              <Border Classes="divider" />
+              <Grid Classes="row" ColumnDefinitions="*,Auto">
+                <StackPanel>
+                  <TextBlock Classes="label" Text="Vor dem Verwerfen nachfragen" />
+                  <TextBlock Classes="hint" Text="Wenn ein angefangenes Mail-Fenster geschlossen wird." />
+                </StackPanel>
+                <ToggleSwitch Grid.Column="1" IsChecked="{Binding ConfirmDiscard}" />
+              </Grid>
+            </StackPanel>
+          </Border>
+
+          <TextBlock Classes="grouptitle" Text="SIGNATUR" />
+          <Border Classes="group">
+            <StackPanel>
+              <Grid Classes="row" ColumnDefinitions="*,Auto">
+                <StackPanel>
+                  <TextBlock Classes="label" Text="Signatur einfügen" />
+                  <TextBlock Classes="hint" Text="Steht unter neuen Mails und über dem Zitat in Antworten." />
+                </StackPanel>
+                <ToggleSwitch Grid.Column="1" IsChecked="{Binding SignatureEnabled}" />
+              </Grid>
+              <TextBox Margin="16,0,16,14" Text="{Binding Signature}" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="90"
+                       PlaceholderText="Viele Grüße&#10;Erika Mustermann" IsEnabled="{Binding SignatureEnabled}" />
+            </StackPanel>
+          </Border>
+        </StackPanel>
+
+        <!-- ─────────── Synchronisation ─────────── -->
+        <StackPanel Classes="page" IsVisible="{Binding SectionIndex, Converter={StaticResource Is}, ConverterParameter=3}">
+          <TextBlock Text="Synchronisation" Classes="title" />
+          <TextBlock Classes="pagehint"
+                     Text="Wisp hält Ihre Mails lokal bereit, damit Sie auch ohne Internet lesen, sortieren und schreiben können. Änderungen werden übertragen, sobald wieder eine Verbindung besteht. Lokales Aufräumen löscht nie etwas auf dem Server." />
+
+          <Border Classes="group">
+            <StackPanel>
+              <Grid Classes="row" ColumnDefinitions="*,Auto">
+                <StackPanel>
+                  <TextBlock Classes="label" Text="Neue Mails sofort erhalten (Push)" />
+                  <TextBlock Classes="hint" Text="Hält eine Verbindung zum Posteingang offen. Aus: Wisp fragt nur im eingestellten Abstand nach." />
+                </StackPanel>
+                <ToggleSwitch Grid.Column="1" IsChecked="{Binding UsePush}" />
+              </Grid>
+              <Border Classes="divider" />
+              <Grid Classes="row" ColumnDefinitions="*,Auto">
+                <StackPanel><TextBlock Classes="label" Text="Alle Ordner prüfen alle … Minuten" /></StackPanel>
+                <NumericUpDown Grid.Column="1" Value="{Binding PollMinutes}" Minimum="1" Maximum="120" Increment="1" FormatString="0" />
+              </Grid>
+            </StackPanel>
+          </Border>
+
+          <TextBlock Classes="grouptitle" Text="OFFLINE" />
+          <Border Classes="group">
+            <StackPanel>
+              <Grid Classes="row" ColumnDefinitions="*,Auto">
+                <StackPanel>
+                  <TextBlock Classes="label" Text="Mails der letzten … Tage offline bereithalten" />
+                  <TextBlock Classes="hint" Text="Komplett mit Inhalt und Anhängen, verschlüsselt. 0 = nur beim Öffnen laden." />
+                </StackPanel>
+                <NumericUpDown Grid.Column="1" Value="{Binding OfflineDays}" Minimum="0" Maximum="3650" Increment="7" FormatString="0" />
+              </Grid>
+              <Border Classes="divider" />
+              <Grid Classes="row" ColumnDefinitions="*,Auto">
+                <StackPanel><TextBlock Classes="label" Text="Größere Mails erst beim Öffnen laden (ab MB)" /></StackPanel>
+                <NumericUpDown Grid.Column="1" Value="{Binding PrefetchMaxMb}" Minimum="1" Maximum="100" Increment="1" FormatString="0" />
+              </Grid>
+              <Border Classes="divider" />
+              <Grid Classes="row" ColumnDefinitions="*,Auto">
+                <StackPanel><TextBlock Classes="label" Text="Höchstens so viele Mails pro Ordner" /></StackPanel>
+                <NumericUpDown Grid.Column="1" Value="{Binding HeadersPerFolder}" Minimum="100" Maximum="100000" Increment="500" FormatString="0" />
+              </Grid>
+            </StackPanel>
+          </Border>
+
+          <TextBlock Classes="grouptitle" Text="ORDNER AUTOMATISCH SYNCHRONISIEREN" />
+          <TextBlock Classes="hint" Margin="4,0,0,4"
+                     Text="Ausgeschaltete Ordner werden nur aktualisiert, wenn Sie sie öffnen. Der Posteingang wird immer synchronisiert." />
+          <Border Classes="group">
+            <ItemsControl ItemsSource="{Binding FolderSync}" Margin="0,4">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:FolderSyncItem">
+                  <Grid ColumnDefinitions="*,Auto" Margin="16,6">
+                    <StackPanel VerticalAlignment="Center">
+                      <TextBlock Text="{Binding Name}" />
+                      <TextBlock Text="{Binding Account}" Classes="hint" IsVisible="{Binding Account, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                    </StackPanel>
+                    <ToggleSwitch Grid.Column="1" IsChecked="{Binding Enabled}" />
+                  </Grid>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </Border>
+        </StackPanel>
+
+        <!-- ─────────── Datenschutz & Sicherheit ─────────── -->
+        <StackPanel Classes="page" IsVisible="{Binding SectionIndex, Converter={StaticResource Is}, ConverterParameter=4}">
+          <TextBlock Text="Datenschutz &amp; Sicherheit" Classes="title" />
+          <TextBlock Classes="pagehint" Text="{Binding ProtectionText}" />
+
+          <TextBlock Classes="grouptitle" Text="HTML-MAILS" />
+          <Border Classes="group">
+            <StackPanel>
+              <Grid Classes="row" ColumnDefinitions="*,Auto">
+                <StackPanel>
+                  <TextBlock Classes="label" Text="Originaldarstellung (HTML)" />
+                  <TextBlock Classes="hint" Text="Aus: Mails werden als einfacher Text gezeigt – am sichersten. Skripte werden nie ausgeführt. Pro Mail einzeln einschaltbar." />
+                </StackPanel>
+                <ToggleSwitch Grid.Column="1" IsChecked="{Binding ShowHtml}" />
+              </Grid>
+              <Border Classes="divider" />
+              <Grid Classes="row" ColumnDefinitions="*,Auto">
+                <StackPanel>
+                  <TextBlock Classes="label" Text="Externe Bilder automatisch laden" />
+                  <TextBlock Classes="hint" Text="Bilder aus dem Internet können verraten, wann und wo Sie eine Mail geöffnet haben (Tracking). Pro Mail mit „Bilder laden“ möglich." />
+                </StackPanel>
+                <ToggleSwitch Grid.Column="1" IsChecked="{Binding LoadRemoteImages}" />
+              </Grid>
+            </StackPanel>
+          </Border>
+
+          <TextBlock Classes="grouptitle" Text="MASTER-PASSWORT" />
+          <Border Classes="group">
+            <StackPanel Margin="16,14" Spacing="8">
+              <TextBlock Classes="hint"
+                         Text="Mit einem Master-Passwort fragt Wisp bei jedem Start danach. Dann kann auch niemand, der an Ihrem entsperrten Benutzerkonto sitzt, Ihre Mails in Wisp öffnen. Wichtig: Ein vergessenes Master-Passwort kann niemand wiederherstellen." />
+              <TextBox Text="{Binding CurrentMasterPassword}" PasswordChar="•" PlaceholderText="Aktuelles Master-Passwort" IsVisible="{Binding HasMasterPassword}" />
+              <TextBox Text="{Binding NewMasterPassword}" PasswordChar="•" PlaceholderText="Neues Master-Passwort (mind. 8 Zeichen)" />
+              <TextBox Text="{Binding NewMasterPasswordRepeat}" PasswordChar="•" PlaceholderText="Neues Master-Passwort wiederholen" />
+              <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,4,0,0">
+                <Button Classes="primary" Content="Master-Passwort festlegen" Command="{Binding SetMasterPasswordCommand}" />
+                <Button Content="Master-Passwort entfernen" Command="{Binding RemoveMasterPasswordCommand}" IsVisible="{Binding CanRemoveMasterPassword}" />
+              </StackPanel>
+              <TextBlock Text="{Binding SecurityMessage}" TextWrapping="Wrap" IsVisible="{Binding SecurityMessage, Converter={x:Static v:Converters.NotNull}}" />
+            </StackPanel>
+          </Border>
+
+          <TextBlock Classes="grouptitle" Text="FEHLERSUCHE" />
+          <Border Classes="group">
+            <Grid Classes="row" ColumnDefinitions="*,Auto">
+              <StackPanel>
+                <TextBlock Classes="label" Text="Fehlerprotokoll schreiben" />
+                <TextBlock Classes="hint" Text="Bei Programmfehlern nur Fehlertyp und Stelle im Programm, nie Inhalte oder Adressen (crash.log)." />
+              </StackPanel>
+              <ToggleSwitch Grid.Column="1" IsChecked="{Binding WriteCrashLog}" />
+            </Grid>
+          </Border>
+        </StackPanel>
+
+        <!-- ─────────── Konten ─────────── -->
+        <StackPanel Classes="page" IsVisible="{Binding SectionIndex, Converter={StaticResource Is}, ConverterParameter=5}">
+          <TextBlock Text="Konten" Classes="title" />
+          <TextBlock Classes="pagehint" Text="Ein Konto zu entfernen löscht nur die Daten auf diesem Gerät. Ihre Mails beim Anbieter bleiben unverändert." />
+
+          <ItemsControl ItemsSource="{Binding AccountList}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:AccountEntry">
+                <Border Classes="group" Margin="0,0,0,8" Padding="16,12">
+                  <DockPanel>
+                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="16" VerticalAlignment="Center">
+                      <Button Classes="link" Content="Passwort ändern" IsVisible="{Binding !UsesOAuth}"
+                              Command="{Binding $parent[Window].((vm:SettingsViewModel)DataContext).BeginPasswordChangeCommand}" CommandParameter="{Binding}" />
+                      <Button Classes="link" Content="Neu anmelden" IsVisible="{Binding UsesOAuth}"
+                              Command="{Binding $parent[Window].((vm:SettingsViewModel)DataContext).ReauthorizeCommand}" CommandParameter="{Binding}" />
+                      <Button Classes="link" Content="Entfernen" Foreground="{DynamicResource WispDanger}"
+                              Command="{Binding $parent[Window].((vm:SettingsViewModel)DataContext).RemoveAccountCommand}" CommandParameter="{Binding}" />
+                    </StackPanel>
+                    <StackPanel>
+                      <TextBlock Text="{Binding Email}" FontWeight="SemiBold" />
+                      <TextBlock Text="{Binding Provider}" Classes="muted small" />
+                    </StackPanel>
+                  </DockPanel>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+
+          <Border Classes="group" Padding="16" IsVisible="{Binding PasswordAccount, Converter={x:Static v:Converters.NotNull}}">
+            <StackPanel Spacing="8">
+              <TextBlock Text="{Binding PasswordAccount.Email, StringFormat='Neues Passwort für {0}', FallbackValue=''}" FontWeight="SemiBold" />
+              <TextBox Text="{Binding PasswordForAccount}" PasswordChar="•" />
+              <Button Classes="primary" Content="Prüfen und speichern" Command="{Binding SavePasswordCommand}" HorizontalAlignment="Left" />
+            </StackPanel>
+          </Border>
+          <TextBlock Text="{Binding AccountMessage}" TextWrapping="Wrap" IsVisible="{Binding AccountMessage, Converter={x:Static v:Converters.NotNull}}" />
+
+          <Button Classes="primary" Content="Konto hinzufügen" Command="{Binding AddAccountCommand}" HorizontalAlignment="Left" Margin="0,8,0,0" />
+        </StackPanel>
+
+        <!-- ─────────── Über ─────────── -->
+        <StackPanel Classes="page" IsVisible="{Binding SectionIndex, Converter={StaticResource Is}, ConverterParameter=6}">
+          <StackPanel Orientation="Horizontal" Spacing="16">
+            <Image Source="/Assets/wisp.png" Width="56" Height="56" />
+            <StackPanel VerticalAlignment="Center">
+              <TextBlock Text="Wisp" Classes="title" />
+              <TextBlock Text="{Binding Version}" Classes="muted" />
+            </StackPanel>
+          </StackPanel>
+          <TextBlock Classes="pagehint" Margin="0,12,0,8"
+                     Text="Ein leichter, sicherer Mail-Client. Keine Werbung, keine Telemetrie, keine Verbindung zu irgendwem außer Ihrem Mail-Anbieter." />
+          <Border Classes="group">
+            <Grid Classes="row" ColumnDefinitions="*,Auto">
+              <StackPanel>
+                <TextBlock Classes="label" Text="Datenordner" />
+                <SelectableTextBlock Classes="muted" Text="{Binding DataFolder}" TextWrapping="Wrap" />
+              </StackPanel>
+              <Button Grid.Column="1" Content="Ordner öffnen" Command="{Binding OpenDataFolderCommand}" VerticalAlignment="Center" />
+            </Grid>
+          </Border>
+        </StackPanel>
+      </Panel>
+    </ScrollViewer>
+  </Grid>
+</Window>

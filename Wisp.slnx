@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Wisp.App/Wisp.App.csproj" />
+    <Project Path="src/Wisp.Core/Wisp.Core.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Wisp.Core.Tests/Wisp.Core.Tests.csproj" />
+  </Folder>
+</Solution>

@@ -1,0 +1,19 @@
+ToDos:
+
+@AI: nicht anfassen mein Bereich : )
+
+- Antworten im Schnellzugriff
+- Sidebar lags behebn wenn man auf höhe des einstellungszeichens draufhovert
+- 
+
+Optionale features:
+- lokale AI Summary
+- lokale AI Spamerkennung
+- lokale erweiterte Spamerkennung
+- lokale AI kathegorisierung (Wichtig, Werbung, Spamverdacht, alle (aktuell))
+- nur wenn es schnell genug ist
+
+vor opt. Features und nach Todos:
+- Release Build
+- Installationsdatei/Lizenzbestimmungen etc. -> v1.0.0 und ab dann weiter an v2.0.0
+- Github repo gestaltung: Patches für v1 und parallel development von v2 später dann v3 etc

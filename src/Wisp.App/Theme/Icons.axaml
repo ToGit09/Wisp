@@ -1,0 +1,27 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <!-- Stroke icons on a 24×24 grid, drawn by WispIcon. -->
+  <StreamGeometry x:Key="IconCompose">M4 20h4L19 9l-4-4L4 16z M14 6l4 4</StreamGeometry>
+  <StreamGeometry x:Key="IconReply">M9 14L4 9l5-5 M4 9h10a6 6 0 0 1 6 6v4</StreamGeometry>
+  <StreamGeometry x:Key="IconReplyAll">M7 14L2 9l5-5 M12 14L7 9l5-5 M7 9h7a6 6 0 0 1 6 6v4</StreamGeometry>
+  <StreamGeometry x:Key="IconForward">M15 14l5-5-5-5 M20 9H10a6 6 0 0 0-6 6v4</StreamGeometry>
+  <StreamGeometry x:Key="IconArchive">M3 4h18v4H3z M5 8v12h14V8 M10 12h4</StreamGeometry>
+  <StreamGeometry x:Key="IconTrash">M3 6h18 M8 6V4h8v2 M6 6l1 14h10l1-14 M10 10v6 M14 10v6</StreamGeometry>
+  <StreamGeometry x:Key="IconMail">M3 5h18v14H3z M3 6l9 7 9-7</StreamGeometry>
+  <StreamGeometry x:Key="IconStar">M12 3l2.9 5.9 6.5 0.9-4.7 4.6 1.1 6.5L12 17.8 6.2 20.9l1.1-6.5L2.6 9.8l6.5-0.9z</StreamGeometry>
+  <StreamGeometry x:Key="IconRefresh">M20 12a8 8 0 1 1-2.3-5.7 M20 4v6h-6</StreamGeometry>
+  <StreamGeometry x:Key="IconSettings">M12 9a3 3 0 1 0 0 6a3 3 0 1 0 0-6z M12 2v3 M12 19v3 M2 12h3 M19 12h3 M4.9 4.9l2.1 2.1 M17 17l2.1 2.1 M4.9 19.1L7 17 M17 7l2.1-2.1</StreamGeometry>
+  <StreamGeometry x:Key="IconAttach">M21 11l-8.5 8.5a5 5 0 0 1-7-7L14 4a3.5 3.5 0 0 1 5 5l-8.5 8.5a2 2 0 0 1-3-3L15 7</StreamGeometry>
+  <StreamGeometry x:Key="IconInbox">M3 13h5l2 3h4l2-3h5 M5 5h14l2 8v6H3v-6z</StreamGeometry>
+  <StreamGeometry x:Key="IconSent">M22 2L11 13 M22 2l-7 20-4-9-9-4z</StreamGeometry>
+  <StreamGeometry x:Key="IconDraft">M6 2h9l5 5v15H6z M14 2v6h6</StreamGeometry>
+  <StreamGeometry x:Key="IconJunk">M12 2l8 4v6c0 5-3.5 8.5-8 10c-4.5-1.5-8-5-8-10V6z M12 8v5 M12 16v0.5</StreamGeometry>
+  <StreamGeometry x:Key="IconFolder">M3 6h6l2 2h10v11H3z</StreamGeometry>
+  <StreamGeometry x:Key="IconClock">M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18z M12 7v5l3 2</StreamGeometry>
+  <StreamGeometry x:Key="IconPlus">M12 5v14 M5 12h14</StreamGeometry>
+  <StreamGeometry x:Key="IconMove">M3 6h6l2 2h10v11H3z M10 13h6 M13 10l3 3-3 3</StreamGeometry>
+  <StreamGeometry x:Key="IconImage">M3 4h18v16H3z M3 16l5-5 4 4 3-3 6 6 M15.5 8.5a1 1 0 1 0 0.01 0</StreamGeometry>
+  <StreamGeometry x:Key="IconWarning">M12 3L2 20h20z M12 10v4 M12 17v0.5</StreamGeometry>
+  <StreamGeometry x:Key="IconLock">M6 11h12v10H6z M8 11V7a4 4 0 0 1 8 0v4</StreamGeometry>
+  <StreamGeometry x:Key="IconAll">M4 6h16 M4 12h16 M4 18h16</StreamGeometry>
+</ResourceDictionary>
