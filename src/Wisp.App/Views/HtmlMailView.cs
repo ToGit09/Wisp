@@ -87,7 +87,11 @@ public sealed class HtmlMailView : Grid
         SetRow(_scroll, 1);
         Children.Add(_scroll);
 
+        // The percentage itself resets to 100 % (a separate "100 %" button next to it read like a second display).
         _zoomText = new TextBlock { VerticalAlignment = VerticalAlignment.Center, MinWidth = 44, TextAlignment = TextAlignment.Center };
+        var reset = new Button { Content = _zoomText, Classes = { "icon" }, Padding = new Thickness(4, 4) };
+        ToolTip.SetTip(reset, "Originalgröße (Strg+0)");
+        reset.Click += (_, _) => SetZoom(1.0);
         var zoomBar = new Border
         {
             Classes = { "card" },
@@ -101,9 +105,8 @@ public sealed class HtmlMailView : Grid
                 Children =
                 {
                     ZoomButton("−", "Verkleinern (Strg+Minus)", () => SetZoom(_zoom - Step)),
-                    _zoomText,
+                    reset,
                     ZoomButton("+", "Vergrößern (Strg+Plus)", () => SetZoom(_zoom + Step)),
-                    ZoomButton("100 %", "Originalgröße (Strg+0)", () => SetZoom(1.0)),
                 },
             },
         };

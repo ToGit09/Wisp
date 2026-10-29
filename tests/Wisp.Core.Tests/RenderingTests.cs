@@ -61,6 +61,72 @@ public class RenderingTests
         Assert.Equal(expected, CssColors.Normalize(css));
     }
 
+    [Theory]
+    [InlineData("(max-width: 499px)", false)]
+    [InlineData("only screen and (max-width: 500px)", false)]
+    [InlineData("(min-width: 501px)", true)]
+    [InlineData("screen", true)]
+    [InlineData("print", false)]
+    [InlineData("yahoo", false)]
+    [InlineData("screen and (-webkit-min-device-pixel-ratio: 0) and (max-width: 499px)", false)]
+    [InlineData("(prefers-color-scheme: dark)", false)]
+    [InlineData("print, (min-width: 600px)", true)]
+    [InlineData("not print", true)]
+    public void Media_queries_are_evaluated_for_a_desktop_reader(string query, bool matches)
+    {
+        Assert.Equal(matches, CssMedia.Matches(query, CssMedia.DesktopWidth));
+    }
+
+    [Fact]
+    public void Phone_rules_are_dropped_and_desktop_rules_kept()
+    {
+        var css = CssMedia.Resolve("""
+            p { color: red }
+            @media (max-width: 499px) { .content { width: 100% !important } }
+            @media (min-width: 501px) { .button a { padding: 13px 40px } }
+            @media screen { @font-face { font-family: X; src: url(x.woff) } }
+            """);
+
+        Assert.DoesNotContain("100%", css);
+        Assert.Contains(".button a { padding: 13px 40px }", css);
+        Assert.Contains("p { color: red }", css);
+        Assert.DoesNotContain("@", css);
+    }
+
+    [Fact]
+    public void Attributes_without_value_get_an_empty_one()
+    {
+        // The renderer reads <img alt width="128"> as alt="width" and the image loses its size.
+        var html = HtmlSanitizer.Sanitize("<img src=\"cid:a\" alt width=\"128\">").Html;
+
+        Assert.Contains("alt=\"\" width=\"128\"", html);
+    }
+
+    [Fact]
+    public void Centred_fixed_width_table_is_wrapped_in_spacer_columns()
+    {
+        var html = HtmlSanitizer.Sanitize("""
+            <table width="100%"><tr><td align="center"><table width="500" class="content"><tr><td>x</td></tr></table></td></tr></table>
+            """).Html;
+
+        Assert.Matches("<td></td><td width=\"500\"><table width=\"500\" class=\"content\">.*</table></td><td></td>", html);
+    }
+
+    [Fact]
+    public void Percentage_heights_are_dropped_and_bottom_alignment_moves_to_the_outer_cell()
+    {
+        var html = HtmlSanitizer.Sanitize("""
+            <table height="240" style="height: 240px"><tr><td class="bg">
+              <table height="100%"><tr><td height="100%" style="vertical-align: bottom" valign="bottom">x</td></tr></table>
+            </td></tr></table>
+            """).Html;
+
+        Assert.DoesNotContain("100%", html);
+        var cell = System.Text.RegularExpressions.Regex.Match(html, "<td class=\"bg\"[^>]*>").Value;
+        Assert.Contains("height=\"240\"", cell);
+        Assert.Contains("valign=\"bottom\"", cell);
+    }
+
     [Fact]
     public void Sanitizer_keeps_semi_transparent_text_visible()
     {

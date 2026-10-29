@@ -46,6 +46,8 @@ public static partial class HtmlSanitizer
 
             foreach (var attribute in node.Attributes.ToList())
             {
+                // The renderer reads `<img alt width="128">` as alt="width" and loses the width; write alt="" instead.
+                if (attribute.QuoteType == AttributeValueQuote.WithoutValue) attribute.QuoteType = AttributeValueQuote.DoubleQuote;
                 var name = attribute.Name;
                 var value = HtmlEntity.DeEntitize(attribute.Value ?? "").Trim();
                 if (name.StartsWith("on", StringComparison.OrdinalIgnoreCase) || name is "srcdoc" or "http-equiv" or "ping")
@@ -85,8 +87,10 @@ public static partial class HtmlSanitizer
         foreach (var style in doc.DocumentNode.Descendants("style").ToList())
         {
             if (RemoteUrl().IsMatch(style.InnerText)) remoteImages = true;
-            style.InnerHtml = CleanCss(style.InnerText);
+            style.InnerHtml = CssMedia.Resolve(CleanCss(style.InnerText));
         }
+
+        LayoutFixes.Apply(doc);
 
         var body = doc.DocumentNode.SelectSingleNode("//body");
         var styles = string.Concat(doc.DocumentNode.Descendants("style").Select(s => s.OuterHtml));
