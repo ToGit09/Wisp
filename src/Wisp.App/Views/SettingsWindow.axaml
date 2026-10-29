@@ -495,7 +495,7 @@
             </StackPanel>
           </StackPanel>
           <TextBlock Classes="pagehint" Margin="0,12,0,8"
-                     Text="Ein leichter, sicherer Mail-Client. Keine Werbung, keine Telemetrie, keine Verbindung zu irgendwem außer Ihrem Mail-Anbieter." />
+                     Text="Ein leichter, sicherer Mail-Client. Keine Werbung, keine Telemetrie, keine Verbindung zu irgendwem außer Ihrem Mail-Anbieter – und, wenn eingeschaltet, GitHub für die Update-Suche." />
           <Border Classes="group">
             <Grid Classes="row" ColumnDefinitions="*,Auto">
               <StackPanel>
@@ -504,6 +504,27 @@
               </StackPanel>
               <Button Grid.Column="1" Content="Ordner öffnen" Command="{Binding OpenDataFolderCommand}" VerticalAlignment="Center" />
             </Grid>
+          </Border>
+
+          <TextBlock Classes="grouptitle" Text="UPDATES" />
+          <Border Classes="group">
+            <StackPanel>
+              <Grid Classes="row" ColumnDefinitions="*,Auto">
+                <StackPanel>
+                  <TextBlock Classes="label" Text="Automatisch nach Updates suchen" />
+                  <TextBlock Classes="hint" Text="Beim Start fragt Wisp bei GitHub nach einer neuen Version, lädt sie im Hintergrund und installiert sie beim nächsten Start. GitHub sieht dabei nur Ihre IP-Adresse, keine Daten aus Wisp." />
+                </StackPanel>
+                <ToggleSwitch Grid.Column="1" IsChecked="{Binding CheckForUpdates}" />
+              </Grid>
+              <Border Classes="divider" />
+              <Grid Classes="row" ColumnDefinitions="*,Auto">
+                <TextBlock Classes="muted" Text="{Binding UpdateStatus}" TextWrapping="Wrap" VerticalAlignment="Center" />
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" IsVisible="{Binding CanUpdate}">
+                  <Button Content="Jetzt suchen" Command="{Binding SearchUpdatesCommand}" />
+                  <Button Classes="primary" Content="Neu starten und installieren" Command="{Binding RestartForUpdateCommand}" IsVisible="{Binding UpdateReady}" />
+                </StackPanel>
+              </Grid>
+            </StackPanel>
           </Border>
         </StackPanel>
       </Panel>

@@ -82,6 +82,7 @@ public partial class App : Application
             main.Closed += (_, _) => desktop.Shutdown();
             desktop.MainWindow = main;
             main.Show();
+            if (settings.Privacy.CheckForUpdates) _ = Updater.CheckInBackgroundAsync();
         }
         catch (Exception ex)
         {

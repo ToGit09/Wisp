@@ -50,3 +50,31 @@ mit einem Code-Signing-Zertifikat signiert werden.
 | `src/Wisp.App` | Oberfläche (Avalonia) |
 | `tests/Wisp.Core.Tests` | Tests, vor allem für die Sicherheits- und Löschregeln |
 | `docs/` | [Architektur](docs/ARCHITEKTUR.md) · [Sync & Offline](docs/SYNC.md) · [Sicherheit](docs/SICHERHEIT.md) · [Anbieter](docs/ANBIETER.md) |
+
+## Release veröffentlichen
+
+1. Version in `Directory.Build.props` und `CHANGELOG.md` eintragen, committen, nach `main` bringen.
+2. Tag setzen und pushen:
+   ```bash
+   git tag v1.0.0
+   git push origin v1.0.0
+   ```
+3. Der Workflow [`.github/workflows/release.yml`](.github/workflows/release.yml) testet, baut und packt Wisp mit
+   [Velopack](https://velopack.io) und legt einen **Entwurf** unter *Releases* an:
+   - `Wisp-<Version>-Windows-Setup.exe`: Installation ohne Admin-Rechte, mit Startmenü- und Desktop-Verknüpfung
+   - `Wisp-<Version>-Windows-Portable.zip`: zum Entpacken, aktualisiert sich ebenfalls selbst
+   - `Wisp-<Version>-Linux.AppImage`: eine Datei, ausführbar machen und starten
+   - `*.nupkg`, `releases.*.json`, `RELEASES*`: das Update-Feed. **Nicht löschen**, sonst finden installierte
+     Wisp-Versionen das Update nicht.
+
+   Den Entwurf prüfen und auf *Publish release* klicken. Erst dann sehen installierte Wisp-Versionen das Update
+   und laden es im Hintergrund. Installiert wird es beim nächsten Start.
+
+Die Paket-ID ist bewusst `WispMail`, nicht `Wisp`: Velopack installiert nach `%LocalAppData%\WispMail` und löscht
+diesen Ordner beim Deinstallieren. Wisps Mails und Tresor liegen in `%LocalAppData%\Wisp` und bleiben so erhalten.
+**Die Paket-ID nie ändern**, sonst bekommen bestehende Installationen keine Updates mehr.
+
+## Lizenz
+
+Wisp ist freie Software unter der [GNU General Public License v3.0](LICENSE).
+Verwendete Bibliotheken und ihre Lizenzen: [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
