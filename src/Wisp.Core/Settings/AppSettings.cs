@@ -28,6 +28,8 @@ public sealed class AppearanceSettings
     public bool ContextMenu { get; set; } = true;
     /// <summary>Zoom of HTML mails (0.9 = 90 %). Mails wider than the reader are shrunk to fit on top of this.</summary>
     public double HtmlZoom { get; set; } = 0.9;
+    /// <summary>Account whose folders the sidebar shows (only its id). Null or unknown: the first account.</summary>
+    public long? ActiveAccountId { get; set; }
 }
 
 public sealed class PrivacySettings

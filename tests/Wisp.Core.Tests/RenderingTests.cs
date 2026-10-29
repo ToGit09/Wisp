@@ -45,6 +45,31 @@ public class RenderingTests
     }
 
     [Theory]
+    [InlineData("color: rgba(0,0,0,0.87)", "color: rgba(0, 0, 0, 222)")]
+    [InlineData("color:rgba(0, 0, 0, 0.54);", "color:rgba(0, 0, 0, 138);")]
+    [InlineData("color: rgba(255,0,0,1)", "color: #ff0000")]
+    [InlineData("color: rgb(10 20 30 / 50%)", "color: rgba(10, 20, 30, 128)")]
+    [InlineData("color: rgb(100%, 0%, 0%)", "color: #ff0000")]
+    [InlineData("color: hsl(120, 100%, 25%)", "color: #008000")]
+    [InlineData("color: #00000080", "color: rgba(0, 0, 0, 128)")]
+    [InlineData("color: #f00f", "color: #ff0000")]
+    [InlineData("color: #1a73e8", "color: #1a73e8")]
+    [InlineData("#abcd { color: red }", "#abcd { color: red }")]
+    [InlineData("color: rgba(var(--x), 0.5)", "color: rgba(var(--x), 0.5)")]
+    public void Css_colors_are_rewritten_for_the_renderer(string css, string expected)
+    {
+        Assert.Equal(expected, CssColors.Normalize(css));
+    }
+
+    [Fact]
+    public void Sanitizer_keeps_semi_transparent_text_visible()
+    {
+        var result = HtmlSanitizer.Sanitize("<div style=\"color: rgba(0,0,0,0.87)\">Neue Anmeldung</div>");
+
+        Assert.Contains("rgba(0, 0, 0, 222)", result.Html);
+    }
+
+    [Theory]
     [InlineData("www.meine-bank.de", "https://meine-bank.de.evil.example/login", true)]
     [InlineData("https://www.paypal.com", "https://paypal.com.secure-login.example", true)]
     [InlineData("paypal.com", "https://www.paypal.com/signin", false)]

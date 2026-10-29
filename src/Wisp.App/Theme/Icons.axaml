@@ -24,4 +24,6 @@
   <StreamGeometry x:Key="IconWarning">M12 3L2 20h20z M12 10v4 M12 17v0.5</StreamGeometry>
   <StreamGeometry x:Key="IconLock">M6 11h12v10H6z M8 11V7a4 4 0 0 1 8 0v4</StreamGeometry>
   <StreamGeometry x:Key="IconAll">M4 6h16 M4 12h16 M4 18h16</StreamGeometry>
+  <StreamGeometry x:Key="IconSwitch">M8 9l4-4 4 4 M8 15l4 4 4-4</StreamGeometry>
+  <StreamGeometry x:Key="IconCheck">M5 12l5 5 9-11</StreamGeometry>
 </ResourceDictionary>

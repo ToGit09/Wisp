@@ -6,7 +6,7 @@ using Wisp.Core.Storage;
 
 namespace Wisp.App.ViewModels;
 
-public enum SidebarKind { Account, Folder, Outbox }
+public enum SidebarKind { Folder, Outbox }
 
 public sealed partial class SidebarItem : ObservableObject
 {
@@ -19,11 +19,7 @@ public sealed partial class SidebarItem : ObservableObject
     [ObservableProperty] public partial string Name { get; set; } = "";
     [ObservableProperty] public partial int Unread { get; set; }
     [ObservableProperty] public partial string? Status { get; set; }
-    /// <summary>Second line, e.g. the account of a pinned inbox when there are several accounts.</summary>
-    public string? Subtitle { get; init; }
 
-    public bool IsHeader => Kind == SidebarKind.Account;
-    public bool IsSelectable => !IsHeader;
     public bool HasUnread => Unread > 0;
     // Capped so that sub-folder icons still fit into the collapsed strip.
     public double IndentWidth => Math.Min(Depth, 2) * 10;
@@ -77,6 +73,29 @@ public sealed partial class SidebarItem : ObservableObject
 
     internal static Geometry? Find(string key) =>
         Application.Current?.TryGetResource(key, null, out var value) == true ? value as Geometry : null;
+}
+
+/// <summary>An entry in the account switcher at the top of the sidebar.</summary>
+public sealed partial class AccountItem : ObservableObject
+{
+    public required long AccountId { get; init; }
+    public required string Email { get; init; }
+
+    /// <summary>Unread mails in this account's inbox.</summary>
+    [ObservableProperty] public partial int Unread { get; set; }
+    [ObservableProperty] public partial bool HasProblem { get; set; }
+    [ObservableProperty] public partial bool IsActive { get; set; }
+
+    public bool HasUnread => Unread > 0;
+    partial void OnUnreadChanged(int value) => OnPropertyChanged(nameof(HasUnread));
+
+    /// <summary>"anna@example.org" → "A".</summary>
+    public string Initial => Email.FirstOrDefault(char.IsLetterOrDigit) is var c and not '\0'
+        ? char.ToUpperInvariant(c).ToString()
+        : "@";
+
+    // Each account keeps its colour, so the active one is recognised at a glance, also in the collapsed sidebar.
+    public IBrush BadgeBackground => new SolidColorBrush(BadgeColors.For(Email));
 }
 
 /// <summary>A stable colour per name (folder initials, sender avatars).</summary>

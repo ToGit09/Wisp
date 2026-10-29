@@ -114,7 +114,7 @@ public static partial class HtmlSanitizer
     {
         css = CssImport().Replace(css, "");
         css = CssDangerous().Replace(css, "");
-        return css;
+        return CssColors.Normalize(css);
     }
 
     [GeneratedRegex(@"url\s*\(\s*['""]?\s*(https?:)?//", RegexOptions.IgnoreCase)]

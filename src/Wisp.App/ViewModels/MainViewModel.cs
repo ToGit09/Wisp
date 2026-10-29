@@ -41,10 +41,16 @@ public sealed partial class MainViewModel : ObservableObject
         _mail.Changed += OnChanged;
         ReloadSidebar();
         UpdateStatus();
-        SelectedSidebarItem = Pinned.FirstOrDefault() ?? Sidebar.FirstOrDefault(s => s.IsSelectable);
+        SelectedSidebarItem = Pinned.FirstOrDefault() ?? Sidebar.FirstOrDefault();
     }
 
-    /// <summary>Inboxes, pinned above the scrolling folder list.</summary>
+    /// <summary>All accounts, for the switcher. The sidebar shows the folders of the active one only.</summary>
+    public ObservableCollection<AccountItem> Accounts { get; } = [];
+    [ObservableProperty] public partial AccountItem? ActiveAccount { get; set; }
+    /// <summary>Another account has unread mail in its inbox: a dot on the switcher, so it is not missed.</summary>
+    [ObservableProperty] public partial bool OtherAccountsUnread { get; set; }
+
+    /// <summary>Inbox of the active account, pinned above the scrolling folder list.</summary>
     public ObservableCollection<SidebarItem> Pinned { get; } = [];
     public ObservableCollection<SidebarItem> Sidebar { get; } = [];
     IEnumerable<SidebarItem> AllSidebar => Pinned.Concat(Sidebar);
@@ -102,8 +108,14 @@ public sealed partial class MainViewModel : ObservableObject
     public bool ShowHtmlBanner => CurrentMail is { HasHtml: true } && !ShowHtmlForCurrent;
     public bool CanArchive => SelectedSidebarItem is { } s && _mail.ArchiveFolder(s.AccountId) is { } a && a.Id != s.FolderId;
 
+    /// <summary>"An: … · Cc: …" in one line of the reader header.</summary>
+    public string Recipients => CurrentMail is not { } mail ? ""
+        : mail.Cc is { Length: > 0 } cc ? $"An: {mail.To}  ·  Cc: {cc}"
+        : $"An: {mail.To}";
+
     partial void OnCurrentMailChanged(RenderedMail? value)
     {
+        OnPropertyChanged(nameof(Recipients));
         OnPropertyChanged(nameof(ShowRemoteImageBanner));
         OnPropertyChanged(nameof(ShowHtmlBanner));
     }
@@ -117,12 +129,6 @@ public sealed partial class MainViewModel : ObservableObject
     partial void OnSelectedSidebarItemChanged(SidebarItem? value)
     {
         if (value is null) return;
-        if (value.IsHeader)
-        {
-            // Account headers are labels, not folders.
-            SelectedSidebarItem = Sidebar.SkipWhile(s => s != value).Skip(1).FirstOrDefault(s => s.IsSelectable);
-            return;
-        }
         IsOutboxSelected = value.Kind == SidebarKind.Outbox;
         FolderTitle = value.Name;
         SearchText = "";
@@ -178,28 +184,35 @@ public sealed partial class MainViewModel : ObservableObject
         OnPropertyChanged(nameof(ShowQuickActions));
         OnPropertyChanged(nameof(ShowContextMenu));
         if (SelectedSidebarItem is null || !AllSidebar.Contains(SelectedSidebarItem))
-            SelectedSidebarItem = AllSidebar.FirstOrDefault(s => s.IsSelectable);
+            SelectedSidebarItem = AllSidebar.FirstOrDefault();
     }
 
     void ReloadSidebar()
     {
         var items = new List<SidebarItem>();
         var pinned = new List<SidebarItem>();
+        var switcher = new List<AccountItem>();
         var accounts = _mail.GetAccounts();
+        var active = accounts.FirstOrDefault(a => a.Id == _mail.Settings.Appearance.ActiveAccountId) ?? accounts.FirstOrDefault();
         var inboxUnread = 0;
         foreach (var account in accounts)
         {
             var status = _mail.GetStatus(account.Id);
-            items.Add(new SidebarItem
+            var folders = _mail.GetFolders(account.Id);
+            var unread = folders.FirstOrDefault(f => f.Role == FolderRole.Inbox)?.Unread ?? 0;
+            inboxUnread += unread;
+            switcher.Add(new AccountItem
             {
-                Kind = SidebarKind.Account, AccountId = account.Id,
-                Name = account.Config.Email,
-                Status = status.State is ConnectionState.AuthFailed or ConnectionState.Error ? "!" : null,
+                AccountId = account.Id, Email = account.Config.Email, Unread = unread,
+                HasProblem = status.State is ConnectionState.AuthFailed or ConnectionState.Error,
+                IsActive = account.Id == active?.Id,
             });
+            if (account.Id != active?.Id) continue;
+
             // Special folders appear once per account; any further folder keeps its own, unambiguous name.
             var roles = new HashSet<FolderRole>();
             var names = new Dictionary<string, int>(StringComparer.CurrentCultureIgnoreCase);
-            foreach (var folder in _mail.GetFolders(account.Id))
+            foreach (var folder in folders)
             {
                 var role = folder.Role != FolderRole.None && roles.Add(folder.Role) ? folder.Role : FolderRole.None;
                 var name = SidebarItem.DisplayName(role, folder.Name);
@@ -212,13 +225,8 @@ public sealed partial class MainViewModel : ObservableObject
                     Name = name,
                     Unread = role is FolderRole.Sent or FolderRole.Trash or FolderRole.Drafts or FolderRole.All ? 0 : folder.Unread,
                     Status = folder.MassDeleteWarning ? "!" : null,
-                    Subtitle = role == FolderRole.Inbox && accounts.Count > 1 ? account.Config.Email : null,
                 };
-                if (role == FolderRole.Inbox)
-                {
-                    pinned.Add(item);
-                    inboxUnread += item.Unread;
-                }
+                if (role == FolderRole.Inbox) pinned.Add(item);
                 else items.Add(item);
             }
         }
@@ -226,13 +234,14 @@ public sealed partial class MainViewModel : ObservableObject
         if (outbox.Count > 0)
             items.Add(new SidebarItem { Kind = SidebarKind.Outbox, Name = "Postausgang", Unread = outbox.Count });
 
+        SyncAccounts(switcher);
         var keep = SelectedSidebarItem;
         SyncInto(Pinned, pinned);
         SyncInto(Sidebar, items);
         if (keep is not null && !AllSidebar.Contains(keep))
         {
             var replacement = AllSidebar.FirstOrDefault(s => SameEntry(s, keep));
-            SelectedSidebarItem = replacement ?? AllSidebar.FirstOrDefault(s => s.IsSelectable);
+            SelectedSidebarItem = replacement ?? AllSidebar.FirstOrDefault();
         }
 
         WindowTitle = _mail.Settings.Appearance.UnreadInTitle && inboxUnread > 0 ? $"Wisp ({inboxUnread})" : "Wisp";
@@ -243,6 +252,26 @@ public sealed partial class MainViewModel : ObservableObject
                 ? "Auf dem Server fehlen plötzlich sehr viele Mails dieses Ordners. Zur Sicherheit hat Wisp lokal nichts entfernt."
                 : null;
         }
+    }
+
+    /// <summary>Updates the switcher in place, so an open account list does not flicker on every refresh.</summary>
+    void SyncAccounts(List<AccountItem> items)
+    {
+        for (var i = 0; i < items.Count; i++)
+        {
+            var fresh = items[i];
+            if (i < Accounts.Count && Accounts[i].AccountId == fresh.AccountId)
+            {
+                Accounts[i].Unread = fresh.Unread;
+                Accounts[i].HasProblem = fresh.HasProblem;
+                Accounts[i].IsActive = fresh.IsActive;
+            }
+            else if (i < Accounts.Count) Accounts[i] = fresh;
+            else Accounts.Add(fresh);
+        }
+        while (Accounts.Count > items.Count) Accounts.RemoveAt(Accounts.Count - 1);
+        ActiveAccount = Accounts.FirstOrDefault(a => a.IsActive);
+        OtherAccountsUnread = Accounts.Any(a => !a.IsActive && a.HasUnread);
     }
 
     static bool SameEntry(SidebarItem a, SidebarItem b) =>
@@ -419,9 +448,23 @@ public sealed partial class MainViewModel : ObservableObject
 
     // ───────────────────────── Selection & reading ─────────────────────────
 
+    /// <summary>
+    /// Started by double-clicking a mail: from then on a click adds or removes mails, so several can be
+    /// deleted or moved at once without Strg/Umschalt. Ends with "Fertig", Esc, or when nothing is selected.
+    /// </summary>
+    [ObservableProperty] public partial bool IsSelectionMode { get; set; }
+    [ObservableProperty] public partial int SelectionCount { get; set; }
+    public string SelectionText => SelectionCount == 1 ? "1 Mail ausgewählt" : $"{SelectionCount} Mails ausgewählt";
+    partial void OnSelectionCountChanged(int value) => OnPropertyChanged(nameof(SelectionText));
+
+    [RelayCommand]
+    void EndSelection() => IsSelectionMode = false;
+
     public async void SetSelection(IReadOnlyList<long> ids)
     {
         _selection = ids;
+        SelectionCount = ids.Count;
+        if (ids.Count == 0) IsSelectionMode = false;
         HasSelection = ids.Count > 0;
         if (ids.Count != 1)
         {
@@ -492,8 +535,24 @@ public sealed partial class MainViewModel : ObservableObject
     [RelayCommand]
     void Compose()
     {
-        var account = SelectedSidebarItem?.AccountId ?? _mail.GetAccounts().FirstOrDefault()?.Id;
+        var account = ActiveAccount?.AccountId ?? _mail.GetAccounts().FirstOrDefault()?.Id;
         if (account is long id) _dialogs.OpenCompose(new Draft { AccountId = id });
+    }
+
+    /// <summary>Shows another account's folders in the sidebar and opens its inbox.</summary>
+    [RelayCommand]
+    void SwitchAccount(AccountItem? account)
+    {
+        if (account is null || account.AccountId == ActiveAccount?.AccountId) return;
+        ActivateAccount(account.AccountId);
+        ReloadSidebar();
+        SelectedSidebarItem = Pinned.FirstOrDefault() ?? Sidebar.FirstOrDefault();
+    }
+
+    void ActivateAccount(long accountId)
+    {
+        _mail.Settings.Appearance.ActiveAccountId = accountId;
+        try { _mail.SaveSettings(); } catch (IOException) { }
     }
 
     [RelayCommand]
@@ -704,7 +763,10 @@ public sealed partial class MainViewModel : ObservableObject
     [RelayCommand]
     async Task AddAccount()
     {
+        var known = _mail.GetAccounts().Select(a => a.Id).ToHashSet();
         await _dialogs.OpenAccountSetupAsync();
+        // A freshly added account is what the user wants to see next.
+        if (_mail.GetAccounts().FirstOrDefault(a => !known.Contains(a.Id)) is { } added) ActivateAccount(added.Id);
         ReloadAll();
     }
 
