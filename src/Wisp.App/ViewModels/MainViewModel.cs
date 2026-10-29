@@ -484,14 +484,21 @@ public sealed partial class MainViewModel : ObservableObject
     }
 
     [RelayCommand]
-    void Reply() => StartReply(all: false);
+    Task Reply() => StartReplyAsync(all: false);
 
     [RelayCommand]
-    void ReplyAll() => StartReply(all: true);
+    Task ReplyAll() => StartReplyAsync(all: true);
 
-    void StartReply(bool all)
+    async Task StartReplyAsync(bool all)
     {
-        if (CurrentMail is not { } mail || CurrentMessageId is not long id || _mail.GetMessage(id) is not { } item) return;
+        if (CurrentMessageId is not long id || _mail.GetMessage(id) is not { } item) return;
+        // The quick-action button can be pressed while the mail is still loading: wait for it instead of doing nothing.
+        var mail = CurrentMail ?? (await _mail.OpenAsync(id, showHtml: false, allowRemoteImages: false, CancellationToken.None)).Mail;
+        if (mail is null)
+        {
+            ShowNotice("Die Mail ist noch nicht geladen. Bitte gleich noch einmal versuchen.");
+            return;
+        }
         var own = _mail.GetAccounts().First(a => a.Id == item.AccountId).Config.Email;
         _dialogs.OpenCompose(Composer.Reply(mail, item.AccountId, own, all, id, quote: _mail.Settings.Compose.QuoteOnReply));
     }

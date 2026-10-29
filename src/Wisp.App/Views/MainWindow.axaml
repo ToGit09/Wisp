@@ -58,6 +58,13 @@
         </Transitions>
       </Setter>
     </Style>
+    <!-- Tooltips in the sidebar open to the right. Near the bottom of the screen they would otherwise
+         flip upwards, land under the mouse, make the sidebar think the mouse left, collapse it, close
+         again – an endless open/close loop (the "jitter" on the settings button). -->
+    <Style Selector="Border#Sidebar :is(Control)">
+      <Setter Property="ToolTip.Placement" Value="Right" />
+      <Setter Property="ToolTip.HorizontalOffset" Value="12" />
+    </Style>
     <Style Selector="Border#Sidebar:pointerover, Border#Sidebar.open">
       <Setter Property="Width" Value="240" />
     </Style>
@@ -118,14 +125,14 @@
                     </Transitions>
                   </Border.Transitions>
                   <StackPanel Orientation="Horizontal" Spacing="4" Margin="8,0,0,0" HorizontalAlignment="Right" Width="122">
-                    <Button Classes="tile" ToolTip.Tip="{Binding FlagActionText}"
-                            Command="{Binding $parent[ListBox].((vm:MainViewModel)DataContext).ToggleFlagCommand}">
-                      <Border Background="#E39B1B">
-                        <t:WispIcon Data="{StaticResource IconStar}" Width="18" Height="18" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    <Button Classes="tile" ToolTip.Tip="Antworten (Strg+R)"
+                            Command="{Binding $parent[ListBox].((vm:MainViewModel)DataContext).ReplyCommand}">
+                      <Border Background="{DynamicResource WispAccent}">
+                        <t:WispIcon Data="{StaticResource IconReply}" Width="18" Height="18" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
                       </Border>
                     </Button>
                     <Button Classes="tile" ToolTip.Tip="Verschieben">
-                      <Border Background="{DynamicResource WispAccent}">
+                      <Border Background="#6A6F7C">
                         <t:WispIcon Data="{StaticResource IconMove}" Width="18" Height="18" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
                       </Border>
                       <Button.Flyout>

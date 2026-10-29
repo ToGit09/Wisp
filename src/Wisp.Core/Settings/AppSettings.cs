@@ -22,7 +22,7 @@ public sealed class AppearanceSettings
     public bool AutoCollapseSidebar { get; set; } = true;
     /// <summary>"Wisp (3)" in the window title / taskbar.</summary>
     public bool UnreadInTitle { get; set; } = true;
-    /// <summary>Like Apple Mail: the selected mail row shrinks and offers buttons to flag, move and delete it.</summary>
+    /// <summary>Like Apple Mail: the selected mail row shrinks and offers buttons to reply, move and delete.</summary>
     public bool QuickActions { get; set; } = true;
     /// <summary>Right-click menu on mails in the list and in the reader.</summary>
     public bool ContextMenu { get; set; } = true;
