@@ -52,11 +52,13 @@ public partial class MainWindow : Window, IDialogs
 
         MessageList.ContextRequested += OnMessageContextRequested;
 
-        // Two lists (pinned inboxes + folders) act as one selection.
+        // Two lists (pinned inbox + folders) act as one selection.
         PinnedList.SelectionChanged += (_, _) => OnSidebarListSelected(PinnedList, FolderList);
         FolderList.SelectionChanged += (_, _) => OnSidebarListSelected(FolderList, PinnedList);
         ShowSidebarSelection();
         ApplySidebarMode();
+        // Choosing an account (or "Konto hinzufügen") closes the account list.
+        AccountMenu.AddHandler(Button.ClickEvent, (_, _) => AccountSwitcher.Flyout?.Hide());
 
         Opened += async (_, _) =>
         {
@@ -409,7 +411,7 @@ public partial class MainWindow : Window, IDialogs
         if (url.StartsWith("mailto:", StringComparison.OrdinalIgnoreCase))
         {
             var address = Uri.UnescapeDataString(url[7..].Split('?')[0]);
-            var account = _vm.SelectedSidebarItem?.AccountId ?? _mail.GetAccounts().FirstOrDefault()?.Id;
+            var account = _vm.ActiveAccount?.AccountId ?? _mail.GetAccounts().FirstOrDefault()?.Id;
             if (account is long id) OpenCompose(new Draft { AccountId = id, To = address });
             return;
         }

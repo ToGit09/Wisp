@@ -73,7 +73,7 @@ public sealed class HtmlMailView : Grid
         {
             Child = _paper,
             HorizontalAlignment = HorizontalAlignment.Center,
-            Margin = new Thickness(PaperMargin, PaperMargin, PaperMargin, PaperMargin * 2),
+            Margin = new Thickness(PaperMargin, PaperMargin / 2, PaperMargin, PaperMargin * 2),
         };
         _scroll = new ScrollViewer
         {
@@ -81,7 +81,10 @@ public sealed class HtmlMailView : Grid
             HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Auto,
             VerticalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Auto,
         };
-        _scroll.Bind(BackgroundProperty, _scroll.GetResourceObservable("WispSurface"));
+        this.Bind(BackgroundProperty, this.GetResourceObservable("WispSurface"));
+        // Zoom controls get their own strip above the mail: floating on top, they covered its text in narrow readers.
+        RowDefinitions = new RowDefinitions("Auto,*");
+        SetRow(_scroll, 1);
         Children.Add(_scroll);
 
         _zoomText = new TextBlock { VerticalAlignment = VerticalAlignment.Center, MinWidth = 44, TextAlignment = TextAlignment.Center };
@@ -89,10 +92,9 @@ public sealed class HtmlMailView : Grid
         {
             Classes = { "card" },
             Padding = new Thickness(4, 2),
-            Margin = new Thickness(0, 10, 22, 0),
+            Margin = new Thickness(0, 8, 22, 0),
             HorizontalAlignment = HorizontalAlignment.Right,
             VerticalAlignment = VerticalAlignment.Top,
-            Opacity = 0.92,
             Child = new StackPanel
             {
                 Orientation = Orientation.Horizontal,
