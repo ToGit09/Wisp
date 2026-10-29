@@ -448,9 +448,23 @@ public sealed partial class MainViewModel : ObservableObject
 
     // ───────────────────────── Selection & reading ─────────────────────────
 
+    /// <summary>
+    /// Started by double-clicking a mail: from then on a click adds or removes mails, so several can be
+    /// deleted or moved at once without Strg/Umschalt. Ends with "Fertig", Esc, or when nothing is selected.
+    /// </summary>
+    [ObservableProperty] public partial bool IsSelectionMode { get; set; }
+    [ObservableProperty] public partial int SelectionCount { get; set; }
+    public string SelectionText => SelectionCount == 1 ? "1 Mail ausgewählt" : $"{SelectionCount} Mails ausgewählt";
+    partial void OnSelectionCountChanged(int value) => OnPropertyChanged(nameof(SelectionText));
+
+    [RelayCommand]
+    void EndSelection() => IsSelectionMode = false;
+
     public async void SetSelection(IReadOnlyList<long> ids)
     {
         _selection = ids;
+        SelectionCount = ids.Count;
+        if (ids.Count == 0) IsSelectionMode = false;
         HasSelection = ids.Count > 0;
         if (ids.Count != 1)
         {

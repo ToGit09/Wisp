@@ -26,6 +26,10 @@
     <Style Selector="ListBox.messages.two > ListBoxItem:selected Border.quick">
       <Setter Property="Width" Value="88" />
     </Style>
+    <!-- Selection mode: the actions are in the bar above the list, not in every selected row. -->
+    <Style Selector="ListBox.messages.selecting > ListBoxItem:selected Border.quick">
+      <Setter Property="Width" Value="0" />
+    </Style>
     <!-- The colour sits on an inner Border, so Fluent's hover/pressed backgrounds do not replace it. -->
     <Style Selector="Button.tile">
       <Setter Property="Width" Value="38" />
@@ -106,11 +110,24 @@
               <Button Classes="link" Content="Ja, diese Mails wurden wirklich gelöscht" Command="{Binding ApproveMassDeleteCommand}" />
             </StackPanel>
           </Border>
+          <!-- Selection mode (double-click on a mail): clicks add or remove mails -->
+          <Border Classes="notice" IsVisible="{Binding IsSelectionMode}">
+            <DockPanel>
+              <Button DockPanel.Dock="Right" Classes="link" Content="Fertig" Margin="14,0,0,0" FontWeight="SemiBold"
+                      Command="{Binding EndSelectionCommand}" ToolTip.Tip="Auswahl beenden (Esc)" />
+              <Button DockPanel.Dock="Right" Classes="link" Content="Löschen" Margin="14,0,0,0"
+                      Command="{Binding DeleteCommand}" ToolTip.Tip="Ausgewählte Mails löschen (Entf)" />
+              <Button DockPanel.Dock="Right" Classes="link" Content="Gelesen" Margin="14,0,0,0"
+                      Command="{Binding ToggleReadCommand}" ToolTip.Tip="Gelesen / ungelesen (Strg+U)" />
+              <TextBlock Text="{Binding SelectionText}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                         ToolTip.Tip="Klicken Sie auf weitere Mails, um sie hinzuzufügen oder zu entfernen." />
+            </DockPanel>
+          </Border>
         </StackPanel>
 
         <Grid>
           <ListBox x:Name="MessageList" Classes="messages" ItemsSource="{Binding Messages}" SelectionMode="Multiple"
-                   Classes.two="{Binding QuickTwoButtons}"
+                   Classes.two="{Binding QuickTwoButtons}" Classes.selecting="{Binding IsSelectionMode}"
                    IsVisible="{Binding !IsOutboxSelected}">
             <ListBox.ItemTemplate>
               <DataTemplate x:DataType="vm:MessageItem">

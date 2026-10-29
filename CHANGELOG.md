@@ -5,6 +5,8 @@
 - Kontowechsel: Die Seitenleiste zeigt nur noch ein Konto; gewechselt wird über den Umschalter oben (Punkt bei neuen Mails in anderen Konten)
 - HTML-Mails: halbtransparente Textfarben (z. B. bei Google-Mails) verschwanden – jetzt sichtbar; außerdem hsl(), #RRGGBBAA und Prozentwerte
 - HTML-Mails: Die Zoom-Leiste überdeckt den Mailtext nicht mehr
+- Auswahlmodus: Doppelklick auf eine Mail, danach weitere Mails per Klick hinzufügen und gemeinsam löschen
+- Kompaktere Kopfzeile im Leser; Doppelklick markiert eine ganze E-Mail-Adresse
 
 ## 1.0.0 – erste Veröffentlichung
 

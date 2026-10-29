@@ -48,6 +48,14 @@ public partial class MainWindow : Window, IDialogs
         MessageList.KeyDown += (_, e) =>
         {
             if (e.Key == Key.Delete) _vm.DeleteCommand.Execute(null);
+            if (e.Key == Key.Escape && _vm.IsSelectionMode) _vm.IsSelectionMode = false;
+        };
+        // Double-click on a mail starts the selection mode (not on the quick-action buttons in the row).
+        MessageList.DoubleTapped += (_, e) =>
+        {
+            if (e.Source is not Visual source || source.FindAncestorOfType<Button>(includeSelf: true) is not null) return;
+            if (source.FindAncestorOfType<ListBoxItem>(includeSelf: true) is null) return;
+            _vm.IsSelectionMode = true;
         };
 
         MessageList.ContextRequested += OnMessageContextRequested;
@@ -85,7 +93,15 @@ public partial class MainWindow : Window, IDialogs
             case nameof(MainViewModel.CurrentMail): RenderBody(_vm.CurrentMail); break;
             case nameof(MainViewModel.SelectedSidebarItem): ShowSidebarSelection(); break;
             case nameof(MainViewModel.SidebarAlwaysOpen): ApplySidebarMode(); break;
+            case nameof(MainViewModel.IsSelectionMode): ApplySelectionMode(); break;
         }
+    }
+
+    /// <summary>In selection mode a click toggles a mail instead of replacing the selection; leaving it deselects all.</summary>
+    void ApplySelectionMode()
+    {
+        MessageList.SelectionMode = _vm.IsSelectionMode ? SelectionMode.Multiple | SelectionMode.Toggle : SelectionMode.Multiple;
+        if (!_vm.IsSelectionMode && MessageList.SelectedItems is { Count: > 0 } selected) selected.Clear();
     }
 
     // ───────────────────────── Right-click menu ─────────────────────────
