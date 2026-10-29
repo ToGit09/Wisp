@@ -1,6 +1,6 @@
 # Änderungen
 
-## 1.1.0 – in Arbeit
+## 1.0.1 – Fehlerbehebungen
 
 - Kontowechsel: Die Seitenleiste zeigt nur noch ein Konto; gewechselt wird über den Umschalter oben (Punkt bei neuen Mails in anderen Konten)
 - HTML-Mails: halbtransparente Textfarben (z. B. bei Google-Mails) verschwanden – jetzt sichtbar; außerdem hsl(), #RRGGBBAA und Prozentwerte
