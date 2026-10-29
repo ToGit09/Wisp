@@ -88,6 +88,14 @@ public sealed partial class MainViewModel : ObservableObject
     [ObservableProperty] public partial bool ImagesAllowedForCurrent { get; set; }
 
     public bool ShowQuickActions => _mail.Settings.Appearance.QuickActions;
+
+    // Quick actions depend on the folder: Spam → "Kein Spam"/Löschen, Entwürfe → Bearbeiten/Verwerfen.
+    FolderRole CurrentRole => SelectedSidebarItem?.Role ?? FolderRole.None;
+    public bool QuickJunk => CurrentRole == FolderRole.Junk;
+    public bool QuickDrafts => CurrentRole == FolderRole.Drafts;
+    public bool QuickTrash => CurrentRole == FolderRole.Trash;
+    public bool QuickDefault => !QuickJunk && !QuickDrafts && !QuickTrash;
+    public bool QuickTwoButtons => !QuickDefault;
     public bool ShowContextMenu => _mail.Settings.Appearance.ContextMenu;
 
     public bool ShowRemoteImageBanner => CurrentMail is { HasRemoteImages: true, RemoteImagesAllowed: false } && ShowHtmlForCurrent;
@@ -125,6 +133,11 @@ public sealed partial class MainViewModel : ObservableObject
         ReloadMoveTargets();
         ClearReader();
         OnPropertyChanged(nameof(CanArchive));
+        OnPropertyChanged(nameof(QuickJunk));
+        OnPropertyChanged(nameof(QuickDrafts));
+        OnPropertyChanged(nameof(QuickTrash));
+        OnPropertyChanged(nameof(QuickDefault));
+        OnPropertyChanged(nameof(QuickTwoButtons));
     }
 
     // ───────────────────────── Loading ─────────────────────────
@@ -501,6 +514,58 @@ public sealed partial class MainViewModel : ObservableObject
         }
         var own = _mail.GetAccounts().First(a => a.Id == item.AccountId).Config.Email;
         _dialogs.OpenCompose(Composer.Reply(mail, item.AccountId, own, all, id, quote: _mail.Settings.Compose.QuoteOnReply));
+    }
+
+    /// <summary>Spam folder: the mail is wanted after all → back to the inbox (with a way back).</summary>
+    [RelayCommand]
+    void NotSpam()
+    {
+        var ids = Targets.ToList();
+        if (ids.Count == 0 || SelectedSidebarItem is not { FolderId: long junk } current) return;
+        if (Pinned.FirstOrDefault(p => p.AccountId == current.AccountId)?.FolderId is not long inbox) return;
+        _mail.Move(ids, inbox);
+        ClearReader();
+        ReloadMessages();
+        ShowNotice(ids.Count == 1 ? "In den Posteingang verschoben." : $"{ids.Count} Mails in den Posteingang verschoben.", "Rückgängig", () =>
+        {
+            _mail.Move(ids, junk);
+            ReloadMessages();
+        }, TimeSpan.FromSeconds(10));
+    }
+
+    /// <summary>Trash: put mails back where they were deleted from (inbox if unknown).</summary>
+    [RelayCommand]
+    void Restore()
+    {
+        var ids = Targets.ToList();
+        if (ids.Count == 0) return;
+        var restored = _mail.Restore(ids);
+        if (restored == 0) return;
+        ClearReader();
+        ReloadMessages();
+        ShowNotice(restored == 1 ? "Mail wiederhergestellt." : $"{restored} Mails wiederhergestellt.");
+    }
+
+    /// <summary>Drafts folder: continue writing. The old draft goes to the trash once the mail is sent.</summary>
+    [RelayCommand]
+    async Task EditDraft()
+    {
+        if (CurrentMessageId is not long id || _mail.GetMessage(id) is not { } item) return;
+        var mail = CurrentMail ?? (await _mail.OpenAsync(id, showHtml: false, allowRemoteImages: false, CancellationToken.None)).Mail;
+        if (mail is null)
+        {
+            ShowNotice("Der Entwurf ist noch nicht geladen. Bitte gleich noch einmal versuchen.");
+            return;
+        }
+        _dialogs.OpenCompose(new Draft
+        {
+            AccountId = item.AccountId,
+            To = mail.To,
+            Cc = mail.Cc ?? "",
+            Subject = mail.Subject,
+            Body = mail.Reply.QuotableText,
+            ReplacesDraft = id,
+        });
     }
 
     [RelayCommand]

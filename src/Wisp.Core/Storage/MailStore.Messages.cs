@@ -213,6 +213,10 @@ public sealed partial class MailStore
             if (AccountOfFolder(msg.FolderId) != target.AccountId) continue; // cross-account moves are not supported
             touched.Add(msg.FolderId);
 
+            // Remember where a mail was deleted from, so "Wiederherstellen" can put it back there.
+            if (target.Role == FolderRole.Trash)
+                Exec("UPDATE messages SET origin_folder_id = $o WHERE id = $id", ("$o", msg.FolderId), ("$id", id));
+
             if (msg.SrcFolderId is long srcFolder)
             {
                 var op = PendingOpsFor(id).First(o => o.Kind == OpKind.Move);
@@ -245,6 +249,11 @@ public sealed partial class MailStore
         foreach (var f in touched) RecountFolder(f);
         return touched;
     });
+
+    /// <summary>The folder a message in the trash was deleted from, if known and still there.</summary>
+    public long? OriginFolderOf(long messageId) => Read(() =>
+        Scalar("SELECT m.origin_folder_id FROM messages m JOIN folders f ON f.id = m.origin_folder_id WHERE m.id = $id AND f.present = 1",
+            ("$id", messageId)) as long?);
 
     /// <summary>Permanent deletion (only offered inside Trash). The local row disappears once the server confirms.</summary>
     public IReadOnlySet<long> ExpungeLocally(IEnumerable<long> messageIds) => Tx(() =>

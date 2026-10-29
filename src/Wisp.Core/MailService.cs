@@ -202,6 +202,21 @@ public sealed class MailService : IAsyncDisposable
 
     public void DeletePermanently(IReadOnlyCollection<long> ids) => Apply(_store.ExpungeLocally(ids));
 
+    /// <summary>Moves mails out of the trash back to the folder they were deleted from (inbox if unknown). Returns how many.</summary>
+    public int Restore(IReadOnlyCollection<long> ids)
+    {
+        var count = 0;
+        foreach (var group in ids.Select(_store.GetMessage).OfType<MessageListItem>().GroupBy(m =>
+                     _store.OriginFolderOf(m.Id) ?? _store.FindFolderByRole(m.AccountId, FolderRole.Inbox)?.Id))
+        {
+            if (group.Key is not long target) continue;
+            var groupIds = group.Select(m => m.Id).ToList();
+            Move(groupIds, target);
+            count += groupIds.Count;
+        }
+        return count;
+    }
+
     public FolderRow? ArchiveFolder(long accountId) =>
         _store.FindFolderByRole(accountId, FolderRole.Archive) ?? _store.FindFolderByRole(accountId, FolderRole.All);
 
@@ -265,6 +280,9 @@ public sealed class MailService : IAsyncDisposable
             new OutboxSummary(string.Join(", ", message.To.Mailboxes.Select(m => m.Address)), message.Subject ?? "", message.MessageId!),
             delay > TimeSpan.Zero ? DateTimeOffset.UtcNow + delay : null);
         if (draft.RepliesTo is long replied) _store.SetFlagLocally([replied], MessageFlags.Answered, true);
+        // The draft it was written from is done – to the trash, not deleted, so nothing is lost.
+        if (draft.ReplacesDraft is long old && _store.FindFolderByRole(draft.AccountId, FolderRole.Trash) is { } trash)
+            Apply(_store.MoveLocally([old], trash.Id));
 
         Changed?.Invoke(new WorkerChange(draft.AccountId, ChangeKind.Outbox));
         Worker(draft.AccountId)?.Wake(); // re-plans its wait so the mail goes out right after the delay
@@ -276,6 +294,7 @@ public sealed class MailService : IAsyncDisposable
     {
         if (!_store.TryCancelQueued(outboxId)) return false;
         if (draft.RepliesTo is long replied) _store.SetFlagLocally([replied], MessageFlags.Answered, false);
+        if (draft.ReplacesDraft is long old) Restore([old]);
         Changed?.Invoke(new WorkerChange(draft.AccountId, ChangeKind.Outbox));
         return true;
     }

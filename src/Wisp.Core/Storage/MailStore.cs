@@ -10,7 +10,7 @@ namespace Wisp.Core.Storage;
 /// </summary>
 public sealed partial class MailStore : IDisposable
 {
-    const int SchemaVersion = 1;
+    const int SchemaVersion = 2;
 
     readonly SqliteConnection _db;
     readonly Crypto _crypto;
@@ -39,6 +39,11 @@ public sealed partial class MailStore : IDisposable
     {
         var version = Convert.ToInt32(Scalar("PRAGMA user_version"));
         if (version >= SchemaVersion) return;
+        if (version >= 1)
+        {
+            Upgrade(version);
+            return;
+        }
         Tx(() =>
         {
             Exec("""
@@ -114,10 +119,23 @@ public sealed partial class MailStore : IDisposable
                   next_attempt INTEGER NOT NULL DEFAULT 0,
                   last_error BLOB);
                 """);
-            Exec($"PRAGMA user_version = {SchemaVersion}");
+            Exec("PRAGMA user_version = 1");
             return 0;
         });
+        Upgrade(1);
     }
+
+    /// <summary>Step-by-step schema upgrades for existing databases. Never drops data.</summary>
+    void Upgrade(int from) => Tx(() =>
+    {
+        if (from < 2)
+        {
+            // Folder a message was deleted from, for "Wiederherstellen" in the trash.
+            Exec("ALTER TABLE messages ADD COLUMN origin_folder_id INTEGER");
+        }
+        Exec($"PRAGMA user_version = {SchemaVersion}");
+        return 0;
+    });
 
     // ───────────────────────── Accounts ─────────────────────────
 

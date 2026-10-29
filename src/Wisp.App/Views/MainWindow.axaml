@@ -27,6 +27,9 @@
     <Style Selector="ListBox.messages > ListBoxItem:selected Border.quick">
       <Setter Property="Width" Value="130" />
     </Style>
+    <Style Selector="ListBox.messages.two > ListBoxItem:selected Border.quick">
+      <Setter Property="Width" Value="88" />
+    </Style>
     <!-- The colour sits on an inner Border, so Fluent's hover/pressed backgrounds do not replace it. -->
     <Style Selector="Button.tile">
       <Setter Property="Width" Value="38" />
@@ -111,6 +114,7 @@
 
         <Grid>
           <ListBox x:Name="MessageList" Classes="messages" ItemsSource="{Binding Messages}" SelectionMode="Multiple"
+                   Classes.two="{Binding QuickTwoButtons}"
                    IsVisible="{Binding !IsOutboxSelected}">
             <ListBox.ItemTemplate>
               <DataTemplate x:DataType="vm:MessageItem">
@@ -124,7 +128,10 @@
                       <DoubleTransition Property="Width" Duration="0:0:0.16" Easing="CubicEaseOut" />
                     </Transitions>
                   </Border.Transitions>
-                  <StackPanel Orientation="Horizontal" Spacing="4" Margin="8,0,0,0" HorizontalAlignment="Right" Width="122">
+                  <Panel>
+                  <!-- Alle anderen Ordner: Antworten / Verschieben / Löschen -->
+                  <StackPanel Orientation="Horizontal" Spacing="4" Margin="8,0,0,0" HorizontalAlignment="Right" Width="122"
+                              IsVisible="{Binding $parent[ListBox].((vm:MainViewModel)DataContext).QuickDefault}">
                     <Button Classes="tile" ToolTip.Tip="Antworten (Strg+R)"
                             Command="{Binding $parent[ListBox].((vm:MainViewModel)DataContext).ReplyCommand}">
                       <Border Background="{DynamicResource WispAccent}">
@@ -162,6 +169,57 @@
                       </Border>
                     </Button>
                   </StackPanel>
+                  <!-- Spam: Kein Spam / Löschen -->
+                  <StackPanel Orientation="Horizontal" Spacing="4" Margin="8,0,0,0" HorizontalAlignment="Right" Width="80"
+                              IsVisible="{Binding $parent[ListBox].((vm:MainViewModel)DataContext).QuickJunk}">
+                    <Button Classes="tile" ToolTip.Tip="Kein Spam – in den Posteingang"
+                            Command="{Binding $parent[ListBox].((vm:MainViewModel)DataContext).NotSpamCommand}">
+                      <Border Background="{DynamicResource WispOk}">
+                        <t:WispIcon Data="{StaticResource IconInbox}" Width="18" Height="18" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                      </Border>
+                    </Button>
+                    <Button Classes="tile" ToolTip.Tip="Löschen (Entf)"
+                            Command="{Binding $parent[ListBox].((vm:MainViewModel)DataContext).DeleteCommand}">
+                      <Border Background="{DynamicResource WispDanger}">
+                        <t:WispIcon Data="{StaticResource IconTrash}" Width="18" Height="18" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                      </Border>
+                    </Button>
+                  </StackPanel>
+
+                  <!-- Entwürfe: Bearbeiten / Verwerfen -->
+                  <StackPanel Orientation="Horizontal" Spacing="4" Margin="8,0,0,0" HorizontalAlignment="Right" Width="80"
+                              IsVisible="{Binding $parent[ListBox].((vm:MainViewModel)DataContext).QuickDrafts}">
+                    <Button Classes="tile" ToolTip.Tip="Weiter bearbeiten"
+                            Command="{Binding $parent[ListBox].((vm:MainViewModel)DataContext).EditDraftCommand}">
+                      <Border Background="{DynamicResource WispAccent}">
+                        <t:WispIcon Data="{StaticResource IconCompose}" Width="18" Height="18" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                      </Border>
+                    </Button>
+                    <Button Classes="tile" ToolTip.Tip="Entwurf verwerfen (in den Papierkorb)"
+                            Command="{Binding $parent[ListBox].((vm:MainViewModel)DataContext).DeleteCommand}">
+                      <Border Background="{DynamicResource WispDanger}">
+                        <t:WispIcon Data="{StaticResource IconTrash}" Width="18" Height="18" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                      </Border>
+                    </Button>
+                  </StackPanel>
+
+                  <!-- Papierkorb: Wiederherstellen / Endgültig löschen -->
+                  <StackPanel Orientation="Horizontal" Spacing="4" Margin="8,0,0,0" HorizontalAlignment="Right" Width="80"
+                              IsVisible="{Binding $parent[ListBox].((vm:MainViewModel)DataContext).QuickTrash}">
+                    <Button Classes="tile" ToolTip.Tip="Wiederherstellen – zurück in den ursprünglichen Ordner"
+                            Command="{Binding $parent[ListBox].((vm:MainViewModel)DataContext).RestoreCommand}">
+                      <Border Background="{DynamicResource WispOk}">
+                        <t:WispIcon Data="{StaticResource IconReply}" Width="18" Height="18" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                      </Border>
+                    </Button>
+                    <Button Classes="tile" ToolTip.Tip="Endgültig löschen"
+                            Command="{Binding $parent[ListBox].((vm:MainViewModel)DataContext).DeleteCommand}">
+                      <Border Background="{DynamicResource WispDanger}">
+                        <t:WispIcon Data="{StaticResource IconTrash}" Width="18" Height="18" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                      </Border>
+                    </Button>
+                  </StackPanel>
+                  </Panel>
                 </Border>
                 <!-- Sender initials (optional, see settings) -->
                 <Border DockPanel.Dock="Left" Width="34" Height="34" CornerRadius="17" Margin="0,2,10,0" VerticalAlignment="Top"

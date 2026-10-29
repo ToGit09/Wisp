@@ -10,6 +10,7 @@ namespace Wisp.Core.Tests;
 public sealed class StoreTests : IDisposable
 {
     readonly string _dir = Directory.CreateTempSubdirectory("wisp-test-").FullName;
+    readonly byte[] _key = RandomNumberGenerator.GetBytes(32);
     readonly MailStore _store;
     readonly long _account;
     readonly long _inbox;
@@ -17,7 +18,7 @@ public sealed class StoreTests : IDisposable
 
     public StoreTests()
     {
-        _store = new MailStore(Path.Combine(_dir, "wisp.db"), new Crypto(RandomNumberGenerator.GetBytes(32)));
+        _store = new MailStore(Path.Combine(_dir, "wisp.db"), new Crypto(_key));
         _account = _store.AddAccount(new AccountConfig
         {
             DisplayName = "Erika Mustermann",
@@ -150,6 +151,41 @@ public sealed class StoreTests : IDisposable
 
         _store.ApplyFolderListing(_account, new HashSet<long> { _inbox });
         Assert.Null(_store.GetFolder(_trash));
+    }
+
+    [Fact]
+    public void Trash_remembers_where_a_mail_came_from()
+    {
+        var projects = _store.UpsertFolder(_account, "Projekte", "Projekte", 0, FolderRole.None, true);
+        _store.StoreServerMessages(projects, 1, [Server(7, "Angebot")]);
+        var id = _store.ListMessages(projects, 10).Single().Id;
+
+        _store.MoveLocally([id], _trash);
+
+        Assert.Equal(projects, _store.OriginFolderOf(id));
+    }
+
+    [Fact]
+    public void Existing_version_1_database_is_upgraded_without_losing_data()
+    {
+        _store.StoreServerMessages(_inbox, 1, [Server(5, "Hallo")]);
+        var path = Path.Combine(_dir, "wisp.db");
+        _store.Dispose();
+        SqliteConnection.ClearAllPools();
+        using (var db = new SqliteConnection($"Data Source={path}"))
+        {
+            // Simulate a database written by the previous version.
+            db.Open();
+            using var cmd = db.CreateCommand();
+            cmd.CommandText = "ALTER TABLE messages DROP COLUMN origin_folder_id; PRAGMA user_version = 1;";
+            cmd.ExecuteNonQuery();
+        }
+        SqliteConnection.ClearAllPools();
+
+        using var reopened = new MailStore(path, new Crypto(_key));
+        var id = Assert.Single(reopened.ListMessages(_inbox, 10)).Id;
+        reopened.MoveLocally([id], _trash);
+        Assert.Equal(_inbox, reopened.OriginFolderOf(id));
     }
 
     [Fact]

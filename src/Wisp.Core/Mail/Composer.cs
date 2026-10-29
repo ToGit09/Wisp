@@ -22,6 +22,8 @@ public sealed record Draft
     public IReadOnlyList<string> References { get; init; } = [];
     /// <summary>Local id of the message being answered (gets the "answered" flag after sending).</summary>
     public long? RepliesTo { get; init; }
+    /// <summary>Local id of the draft this mail was written from; it goes to the trash once the mail is sent.</summary>
+    public long? ReplacesDraft { get; init; }
     /// <summary>Local id of a message whose attachments are forwarded.</summary>
     public long? ForwardsAttachmentsOf { get; init; }
 }
