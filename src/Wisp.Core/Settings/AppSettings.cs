@@ -38,6 +38,8 @@ public sealed class PrivacySettings
     public bool LoadRemoteImages { get; set; }
     /// <summary>Write crash.log (types and stack traces only) for troubleshooting.</summary>
     public bool WriteCrashLog { get; set; } = true;
+    /// <summary>Look for a new Wisp version on GitHub at startup and download it in the background.</summary>
+    public bool CheckForUpdates { get; set; } = true;
 }
 
 public sealed class ReadingSettings

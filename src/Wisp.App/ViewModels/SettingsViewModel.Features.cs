@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using Avalonia.Controls.ApplicationLifetimes;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Wisp.Core;
@@ -157,5 +158,37 @@ public sealed partial class SettingsViewModel
     {
         try { Process.Start(new ProcessStartInfo(AppPaths.DataDir) { UseShellExecute = true }); }
         catch (Exception) { /* no file manager available */ }
+    }
+
+    public bool CheckForUpdates { get => _s.Privacy.CheckForUpdates; set => Set(_s.Privacy.CheckForUpdates, value, v => _s.Privacy.CheckForUpdates = v); }
+    public bool CanUpdate => Updater.IsInstalled;
+
+    [ObservableProperty] public partial string UpdateStatus { get; set; } = PendingText() ??
+        (Updater.IsInstalled ? "" : "Diese Wisp-Kopie ist nicht installiert. Updates gibt es über die Setup-Datei auf GitHub.");
+    [ObservableProperty] public partial bool UpdateReady { get; set; } = Updater.Pending is not null;
+
+    static string? PendingText() => Updater.Pending is { } v ? $"Version {v} ist geladen und wird beim nächsten Start installiert." : null;
+
+    [RelayCommand]
+    async Task SearchUpdates()
+    {
+        UpdateStatus = "Suche nach Updates …";
+        try
+        {
+            await Updater.DownloadNewerAsync();
+            UpdateReady = Updater.Pending is not null;
+            UpdateStatus = PendingText() ?? "Wisp ist auf dem neuesten Stand.";
+        }
+        catch (Exception)
+        {
+            UpdateStatus = "GitHub ist gerade nicht erreichbar. Bitte später noch einmal versuchen.";
+        }
+    }
+
+    [RelayCommand]
+    void RestartForUpdate()
+    {
+        if (Updater.RestartToUpdate() && Avalonia.Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+            desktop.TryShutdown();
     }
 }

@@ -1,0 +1,116 @@
+# Baut Wisp für Windows und Linux, packt es mit Velopack (Setup + Auto-Update)
+# und legt einen Release-Entwurf an, sobald ein Tag wie "v1.0.0" gepusht wird.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  VPK_VERSION: 1.2.161
+  # Nicht "Wisp": Velopack installiert nach %LocalAppData%\<packId> und löscht den Ordner beim
+  # Deinstallieren – dort liegen aber Wisps Mails und Tresor (siehe AppPaths.DataDir).
+  PACK_ID: WispMail
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - run: dotnet test Wisp.slnx -c Release
+
+  build:
+    needs: test
+    strategy:
+      matrix:
+        include:
+          - rid: win-x64
+            os: windows-latest
+            exe: Wisp.exe
+            icon: src/Wisp.App/Assets/wisp.ico
+          - rid: linux-x64
+            os: ubuntu-latest
+            exe: Wisp
+            icon: src/Wisp.App/Assets/wisp.png
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - run: dotnet tool install -g vpk --version $VPK_VERSION
+
+      - name: Version aus dem Tag lesen
+        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
+
+      - name: Veröffentlichen
+        run: >
+          dotnet publish src/Wisp.App -c Release -r ${{ matrix.rid }} --self-contained
+          -p:Version=$VERSION
+          -p:DebugType=embedded
+          -o out/Wisp
+
+      - name: Lizenz und Hinweise beilegen
+        run: cp LICENSE README.md CHANGELOG.md THIRD-PARTY-NOTICES.md out/Wisp/
+
+      # Die letzte Version holen, damit vpk kleine Delta-Updates erzeugen kann.
+      # Beim allerersten Release gibt es noch keine – dann geht es ohne weiter.
+      - name: Vorige Version laden
+        run: vpk download github --repoUrl "${{ github.server_url }}/${{ github.repository }}" --token "${{ secrets.GITHUB_TOKEN }}" -o Releases || true
+
+      - name: Packen
+        run: >
+          vpk pack
+          --packId $PACK_ID
+          --packTitle Wisp
+          --packAuthors "Tobias Schauer"
+          --packVersion $VERSION
+          --packDir out/Wisp
+          --mainExe ${{ matrix.exe }}
+          --icon ${{ matrix.icon }}
+          -o Releases
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wisp-${{ matrix.rid }}
+          path: Releases/*
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      # Vom Vorgänger geladene Pakete nicht erneut hochladen; die Downloads für Menschen lesbar benennen.
+      # Das Update-Feed (releases.*.json) verweist nur auf die .nupkg-Dateien, die bleiben unverändert.
+      - name: Aufräumen
+        run: |
+          cd dist
+          V="${GITHUB_REF_NAME#v}"
+          for f in *-full.nupkg *-delta.nupkg; do
+            [ -e "$f" ] || continue
+            case "$f" in *"-$V-"*) ;; *) rm "$f" ;; esac
+          done
+          mv "$PACK_ID-win-Setup.exe" "Wisp-$V-Windows-Setup.exe"
+          mv "$PACK_ID-win-Portable.zip" "Wisp-$V-Windows-Portable.zip"
+          mv "$PACK_ID.AppImage" "Wisp-$V-Linux.AppImage"
+          sha256sum * > SHA256SUMS.txt
+          ls -la
+      - uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          generate_release_notes: true
+          files: dist/*
