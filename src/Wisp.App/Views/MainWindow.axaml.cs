@@ -108,6 +108,9 @@ public partial class MainWindow : Window, IDialogs
                 MenuEntry(clicked.IsFlagged ? "Markierung entfernen" : "Markieren", "IconStar", _vm.ToggleFlagCommand),
                 new Separator(),
                 MoveMenu(),
+                _vm.QuickJunk
+                    ? MenuEntry("Kein Spam", "IconInbox", _vm.NotSpamCommand)
+                    : MenuEntry("Als Spam markieren", "IconJunk", _vm.MarkSpamCommand, enabled: _vm.CanMarkSpam),
                 MenuEntry("Archivieren", "IconArchive", _vm.ArchiveCommand, enabled: _vm.CanArchive),
                 MenuEntry("Löschen", "IconTrash", _vm.DeleteCommand, gesture: "Delete"),
             },

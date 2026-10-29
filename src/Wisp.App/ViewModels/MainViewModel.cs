@@ -533,6 +533,28 @@ public sealed partial class MainViewModel : ObservableObject
         }, TimeSpan.FromSeconds(10));
     }
 
+    public bool CanMarkSpam => SelectedSidebarItem is { } s && JunkFolder(s.AccountId) is { } junk && junk != s.FolderId;
+
+    long? JunkFolder(long accountId) =>
+        AllSidebar.FirstOrDefault(f => f.AccountId == accountId && f.Role == FolderRole.Junk)?.FolderId;
+
+    /// <summary>Moves mails into the spam folder (with a way back).</summary>
+    [RelayCommand]
+    void MarkSpam()
+    {
+        var ids = Targets.ToList();
+        if (ids.Count == 0 || SelectedSidebarItem is not { FolderId: long from } current) return;
+        if (JunkFolder(current.AccountId) is not long junk || junk == from) return;
+        _mail.Move(ids, junk);
+        ClearReader();
+        ReloadMessages();
+        ShowNotice(ids.Count == 1 ? "Als Spam markiert." : $"{ids.Count} Mails als Spam markiert.", "Rückgängig", () =>
+        {
+            _mail.Move(ids, from);
+            ReloadMessages();
+        }, TimeSpan.FromSeconds(10));
+    }
+
     /// <summary>Trash: put mails back where they were deleted from (inbox if unknown).</summary>
     [RelayCommand]
     void Restore()
