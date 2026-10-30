@@ -2,9 +2,9 @@ ToDos:
 
 @AI: nicht anfassen mein Bereich : )
 
-- Antworten im Schnellzugriff
-- Sidebar lags behebn wenn man auf höhe des einstellungszeichens draufhovert
-- 
+v1.2:
+
+- Einmalcodes automatisch kopieren
 
 Optionale features:
 - lokale AI Summary
