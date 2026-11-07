@@ -268,13 +268,24 @@
                   </StackPanel>
                   </Panel>
                 </Border>
-                <!-- Sender initials (optional, see settings) -->
-                <Border DockPanel.Dock="Left" Width="34" Height="34" CornerRadius="17" Margin="0,2,10,0" VerticalAlignment="Top"
-                        Background="{Binding AvatarBackground}"
-                        IsVisible="{Binding $parent[ListBox].((vm:MainViewModel)DataContext).ShowAvatars}">
-                  <TextBlock Text="{Binding Initials}" Foreground="{Binding AvatarForeground}" FontWeight="SemiBold" FontSize="13"
-                             HorizontalAlignment="Center" VerticalAlignment="Center" />
-                </Border>
+                <!-- Sender initials (optional, see settings); in the inbox with a category badge in the corner -->
+                <Panel DockPanel.Dock="Left" Width="34" Height="34" Margin="0,2,10,0" VerticalAlignment="Top"
+                       IsVisible="{Binding $parent[ListBox].((vm:MainViewModel)DataContext).ShowAvatars}">
+                  <Border CornerRadius="17" Background="{Binding AvatarBackground}">
+                    <TextBlock Text="{Binding Initials}" Foreground="{Binding AvatarForeground}" FontWeight="SemiBold" FontSize="13"
+                               HorizontalAlignment="Center" VerticalAlignment="Center" />
+                  </Border>
+                  <Border Classes="category" Background="{Binding CategoryBrush}" ToolTip.Tip="{Binding CategoryName}">
+                    <Border.IsVisible>
+                      <MultiBinding Converter="{x:Static BoolConverters.And}">
+                        <Binding Path="HasCategory" />
+                        <Binding Path="$parent[ListBox].((vm:MainViewModel)DataContext).ShowCategoryTabs" />
+                      </MultiBinding>
+                    </Border.IsVisible>
+                    <t:WispIcon Data="{Binding CategoryIcon}" Width="11" Height="11" Foreground="White" StrokeThickness="2.2"
+                                HorizontalAlignment="Center" VerticalAlignment="Center" />
+                  </Border>
+                </Panel>
                 <Grid ColumnDefinitions="12,*,Auto" RowDefinitions="Auto,Auto,Auto">
                   <Ellipse Width="7" Height="7" Fill="{DynamicResource WispAccent}" IsVisible="{Binding IsUnread}"
                            VerticalAlignment="Center" HorizontalAlignment="Left" />

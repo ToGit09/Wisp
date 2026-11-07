@@ -57,7 +57,7 @@ jobs:
             assets: src/Wisp.App/Assets
           - edition: ai
             msbuild: AI
-            # Icon mit kleinem Funkeln (tools/make-ai-icon.ps1)
+            # Icon mit kleinem Funkeln (tools/make-icons.ps1)
             assets: src/Wisp.App/Assets/Ai
     runs-on: ${{ matrix.os }}
     env:

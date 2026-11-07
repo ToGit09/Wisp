@@ -41,7 +41,7 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(WispEdition)' == 'AI'">
     <DefineConstants>$(DefineConstants);WISP_AI</DefineConstants>
-    <!-- The AI edition has its own icon (with a small sparkle, made by tools/make-ai-icon.ps1). -->
+    <!-- The AI edition has its own icon (with a small sparkle, made by tools/make-icons.ps1). -->
     <ApplicationIcon>Assets\Ai\wisp.ico</ApplicationIcon>
   </PropertyGroup>
   <ItemGroup Condition="'$(WispEdition)' == 'AI'">

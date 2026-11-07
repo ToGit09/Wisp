@@ -171,6 +171,17 @@
   <Style Selector="Button.tab.selected t|WispIcon">
     <Setter Property="Foreground" Value="{DynamicResource WispAccent}" />
   </Style>
+  <!-- Category badge in the corner of the sender initials; the ring in the list colour makes it look cut out -->
+  <Style Selector="Border.category">
+    <Setter Property="Width" Value="18" />
+    <Setter Property="Height" Value="18" />
+    <Setter Property="CornerRadius" Value="9" />
+    <Setter Property="BorderThickness" Value="1.5" />
+    <Setter Property="BorderBrush" Value="{DynamicResource WispSurface}" />
+    <Setter Property="HorizontalAlignment" Value="Right" />
+    <Setter Property="VerticalAlignment" Value="Bottom" />
+    <Setter Property="Margin" Value="0,0,-3,-3" />
+  </Style>
   <!-- Unread count in a tab: small accent pill -->
   <Style Selector="Border.count">
     <Setter Property="Background" Value="{DynamicResource WispAccentSoft}" />

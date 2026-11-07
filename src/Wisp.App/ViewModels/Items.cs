@@ -135,6 +135,50 @@ public sealed partial class MessageItem : ObservableObject
     [ObservableProperty] public partial bool IsSuspect { get; set; }
     [ObservableProperty] public partial bool HasSummary { get; set; }
 
+    /// <summary>Wisp 2: tab of the mail, shown as a small badge in the corner of the sender initials.</summary>
+    [ObservableProperty] public partial Wisp.Core.Smart.MailCategory Category { get; set; }
+    public bool HasCategory => Category != Wisp.Core.Smart.MailCategory.None;
+    public Geometry? CategoryIcon => Category switch
+    {
+        Wisp.Core.Smart.MailCategory.Personal => SidebarItem.Find("IconPerson"),
+        Wisp.Core.Smart.MailCategory.Invoice => SidebarItem.Find("IconReceipt"),
+        Wisp.Core.Smart.MailCategory.Promotion => SidebarItem.Find("IconTag"),
+        Wisp.Core.Smart.MailCategory.SuspectedSpam => SidebarItem.Find("IconJunk"),
+        _ => null,
+    };
+    public IBrush? CategoryBrush => Category switch
+    {
+        Wisp.Core.Smart.MailCategory.Personal => CategoryBrushes.Personal,
+        Wisp.Core.Smart.MailCategory.Invoice => CategoryBrushes.Invoice,
+        Wisp.Core.Smart.MailCategory.Promotion => CategoryBrushes.Promotion,
+        Wisp.Core.Smart.MailCategory.SuspectedSpam => CategoryBrushes.Spam,
+        _ => null,
+    };
+    public string? CategoryName => Category switch
+    {
+        Wisp.Core.Smart.MailCategory.Personal => "Persönlich",
+        Wisp.Core.Smart.MailCategory.Invoice => "Rechnungen",
+        Wisp.Core.Smart.MailCategory.Promotion => "Werbung",
+        Wisp.Core.Smart.MailCategory.SuspectedSpam => "Spamverdacht",
+        _ => null,
+    };
+
+    partial void OnCategoryChanged(Wisp.Core.Smart.MailCategory value)
+    {
+        OnPropertyChanged(nameof(HasCategory));
+        OnPropertyChanged(nameof(CategoryIcon));
+        OnPropertyChanged(nameof(CategoryBrush));
+        OnPropertyChanged(nameof(CategoryName));
+    }
+
+    static class CategoryBrushes
+    {
+        public static readonly IBrush Personal = new SolidColorBrush(Color.Parse("#4F6BED"));
+        public static readonly IBrush Invoice = new SolidColorBrush(Color.Parse("#0F9D9A"));
+        public static readonly IBrush Promotion = new SolidColorBrush(Color.Parse("#E07A1F"));
+        public static readonly IBrush Spam = new SolidColorBrush(Color.Parse("#D64545"));
+    }
+
     public FontWeight Weight => IsUnread ? FontWeight.SemiBold : FontWeight.Normal;
 
     [ObservableProperty] public partial string Initials { get; set; } = "";
@@ -177,6 +221,7 @@ public sealed partial class MessageItem : ObservableObject
         IsOffline = m.HasBody;
         IsSuspect = m.Category == Wisp.Core.Smart.MailCategory.SuspectedSpam;
         HasSummary = m.HasSummary;
+        Category = m.Category;
     }
 
     public static string FormatDate(DateTimeOffset date)
