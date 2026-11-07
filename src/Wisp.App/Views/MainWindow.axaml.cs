@@ -48,8 +48,8 @@ public partial class MainWindow : Window, IDialogs
         MessageList.KeyDown += (_, e) =>
         {
             if (e.Key == Key.Delete) _vm.DeleteCommand.Execute(null);
-            if (e.Key == Key.Escape && _vm.IsSelectionMode) _vm.IsSelectionMode = false;
         };
+        _vm.ClearListSelectionRequested += () => MessageList.SelectedItems?.Clear();
         // Double-click on a mail starts the selection mode (not on the quick-action buttons in the row).
         MessageList.DoubleTapped += (_, e) =>
         {
