@@ -44,4 +44,46 @@ static class Updater
         Manager.WaitExitThenApplyUpdates(pending, silent: false, restart: true);
         return true;
     }
+
+    // ───────────────────────── Upgrade to Wisp 2 ─────────────────────────
+    // Wisp 2 lives in its own update channels ("v2-light-win", "v2-ai-linux" …), so Wisp 1 never updates to it
+    // on its own. Only the "Auf Wisp 2 upgraden" button switches channels. Wisp 2 asks for the edition at its first start.
+
+    static string Wisp2Channel => $"v2-light-{(OperatingSystem.IsWindows() ? "win" : OperatingSystem.IsLinux() ? "linux" : "osx")}";
+
+    static UpdateManager Wisp2Manager => new(new GithubSource(RepoUrl, null, false), new UpdateOptions { ExplicitChannel = Wisp2Channel });
+
+    /// <summary>The Wisp 2 version published on GitHub, or null (none yet, offline, or not installed).</summary>
+    public static async Task<string?> FindWisp2Async()
+    {
+        if (!IsInstalled) return null;
+        try
+        {
+            var update = await Wisp2Manager.CheckForUpdatesAsync();
+            return update is not null && update.TargetFullRelease.Version.Major >= 2 ? update.TargetFullRelease.Version.ToString() : null;
+        }
+        catch (Exception)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>Downloads Wisp 2 and restarts into it. Mails, accounts and settings stay. False if it failed.</summary>
+    public static async Task<bool> UpgradeToWisp2Async(Action<int>? progress)
+    {
+        if (!IsInstalled) return false;
+        try
+        {
+            var manager = Wisp2Manager;
+            var update = await manager.CheckForUpdatesAsync();
+            if (update is null || update.TargetFullRelease.Version.Major < 2) return false;
+            await manager.DownloadUpdatesAsync(update, progress);
+            manager.WaitExitThenApplyUpdates(update.TargetFullRelease, silent: false, restart: true);
+            return true;
+        }
+        catch (Exception)
+        {
+            return false;
+        }
+    }
 }

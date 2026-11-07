@@ -42,6 +42,8 @@ public sealed class PrivacySettings
     public bool WriteCrashLog { get; set; } = true;
     /// <summary>Look for a new Wisp version on GitHub at startup and download it in the background.</summary>
     public bool CheckForUpdates { get; set; } = true;
+    /// <summary>The Wisp 2 version that was already pointed out once (the hint is not repeated for it).</summary>
+    public string? Wisp2Announced { get; set; }
 }
 
 public sealed class ReadingSettings

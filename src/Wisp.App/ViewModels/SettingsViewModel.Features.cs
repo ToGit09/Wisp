@@ -185,6 +185,48 @@ public sealed partial class SettingsViewModel
         }
     }
 
+    // ───────────────────────── Upgrade auf Wisp 2 ─────────────────────────
+
+    /// <summary>Set when GitHub has a Wisp 2: then (and only then) the quiet upgrade button appears.</summary>
+    [ObservableProperty] public partial string? Wisp2Version { get; set; }
+    [ObservableProperty] public partial string? Wisp2Status { get; set; }
+    [ObservableProperty] public partial bool IsUpgrading { get; set; }
+    [ObservableProperty] public partial int UpgradeProgress { get; set; }
+    public bool HasWisp2 => Wisp2Version is not null;
+    public string Wisp2Text => $"Wisp {Wisp2Version} ist verfügbar: Einmalcodes werden automatisch kopiert, der Posteingang sortiert sich in „Wichtig“, „Werbung“ und „Spamverdacht“, auf Wunsch mit lokaler KI. Mails, Konten und Einstellungen bleiben erhalten.";
+    partial void OnWisp2VersionChanged(string? value)
+    {
+        OnPropertyChanged(nameof(HasWisp2));
+        OnPropertyChanged(nameof(Wisp2Text));
+    }
+
+    async void LookForWisp2()
+    {
+        if (!Updater.IsInstalled || !_s.Privacy.CheckForUpdates) return;
+        Wisp2Version = await Updater.FindWisp2Async();
+    }
+
+    [RelayCommand]
+    async Task UpgradeToWisp2()
+    {
+        if (!await _dialogs.ConfirmAsync("Auf Wisp 2 upgraden?",
+                "Wisp lädt Version 2 und startet neu. Beim ersten Start wählen Sie zwischen LightEdition und AIEdition. " +
+                "Ihre Mails, Konten und Einstellungen bleiben erhalten. Ein Zurück auf Wisp 1 ist danach nicht vorgesehen.", "Upgraden"))
+            return;
+        IsUpgrading = true;
+        Wisp2Status = "Lade Wisp 2 …";
+        var ok = await Updater.UpgradeToWisp2Async(p => Avalonia.Threading.Dispatcher.UIThread.Post(() => UpgradeProgress = p));
+        IsUpgrading = false;
+        if (!ok)
+        {
+            Wisp2Status = "Das hat nicht geklappt. GitHub ist gerade nicht erreichbar – bitte später noch einmal versuchen.";
+            return;
+        }
+        Wisp2Status = "Wisp startet neu …";
+        if (Avalonia.Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+            desktop.TryShutdown();
+    }
+
     [RelayCommand]
     void RestartForUpdate()
     {

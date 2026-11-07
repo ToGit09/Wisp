@@ -524,6 +524,18 @@
                   <Button Classes="primary" Content="Neu starten und installieren" Command="{Binding RestartForUpdateCommand}" IsVisible="{Binding UpdateReady}" />
                 </StackPanel>
               </Grid>
+              <!-- Wisp 2: never installed automatically; this quiet button is the only way there. -->
+              <Border Classes="divider" IsVisible="{Binding HasWisp2}" />
+              <Grid Classes="row" ColumnDefinitions="*,Auto" IsVisible="{Binding HasWisp2}">
+                <StackPanel Spacing="6">
+                  <TextBlock Classes="label" Text="Wisp 2" />
+                  <TextBlock Classes="hint" Text="{Binding Wisp2Text}" />
+                  <ProgressBar Minimum="0" Maximum="100" Value="{Binding UpgradeProgress}" Height="6" IsVisible="{Binding IsUpgrading}" />
+                  <TextBlock Classes="hint" Text="{Binding Wisp2Status}" IsVisible="{Binding Wisp2Status, Converter={x:Static v:Converters.NotNull}}" />
+                </StackPanel>
+                <Button Grid.Column="1" Content="Auf Wisp 2 upgraden" Command="{Binding UpgradeToWisp2Command}"
+                        IsEnabled="{Binding !IsUpgrading}" VerticalAlignment="Center" />
+              </Grid>
             </StackPanel>
           </Border>
         </StackPanel>

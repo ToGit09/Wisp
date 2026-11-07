@@ -82,13 +82,27 @@ public partial class App : Application
             main.Closed += (_, _) => desktop.Shutdown();
             desktop.MainWindow = main;
             main.Show();
-            if (settings.Privacy.CheckForUpdates) _ = Updater.CheckInBackgroundAsync();
+            if (settings.Privacy.CheckForUpdates)
+            {
+                _ = Updater.CheckInBackgroundAsync();
+                _ = AnnounceWisp2Async(main, _mail);
+            }
         }
         catch (Exception ex)
         {
             await ShowFatalAsync("Wisp konnte nicht gestartet werden.\n\n" + ex);
             desktop.Shutdown(1);
         }
+    }
+
+    /// <summary>Wisp 2 is never installed automatically. If it exists, say so once per version; the upgrade is a button in "Über Wisp".</summary>
+    static async Task AnnounceWisp2Async(MainWindow main, MailService mail)
+    {
+        await Task.Delay(TimeSpan.FromSeconds(20)); // after the first sync, not in the middle of starting up
+        if (await Updater.FindWisp2Async() is not { } version || mail.Settings.Privacy.Wisp2Announced == version) return;
+        mail.Settings.Privacy.Wisp2Announced = version;
+        try { mail.SaveSettings(); } catch (IOException) { }
+        Avalonia.Threading.Dispatcher.UIThread.Post(() => main.AnnounceWisp2(version));
     }
 
     /// <summary>First start: create the vault silently (OS-protected). Later: unlock it, asking only if a master password is set.</summary>

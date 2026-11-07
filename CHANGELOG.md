@@ -1,5 +1,9 @@
 # Änderungen
 
+## 1.0.3 – Weg zu Wisp 2
+
+- Unter *Einstellungen → Über Wisp* erscheint ein Knopf „Auf Wisp 2 upgraden“, sobald Wisp 2 auf GitHub veröffentlicht ist (einmaliger, dezenter Hinweis beim Start). Wisp 1 aktualisiert sich nie von selbst auf Wisp 2
+
 ## 1.0.2 – Fehlerbehebungen
 
 - HTML-Mails (z. B. Netflix): Bilder ohne `alt`-Wert verloren ihre Breite und sprengten das Layout; Spalten fester Breite werden jetzt zentriert, Hintergrundbilder füllen ihre Zelle, Titel werden nicht mehr abgeschnitten
