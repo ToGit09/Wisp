@@ -94,7 +94,6 @@
     <KeyBinding Gesture="Ctrl+L" Command="{Binding ForwardCommand}" />
     <KeyBinding Gesture="F5" Command="{Binding RefreshCommand}" />
     <KeyBinding Gesture="Ctrl+U" Command="{Binding ToggleReadCommand}" />
-    <KeyBinding Gesture="Escape" Command="{Binding CloseMailCommand}" />
   </Window.KeyBindings>
 
   <Grid>
@@ -104,7 +103,7 @@
       <DockPanel Grid.Column="1" Background="{DynamicResource WispSurface}">
         <StackPanel DockPanel.Dock="Top" Margin="16,16,16,8" Spacing="10">
           <TextBlock Text="{Binding FolderTitle}" Classes="title" TextTrimming="CharacterEllipsis" />
-          <TextBox Text="{Binding SearchText}" PlaceholderText="Suchen …" IsVisible="{Binding !IsOutboxSelected}" />
+          <TextBox x:Name="SearchBox" Text="{Binding SearchText}" PlaceholderText="Suchen … (Strg+F)" IsVisible="{Binding !IsOutboxSelected}" />
           <Border Classes="notice" IsVisible="{Binding AiNotice, Converter={x:Static v:Converters.NotNull}}">
             <DockPanel>
               <Button DockPanel.Dock="Right" Classes="link" Content="OK" Margin="12,0,0,0" Command="{Binding DismissAiNoticeCommand}" />
@@ -152,7 +151,7 @@
               <Button DockPanel.Dock="Right" Classes="link" Content="Löschen" Margin="14,0,0,0"
                       Command="{Binding DeleteCommand}" ToolTip.Tip="Ausgewählte Mails löschen (Entf)" />
               <Button DockPanel.Dock="Right" Classes="link" Content="Gelesen" Margin="14,0,0,0"
-                      Command="{Binding ToggleReadCommand}" ToolTip.Tip="Gelesen / ungelesen (Strg+U)" />
+                      Command="{Binding ToggleReadCommand}" ToolTip.Tip="Gelesen / ungelesen (U)" />
               <TextBlock Text="{Binding SelectionText}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
                          ToolTip.Tip="Klicken Sie auf weitere Mails, um sie hinzuzufügen oder zu entfernen." />
             </DockPanel>
@@ -179,7 +178,7 @@
                   <!-- Alle anderen Ordner: Antworten / Verschieben / Löschen -->
                   <StackPanel Orientation="Horizontal" Spacing="4" Margin="8,0,0,0" HorizontalAlignment="Right" Width="122"
                               IsVisible="{Binding $parent[ListBox].((vm:MainViewModel)DataContext).QuickDefault}">
-                    <Button Classes="tile" ToolTip.Tip="Antworten (Strg+R)"
+                    <Button Classes="tile" ToolTip.Tip="Antworten (R)"
                             Command="{Binding $parent[ListBox].((vm:MainViewModel)DataContext).ReplyCommand}">
                       <Border Background="{DynamicResource WispAccent}">
                         <t:WispIcon Data="{StaticResource IconReply}" Width="18" Height="18" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
@@ -351,20 +350,20 @@
             <t:WispIcon Data="{StaticResource IconClose}" />
           </Button>
           <StackPanel Orientation="Horizontal" Spacing="2">
-            <Button Classes="icon" Command="{Binding ReplyCommand}" ToolTip.Tip="Antworten (Strg+R)"
+            <Button Classes="icon" Command="{Binding ReplyCommand}" ToolTip.Tip="Antworten (R)"
                     IsEnabled="{Binding CurrentMail, Converter={x:Static v:Converters.NotNull}}">
               <t:WispIcon Data="{StaticResource IconReply}" />
             </Button>
-            <Button Classes="icon" Command="{Binding ReplyAllCommand}" ToolTip.Tip="Allen antworten (Strg+Umschalt+R)"
+            <Button Classes="icon" Command="{Binding ReplyAllCommand}" ToolTip.Tip="Allen antworten (Umschalt+R)"
                     IsEnabled="{Binding CurrentMail, Converter={x:Static v:Converters.NotNull}}">
               <t:WispIcon Data="{StaticResource IconReplyAll}" />
             </Button>
-            <Button Classes="icon" Command="{Binding ForwardCommand}" ToolTip.Tip="Weiterleiten (Strg+L)"
+            <Button Classes="icon" Command="{Binding ForwardCommand}" ToolTip.Tip="Weiterleiten (W)"
                     IsEnabled="{Binding CurrentMail, Converter={x:Static v:Converters.NotNull}}">
               <t:WispIcon Data="{StaticResource IconForward}" />
             </Button>
             <Rectangle Width="1" Height="20" Margin="8,0" Fill="{DynamicResource WispBorder}" />
-            <Button Classes="icon" Command="{Binding ArchiveCommand}" ToolTip.Tip="Archivieren" IsVisible="{Binding CanArchive}">
+            <Button Classes="icon" Command="{Binding ArchiveCommand}" ToolTip.Tip="Archivieren (A)" IsVisible="{Binding CanArchive}">
               <t:WispIcon Data="{StaticResource IconArchive}" />
             </Button>
             <Button Classes="icon" ToolTip.Tip="Verschieben">
@@ -393,10 +392,10 @@
               <t:WispIcon Data="{StaticResource IconTrash}" />
             </Button>
             <Rectangle Width="1" Height="20" Margin="8,0" Fill="{DynamicResource WispBorder}" />
-            <Button Classes="icon" Command="{Binding ToggleReadCommand}" ToolTip.Tip="Gelesen / ungelesen (Strg+U)">
+            <Button Classes="icon" Command="{Binding ToggleReadCommand}" ToolTip.Tip="Gelesen / ungelesen (U)">
               <t:WispIcon Data="{StaticResource IconMail}" />
             </Button>
-            <Button Classes="icon" Command="{Binding ToggleFlagCommand}" ToolTip.Tip="Markieren">
+            <Button Classes="icon" Command="{Binding ToggleFlagCommand}" ToolTip.Tip="Markieren (S)">
               <t:WispIcon Data="{StaticResource IconStar}" />
             </Button>
           </StackPanel>
@@ -583,7 +582,7 @@
             </Button>
 
             <Button Classes="primary" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="11,8"
-                    Command="{Binding ComposeCommand}" IsEnabled="{Binding HasAccounts}" ToolTip.Tip="Neue Mail (Strg+N)">
+                    Command="{Binding ComposeCommand}" IsEnabled="{Binding HasAccounts}" ToolTip.Tip="Neue Mail (N)">
               <StackPanel Orientation="Horizontal" Spacing="10">
                 <t:WispIcon Data="{StaticResource IconCompose}" />
                 <TextBlock Classes="wide" Text="Neue Mail" />
@@ -599,7 +598,7 @@
           <!-- Bottom bar: same layout in both states; settings and status dot sit in the always visible strip. -->
           <Border DockPanel.Dock="Bottom" BorderBrush="{DynamicResource WispBorder}" BorderThickness="0,1,0,0" Padding="8">
             <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto">
-              <Button Classes="icon" Command="{Binding OpenSettingsCommand}" ToolTip.Tip="Einstellungen">
+              <Button Classes="icon" Command="{Binding OpenSettingsCommand}" ToolTip.Tip="Einstellungen (Strg+,) · Tastenkürzel: F1">
                 <t:WispIcon Data="{StaticResource IconSettings}" />
               </Button>
               <Ellipse Grid.Column="1" Width="8" Height="8" Margin="2,0,8,0" VerticalAlignment="Center" ToolTip.Tip="{Binding StatusText}"

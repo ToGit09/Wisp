@@ -54,51 +54,6 @@ public sealed partial class MainViewModel
         ReloadMessages();
     }
 
-    /// <summary>What a left/right step did, so the view can move the keyboard along.</summary>
-    public enum SideStep { None, Tab, IntoSidebar, OutOfSidebar }
-
-    /// <summary>
-    /// Left arrow (or mouse "back"). Inbox and sidebar form one row: [sidebar] [Persönlich] … [Alle].
-    /// In the inbox it goes to the previous tab; from the first tab (and in every other folder) into the sidebar,
-    /// which opens if it was collapsed.
-    /// </summary>
-    public SideStep StepLeft()
-    {
-        if (ShowCategoryTabs && CategoryTabs.FirstOrDefault(t => t.IsSelected) is { } tab && CategoryTabs.IndexOf(tab) is > 0 and var i)
-        {
-            SelectCategory(CategoryTabs[i - 1]);
-            return SideStep.Tab;
-        }
-        SetSidebarOpen(true);
-        return SideStep.IntoSidebar;
-    }
-
-    /// <summary>Right arrow (or mouse "forward"): collapses an open sidebar first, then goes to the next tab.</summary>
-    public SideStep StepRight()
-    {
-        if (SidebarAlwaysOpen)
-        {
-            SetSidebarOpen(false);
-            return SideStep.OutOfSidebar;
-        }
-        if (ShowCategoryTabs && CategoryTabs.FirstOrDefault(t => t.IsSelected) is { } tab
-            && CategoryTabs.IndexOf(tab) is var i && i < CategoryTabs.Count - 1)
-        {
-            SelectCategory(CategoryTabs[i + 1]);
-            return SideStep.Tab;
-        }
-        return SideStep.None;
-    }
-
-    /// <summary>Same switch as "Seitenleiste automatisch einklappen" in the settings, so it is remembered.</summary>
-    void SetSidebarOpen(bool open)
-    {
-        if (SidebarAlwaysOpen == open) return;
-        _mail.Settings.Appearance.AutoCollapseSidebar = !open;
-        try { _mail.SaveSettings(); } catch (IOException) { }
-        OnPropertyChanged(nameof(SidebarAlwaysOpen));
-    }
-
     void ResetCategory()
     {
         foreach (var t in CategoryTabs) t.IsSelected = t.Category is null;

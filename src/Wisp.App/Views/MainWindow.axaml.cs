@@ -45,10 +45,6 @@ public partial class MainWindow : Window, IDialogs
 
         MessageList.SelectionChanged += (_, _) =>
             _vm.SetSelection(MessageList.SelectedItems?.OfType<MessageItem>().Select(m => m.Id).ToList() ?? []);
-        MessageList.KeyDown += (_, e) =>
-        {
-            if (e.Key == Key.Delete) _vm.DeleteCommand.Execute(null);
-        };
         _vm.ClearListSelectionRequested += () => MessageList.SelectedItems?.Clear();
         // Double-click on a mail starts the selection mode (not on the quick-action buttons in the row).
         MessageList.DoubleTapped += (_, e) =>
@@ -68,18 +64,10 @@ public partial class MainWindow : Window, IDialogs
             Dispatcher.UIThread.Post(() => MessageList.ContainerFromItem(item)?.Focus(), DispatcherPriority.Loaded);
         };
 
-        // Left/right (arrow keys, mouse back/forward): through the inbox tabs and into the sidebar.
-        // Tunnel: the lists and the reader would otherwise use the keys first.
-        AddHandler(KeyDownEvent, OnSideKey, Avalonia.Interactivity.RoutingStrategies.Tunnel);
-        MessageList.Focusable = true; // so the keyboard can land in the list while no mail is open
-        AddHandler(PointerPressedEvent, OnSideButton, Avalonia.Interactivity.RoutingStrategies.Tunnel, handledEventsToo: true);
-
         // Two lists (pinned inbox + folders) act as one selection.
         PinnedList.SelectionChanged += (_, _) => OnSidebarListSelected(PinnedList, FolderList);
         FolderList.SelectionChanged += (_, _) => OnSidebarListSelected(FolderList, PinnedList);
-        // … and for the arrow keys, too: down from the last pinned entry into the folders, up back again.
-        PinnedList.KeyDown += (_, e) => e.Handled = e.Key == Key.Down && PinnedList.SelectedIndex == PinnedList.ItemCount - 1 && MoveInto(FolderList, 0);
-        FolderList.KeyDown += (_, e) => e.Handled = e.Key == Key.Up && FolderList.SelectedIndex == 0 && MoveInto(PinnedList, PinnedList.ItemCount - 1);
+        SetUpKeyboard(); // MainWindow.Keys.cs
         ShowSidebarSelection();
         ApplySidebarMode();
         // Choosing an account (or "Konto hinzufügen") closes the account list. Only afterwards: Click comes before
@@ -224,14 +212,6 @@ public partial class MainWindow : Window, IDialogs
         _vm.SelectedSidebarItem = item;
     }
 
-    static bool MoveInto(ListBox list, int index)
-    {
-        if (index < 0 || index >= list.ItemCount) return false;
-        list.SelectedIndex = index;
-        list.ContainerFromIndex(index)?.Focus();
-        return true;
-    }
-
     void ShowSidebarSelection()
     {
         _syncingSidebar = true;
@@ -239,51 +219,6 @@ public partial class MainWindow : Window, IDialogs
         PinnedList.SelectedItem = selected is not null && _vm.Pinned.Contains(selected) ? selected : null;
         FolderList.SelectedItem = selected is not null && _vm.Sidebar.Contains(selected) ? selected : null;
         _syncingSidebar = false;
-    }
-
-    void OnSideKey(object? sender, KeyEventArgs e)
-    {
-        if (e.Key is not (Key.Left or Key.Right) || e.KeyModifiers != KeyModifiers.None) return;
-        // Text fields and other inputs keep their arrow keys.
-        if (FocusManager?.GetFocusedElement() is TextBox or ComboBox or Slider or NumericUpDown or MenuItem) return;
-        // Always handled, even at the end of the row: otherwise Avalonia moves the focus on its own,
-        // e.g. into the search box, which then keeps every further arrow key.
-        Step(e.Key == Key.Left);
-        e.Handled = true;
-    }
-
-    void OnSideButton(object? sender, PointerPressedEventArgs e)
-    {
-        var kind = e.GetCurrentPoint(this).Properties.PointerUpdateKind;
-        if (kind is not (PointerUpdateKind.XButton1Pressed or PointerUpdateKind.XButton2Pressed)) return;
-        e.Handled = Step(kind == PointerUpdateKind.XButton1Pressed);
-    }
-
-    /// <summary>One step left or right; the keyboard follows: into the sidebar, back to the mail list.</summary>
-    bool Step(bool left)
-    {
-        switch (left ? _vm.StepLeft() : _vm.StepRight())
-        {
-            case MainViewModel.SideStep.IntoSidebar:
-                Dispatcher.UIThread.Post(FocusSidebar, DispatcherPriority.Loaded);
-                return true;
-            case MainViewModel.SideStep.OutOfSidebar or MainViewModel.SideStep.Tab:
-                Dispatcher.UIThread.Post(FocusMessageList, DispatcherPriority.Loaded);
-                return true;
-            default:
-                return false;
-        }
-    }
-
-    // Focus only, never select: a directional focus would make the list select (and open) the item.
-    void FocusSidebar() => FocusSelected(PinnedList.SelectedItem is not null ? PinnedList : FolderList);
-    void FocusMessageList() => FocusSelected(MessageList);
-
-    // The selected row, else the list itself (MessageList is made focusable for that; ↓ then picks the first mail).
-    static void FocusSelected(ListBox list)
-    {
-        if (list.SelectedItem is { } item && list.ContainerFromItem(item)?.Focus() == true) return;
-        list.Focus();
     }
 
     /// <summary>Always-open sidebar takes its own column; the auto-collapsing one overlays the list.</summary>

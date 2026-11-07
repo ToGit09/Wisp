@@ -12,6 +12,7 @@ Zwei Editionen: **LightEdition** und **AIEdition**. Beim ersten Start wählen Si
 - Nach dem Löschen (ebenso Archivieren, Verschieben, Spam) wird gleich die nächste Mail der Liste ausgewählt und geöffnet
 - Eine geöffnete Mail lässt sich schließen: Knopf „✕“ rechts oben im Lesebereich oder Esc. Danach ist keine Mail mehr ausgewählt und der Lesebereich ist leer. Esc beendet wie bisher auch den Auswahlmodus (wie in Wisp 1.0.4)
 - Pfeiltasten ←/→ (oder die Zurück/Vor-Tasten der Maus): im Posteingang durch die Reiter, vom ersten Reiter weiter in die Seitenleiste; in allen anderen Ordnern wird die Seitenleiste auf- und zugeklappt. In der aufgeklappten Seitenleiste wechseln ↑/↓ den Ordner
+- Viele Tastenkürzel, Übersicht mit F1: Strg+F/F3 Suche (Esc leert sie, ↓ springt in die Ergebnisse), 1–5 und Strg+Tab für die Reiter, Strg+1…9 für die Ordner, Strg+↑/↓ nächste Mail auch beim Lesen, Leertaste blättert weiter und öffnet am Ende die nächste Mail, Enter setzt Entwürfe fort, A/J/S/U/R/W/N/Entf für Archivieren, Spam, Markieren, Gelesen, Antworten, Weiterleiten, Neue Mail und Löschen, Strg+, Einstellungen. Esc schließt außerdem die Einstellungen und ein noch leeres Fenster „Neue Mail“
 
 ## 1.0.2 – Fehlerbehebungen
 
