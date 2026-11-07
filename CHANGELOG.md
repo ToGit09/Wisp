@@ -8,6 +8,7 @@ Zwei Editionen: **LightEdition** und **AIEdition**. Beim ersten Start wählen Si
 - Posteingang mit Reitern „Wichtig“, „Werbung“, „Spamverdacht“ und „Alle“; Rechtsklick → „Absender immer einordnen als …“
 - Erweiterte Spamerkennung: SPF/DKIM/DMARC, gefälschte Absendernamen, abweichende Antwortadressen, Spam-Kennzeichen des Servers und ein Wortfilter, der aus Ihrem Spam-Ordner lernt. Verdächtige Mails werden markiert, nie verschoben
 - AIEdition: ein lokales KI-Modell (Qwen3 1.7B) fasst neue Mails im Hintergrund zusammen und sortiert sie genauer; ältere Mails auf Knopfdruck. Läuft komplett offline auf dem eigenen Computer
+- AIEdition: eigenes App-Icon mit einem kleinen Funkeln, damit man die Editionen in Taskleiste und Startmenü unterscheiden kann
 
 ## 1.0.2 – Fehlerbehebungen
 

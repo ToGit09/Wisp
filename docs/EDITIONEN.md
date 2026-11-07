@@ -8,6 +8,7 @@
 | Reiter „Wichtig / Werbung / Spamverdacht / Alle“ | ✓ (Regeln) | ✓ (Regeln + KI für neue Mails) |
 | Erweiterte Spamerkennung (SPF/DKIM/DMARC, gefälschte Namen, lernender Wortfilter) | ✓ | ✓ |
 | KI-Zusammenfassung | – | ✓ neue Mails im Hintergrund, ältere auf Knopfdruck |
+| App-Icon | Wisp-Icon | Wisp-Icon mit kleinem Funkeln (✦) oben links |
 | Größe | wie Wisp 1 | + ca. 25 MB Laufzeit (llama.cpp), + 1,1 GB Modell (einmaliger Download) |
 
 Die Edition wird beim Bauen festgelegt (`-p:WispEdition=AI`). Die LightEdition enthält keinerlei KI-Code

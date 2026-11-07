@@ -13,7 +13,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <AvaloniaResource Include="Assets\**" />
+    <AvaloniaResource Include="Assets\**" Exclude="Assets\Ai\**" />
   </ItemGroup>
 
   <ItemGroup>
@@ -41,9 +41,15 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(WispEdition)' == 'AI'">
     <DefineConstants>$(DefineConstants);WISP_AI</DefineConstants>
+    <!-- The AI edition has its own icon (with a small sparkle, made by tools/make-ai-icon.ps1). -->
+    <ApplicationIcon>Assets\Ai\wisp.ico</ApplicationIcon>
   </PropertyGroup>
   <ItemGroup Condition="'$(WispEdition)' == 'AI'">
     <ProjectReference Include="..\Wisp.Ai\Wisp.Ai.csproj" />
+    <!-- Served under the normal paths, so every window and image showing /Assets/wisp.* gets the AI icon. -->
+    <AvaloniaResource Remove="Assets\wisp.ico;Assets\wisp.png" />
+    <AvaloniaResource Include="Assets\Ai\wisp.ico" Link="Assets\wisp.ico" />
+    <AvaloniaResource Include="Assets\Ai\wisp.png" Link="Assets\wisp.png" />
   </ItemGroup>
 
   <!-- The llama.cpp package brings native libraries for every platform (~110 MB). A package for one platform

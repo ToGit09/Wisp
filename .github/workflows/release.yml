@@ -46,16 +46,19 @@ jobs:
             os: windows-latest
             osname: win
             exe: Wisp.exe
-            icon: src/Wisp.App/Assets/wisp.ico
+            icon: wisp.ico
           - rid: linux-x64
             os: ubuntu-latest
             osname: linux
             exe: Wisp
-            icon: src/Wisp.App/Assets/wisp.png
+            icon: wisp.png
           - edition: light
             msbuild: Light
+            assets: src/Wisp.App/Assets
           - edition: ai
             msbuild: AI
+            # Icon mit kleinem Funkeln (tools/make-ai-icon.ps1)
+            assets: src/Wisp.App/Assets/Ai
     runs-on: ${{ matrix.os }}
     env:
       CHANNEL: v2-${{ matrix.edition }}-${{ matrix.osname }}
@@ -100,7 +103,7 @@ jobs:
           --packVersion $VERSION
           --packDir out/Wisp
           --mainExe ${{ matrix.exe }}
-          --icon ${{ matrix.icon }}
+          --icon ${{ matrix.assets }}/${{ matrix.icon }}
           --channel "$CHANNEL"
           -o Releases
 
