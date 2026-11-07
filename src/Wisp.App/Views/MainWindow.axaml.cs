@@ -435,6 +435,15 @@ public partial class MainWindow : Window, IDialogs
 
     public async Task OpenSettingsAsync() => await new SettingsWindow(new SettingsViewModel(_mail, _vault, this)).ShowDialog(this);
 
+    /// <summary>One quiet hint per Wisp 2 version, with a way to the upgrade button ("Über Wisp").</summary>
+    public void AnnounceWisp2(string version) =>
+        _vm.ShowNotice($"Wisp {version} ist verfügbar – mit Einmalcodes, sortiertem Posteingang und optionaler lokaler KI.", "Ansehen", async () =>
+        {
+            var vm = new SettingsViewModel(_mail, _vault, this) { SectionIndex = 6 };
+            await new SettingsWindow(vm).ShowDialog(this);
+            _vm.ReloadAll();
+        }, TimeSpan.FromSeconds(15));
+
     public async Task OpenAccountSetupAsync()
     {
         await new AccountSetupWindow(new AccountSetupViewModel(_mail)).ShowDialog(this);
