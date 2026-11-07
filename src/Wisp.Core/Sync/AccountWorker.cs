@@ -9,9 +9,14 @@ using MailStore = Wisp.Core.Storage.MailStore;
 
 namespace Wisp.Core.Sync;
 
-public enum ChangeKind { Status, Folders, Messages, Outbox, Notice }
+/// <summary>
+/// What changed. <see cref="Bodies"/>: mail content arrived in the offline cache (for the sorting helpers).
+/// <see cref="Code"/>: a one-time code was found; <see cref="WorkerChange.Text"/> holds it.
+/// <see cref="Summary"/>: the AI wrote a summary for <see cref="WorkerChange.MessageId"/>.
+/// </summary>
+public enum ChangeKind { Status, Folders, Messages, Outbox, Notice, Bodies, Code, Summary }
 
-public sealed record WorkerChange(long AccountId, ChangeKind Kind, long? FolderId = null, string? Text = null);
+public sealed record WorkerChange(long AccountId, ChangeKind Kind, long? FolderId = null, string? Text = null, long? MessageId = null);
 
 /// <summary>
 /// One background loop per account, owning the account's single IMAP connection.

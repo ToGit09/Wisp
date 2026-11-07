@@ -3,6 +3,7 @@ using Wisp.Core.Mail;
 using Wisp.Core.Rendering;
 using Wisp.Core.Security;
 using Wisp.Core.Settings;
+using Wisp.Core.Smart;
 using Wisp.Core.Storage;
 using Wisp.Core.Sync;
 
@@ -27,12 +28,14 @@ public sealed class MailService : IAsyncDisposable
     readonly Crypto _crypto;
     readonly Connectivity _net = new();
     readonly Dictionary<long, AccountWorker> _workers = [];
+    readonly SmartService _smart;
 
     MailService(MailStore store, Crypto crypto, AppSettings settings)
     {
         _store = store;
         _crypto = crypto;
         Settings = settings;
+        _smart = new SmartService(store, () => Settings, change => Changed?.Invoke(change));
     }
 
     public AppSettings Settings { get; }
@@ -55,12 +58,17 @@ public sealed class MailService : IAsyncDisposable
         if (Settings.Sync.OfflineDays > 0)
             _store.EvictBodies(DateTimeOffset.UtcNow.AddDays(-Math.Max(Settings.Sync.OfflineDays, 7) * 4));
         foreach (var account in _store.GetAccounts()) StartWorker(account.Id);
+        _smart.Start();
     }
 
     void StartWorker(long accountId)
     {
         var worker = new AccountWorker(accountId, _store, () => Settings, _net);
-        worker.Changed += change => Changed?.Invoke(change);
+        worker.Changed += change =>
+        {
+            if (change.Kind is ChangeKind.Messages or ChangeKind.Bodies) _smart.Poke();
+            Changed?.Invoke(change);
+        };
         _workers[accountId] = worker;
         worker.Start();
     }
@@ -147,8 +155,13 @@ public sealed class MailService : IAsyncDisposable
     public IReadOnlyList<MessageListItem> ListMessages(long folderId, string? search, int limit = 500)
     {
         if (string.IsNullOrWhiteSpace(search)) return _store.ListMessages(folderId, limit);
+        return Filter(_store.ListMessages(folderId, 20_000), search, limit);
+    }
+
+    static IReadOnlyList<MessageListItem> Filter(IReadOnlyList<MessageListItem> list, string search, int limit)
+    {
         var terms = search.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        return _store.ListMessages(folderId, 20_000)
+        return list
             .Where(m => terms.All(t =>
                 m.Envelope.Subject.Contains(t, StringComparison.CurrentCultureIgnoreCase) ||
                 m.Envelope.FromName.Contains(t, StringComparison.CurrentCultureIgnoreCase) ||
@@ -327,8 +340,62 @@ public sealed class MailService : IAsyncDisposable
         Changed?.Invoke(new WorkerChange(item.AccountId, ChangeKind.Outbox));
     }
 
+    // ───────────────────────── Wisp 2: sorting, codes, local AI ─────────────────────────
+
+    /// <summary>The local model (AI edition only). Null in the light edition.</summary>
+    public ILocalAi? Ai
+    {
+        get => _smart.Ai;
+        set
+        {
+            _smart.Ai = value;
+            if (value is not null) value.StateChanged += _smart.Poke;
+        }
+    }
+
+    public IReadOnlyList<MessageListItem> ListMessages(long folderId, string? search, MailCategory? category, int limit = 500)
+    {
+        if (category is null) return ListMessages(folderId, search, limit);
+        var list = _store.ListMessages(folderId, string.IsNullOrWhiteSpace(search) ? limit : 20_000, category);
+        return string.IsNullOrWhiteSpace(search) ? list : Filter(list, search, limit);
+    }
+
+    public IReadOnlyDictionary<MailCategory, int> CountUnreadByCategory(long folderId) => _store.CountUnreadByCategory(folderId);
+
+    /// <summary>"Immer als … einordnen" for the sender of a mail. Null removes the rule. Affects all their inbox mails.</summary>
+    public void SetSenderCategory(long messageId, MailCategory? category)
+    {
+        if (_store.GetMessage(messageId) is not { } item || item.Envelope.FromAddress.Length == 0) return;
+        _store.SetSenderRule(item.AccountId, item.Envelope.FromAddress, category);
+        _smart.Resort();
+    }
+
+    public int CountSenderRules() => _store.CountSenderRules();
+
+    public void ClearSenderRules()
+    {
+        _store.ClearSenderRules();
+        _smart.Resort();
+    }
+
+    /// <summary>A sorting setting changed: sort the inbox again.</summary>
+    public void Resort() => _smart.Resort();
+
+    public bool SpamFilterTrained => _smart.FilterTrained;
+    public int SpamFilterSamples => _smart.SpamSamples;
+
+    public string? GetSummary(long messageId) => _store.GetSummary(messageId);
+
+    /// <summary>Streams an AI summary of one mail (AI edition, model ready). Saved when complete.</summary>
+    public IAsyncEnumerable<string> SummarizeAsync(long messageId, CancellationToken ct) => _smart.SummarizeAsync(messageId, ct);
+
+    /// <summary>Removes all stored summaries (e.g. after deleting the model).</summary>
+    public void ClearSummaries() => _store.ClearSummaries();
+
     public async ValueTask DisposeAsync()
     {
+        await _smart.DisposeAsync();
+        if (Ai is not null) await Ai.DisposeAsync();
         foreach (var worker in _workers.Values) await worker.DisposeAsync();
         _workers.Clear();
         _net.Dispose();

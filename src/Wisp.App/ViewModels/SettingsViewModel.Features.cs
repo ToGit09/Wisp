@@ -37,6 +37,7 @@ public sealed partial class SettingsViewModel
         new("Synchronisation", "IconRefresh"),
         new("Datenschutz & Sicherheit", "IconLock"),
         new("Konten", "IconInbox"),
+        new("Sortierung & KI", "IconSpark"),
         new("Über Wisp", "IconSettings"),
     ];
 
@@ -150,7 +151,7 @@ public sealed partial class SettingsViewModel
 
     // ───────────────────────── Über ─────────────────────────
 
-    public string Version => $"Version {typeof(SettingsViewModel).Assembly.GetName().Version?.ToString(3)}";
+    public string Version => $"Version {typeof(SettingsViewModel).Assembly.GetName().Version?.ToString(3)} · {Edition.Name}";
     public string DataFolder => AppPaths.DataDir;
 
     [RelayCommand]

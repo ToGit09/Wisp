@@ -10,7 +10,7 @@ namespace Wisp.Core.Storage;
 /// </summary>
 public sealed partial class MailStore : IDisposable
 {
-    const int SchemaVersion = 2;
+    const int SchemaVersion = 3;
 
     readonly SqliteConnection _db;
     readonly Crypto _crypto;
@@ -133,9 +133,33 @@ public sealed partial class MailStore : IDisposable
             // Folder a message was deleted from, for "Wiederherstellen" in the trash.
             Exec("ALTER TABLE messages ADD COLUMN origin_folder_id INTEGER");
         }
+        if (from < 3 && !HasColumn("messages", "signals"))
+        {
+            // Wisp 2: sorting helpers. signals/category/classified/code_state are small numbers like the flags;
+            // the AI summary is mail content and therefore encrypted like everything else.
+            Exec("""
+                ALTER TABLE messages ADD COLUMN signals INTEGER NOT NULL DEFAULT 0;
+                ALTER TABLE messages ADD COLUMN category INTEGER NOT NULL DEFAULT 0;
+                ALTER TABLE messages ADD COLUMN classified INTEGER NOT NULL DEFAULT 0;
+                ALTER TABLE messages ADD COLUMN code_state INTEGER NOT NULL DEFAULT 0;
+                ALTER TABLE messages ADD COLUMN summary BLOB;
+                ALTER TABLE messages ADD COLUMN ai_category INTEGER;
+                CREATE INDEX ix_messages_category ON messages(folder_id, state, category, date DESC);
+                CREATE TABLE sender_rules(
+                  account_id INTEGER NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+                  sender_hash TEXT NOT NULL,
+                  category INTEGER NOT NULL,
+                  PRIMARY KEY(account_id, sender_hash));
+                """);
+            // Mails that were already there must not be treated as fresh: no code copying for them.
+            Exec("UPDATE messages SET code_state = 1");
+        }
         Exec($"PRAGMA user_version = {SchemaVersion}");
         return 0;
     });
+
+    bool HasColumn(string table, string column) =>
+        Query($"PRAGMA table_info({table})", r => r.GetString(1)).Contains(column, StringComparer.OrdinalIgnoreCase);
 
     // ───────────────────────── Accounts ─────────────────────────
 

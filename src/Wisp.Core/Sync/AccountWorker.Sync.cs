@@ -2,6 +2,7 @@ using MailKit;
 using MailKit.Net.Imap;
 using MailKit.Search;
 using Wisp.Core.Mail;
+using Wisp.Core.Smart;
 using Wisp.Core.Storage;
 using Envelope = Wisp.Core.Storage.Envelope;
 
@@ -16,6 +17,12 @@ public sealed partial class AccountWorker
         MessageSummaryItems.UniqueId | MessageSummaryItems.Envelope | MessageSummaryItems.Flags |
         MessageSummaryItems.InternalDate | MessageSummaryItems.Size | MessageSummaryItems.BodyStructure |
         MessageSummaryItems.PreviewText;
+
+    // Wisp 2: a handful of header fields for sorting (newsletter, spam checks of the receiving server …).
+    static readonly FetchRequest HeaderRequest = new(HeaderItems, MailSignalReader.HeaderNames);
+    static readonly FetchRequest SignalRequest = new(MessageSummaryItems.UniqueId | MessageSummaryItems.Envelope, MailSignalReader.HeaderNames);
+    const int SignalBatch = 200;
+    const int SignalBackfillPerRound = 1000;
 
     async Task SyncFolderListAsync(ImapClient imap, CancellationToken ct)
     {
@@ -83,16 +90,30 @@ public sealed partial class AccountWorker
         var window = serverUids.OrderByDescending(u => u.Id).Take(Math.Max(100, _settings().Sync.HeadersPerFolder)).ToList();
         var toFetch = window.Where(u => !localUids.Contains(u.Id)).ToList();
         var changed = false;
+        string[] own = [Account.Email];
 
         foreach (var batch in toFetch.Chunk(FetchBatch))
         {
-            var summaries = await folder.FetchAsync(batch, HeaderItems, ct);
-            var added = _store.StoreServerMessages(row.Id, uidValidity, summaries.Select(ToServerMessage));
+            var summaries = await folder.FetchAsync(batch, HeaderRequest, ct);
+            var added = _store.StoreServerMessages(row.Id, uidValidity, summaries.Select(s => ToServerMessage(s, own)));
             changed = true;
             if (added > 0)
             {
                 _store.RecountFolder(row.Id);
                 Raise(ChangeKind.Messages, row.Id); // show progress while a large folder fills
+            }
+        }
+
+        // 2b. Wisp 2: header facts for sorting, for mails that were stored before (Wisp 1). Small requests, a portion per round.
+        if (row.Role is FolderRole.Inbox or FolderRole.Junk)
+        {
+            var unsignalled = _store.GetUnsignalledUids(row.Id, uidValidity, SignalBackfillPerRound)
+                .Where(serverSet.Contains).Select(u => new UniqueId(uidValidity, u)).ToList();
+            foreach (var batch in unsignalled.Chunk(SignalBatch))
+            {
+                var summaries = await folder.FetchAsync(batch, SignalRequest, ct);
+                _store.SetSignals(row.Id, uidValidity, summaries.Select(s => (s.UniqueId.Id, ToServerMessage(s, own).Signals)));
+                changed = true;
             }
         }
 
@@ -137,10 +158,12 @@ public sealed partial class AccountWorker
         Raise(ChangeKind.Folders, row.Id);
     }
 
-    static ServerMessage ToServerMessage(IMessageSummary s)
+    static ServerMessage ToServerMessage(IMessageSummary s, IReadOnlyList<string> ownAddresses)
     {
         var env = s.Envelope;
         var from = env?.From.Mailboxes.FirstOrDefault();
+        var to = (env?.To.ToString() ?? "") + "," + (env?.Cc.ToString() ?? "");
+        var signals = MailSignalReader.Read(s.Headers, from?.Name ?? "", from?.Address ?? "", to, ownAddresses);
         var preview = (s.PreviewText ?? "").ReplaceLineEndings(" ").Trim();
         if (preview.Length > 200) preview = preview[..200];
         return new ServerMessage(
@@ -158,7 +181,8 @@ public sealed partial class AccountWorker
                 MessageId = env?.MessageId,
                 Preview = preview,
             },
-            s.Attachments?.Any() == true);
+            s.Attachments?.Any() == true,
+            signals);
     }
 
     static string Truncate(string value, int max) => value.Length <= max ? value : value[..max] + " …";
@@ -247,6 +271,7 @@ public sealed partial class AccountWorker
                 }
             }
             budget -= portion.Count;
+            if (portion.Count > 0) Raise(ChangeKind.Bodies, row.Id); // codes and the AI may need the text
             if (candidates.Count > portion.Count || budget <= 0)
             {
                 _morePrefetch = true;

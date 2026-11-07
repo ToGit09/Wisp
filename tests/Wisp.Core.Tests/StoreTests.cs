@@ -240,3 +240,105 @@ public sealed class StoreTests : IDisposable
         try { Directory.Delete(_dir, true); } catch { }
     }
 }
+
+public sealed class SmartStoreTests : IDisposable
+{
+    readonly string _dir = Directory.CreateTempSubdirectory("wisp-test-").FullName;
+    readonly MailStore _store;
+    readonly long _account;
+    readonly long _inbox;
+
+    public SmartStoreTests()
+    {
+        _store = new MailStore(Path.Combine(_dir, "wisp.db"), new Crypto(RandomNumberGenerator.GetBytes(32)));
+        _account = _store.AddAccount(new AccountConfig
+        {
+            DisplayName = "Erika", Email = "erika@example.org", UserName = "erika@example.org",
+            Imap = new ServerSettings("imap.example.org", 993, Accounts.Security.Tls),
+            Smtp = new ServerSettings("smtp.example.org", 465, Accounts.Security.Tls),
+        }, Credentials.FromPassword("x"));
+        _inbox = _store.UpsertFolder(_account, "INBOX", "INBOX", 0, FolderRole.Inbox, true);
+    }
+
+    ServerMessage Mail(uint uid, string from, Wisp.Core.Smart.MailSignals signals, DateTimeOffset? date = null) =>
+        new(uid, date ?? DateTimeOffset.UtcNow, 100, MessageFlags.None,
+            new Envelope { Subject = $"Mail {uid}", FromAddress = from, Preview = "Ihr Code lautet 482913" }, false, signals);
+
+    [Fact]
+    public void Categories_filter_the_list_and_starred_mails_count_as_important()
+    {
+        _store.StoreServerMessages(_inbox, 1, [
+            Mail(1, "news@shop.example", Wisp.Core.Smart.MailSignals.Checked | Wisp.Core.Smart.MailSignals.Newsletter),
+            Mail(2, "anna@example.net", Wisp.Core.Smart.MailSignals.Checked),
+        ]);
+        var queue = _store.GetClassifyQueue(10);
+        Assert.Equal(2, queue.Count);
+        _store.SetClassification(queue.Select(q => (q.Id, q.Envelope.FromAddress.StartsWith("news")
+            ? Wisp.Core.Smart.MailCategory.Promotion : Wisp.Core.Smart.MailCategory.None, Wisp.Core.Smart.ClassifiedBy.Rules)));
+        Assert.Empty(_store.GetClassifyQueue(10));
+
+        Assert.Single(_store.ListMessages(_inbox, 10, Wisp.Core.Smart.MailCategory.Promotion));
+        Assert.Empty(_store.ListMessages(_inbox, 10, Wisp.Core.Smart.MailCategory.Important));
+        var anna = _store.ListMessages(_inbox, 10).Single(m => m.Envelope.FromAddress == "anna@example.net");
+        _store.SetFlagLocally([anna.Id], MessageFlags.Flagged, true);
+        Assert.Single(_store.ListMessages(_inbox, 10, Wisp.Core.Smart.MailCategory.Important));
+        Assert.Equal(2, _store.ListMessages(_inbox, 10).Count);
+    }
+
+    [Fact]
+    public void Sender_rules_and_summaries_are_stored_encrypted_and_reset_sorting()
+    {
+        _store.StoreServerMessages(_inbox, 1, [Mail(1, "news@shop.example", Wisp.Core.Smart.MailSignals.Checked)]);
+        var id = _store.GetClassifyQueue(10).Single().Id;
+        _store.SetClassification([(id, Wisp.Core.Smart.MailCategory.None, Wisp.Core.Smart.ClassifiedBy.Rules)]);
+        _store.SetSenderRule(_account, "News@Shop.example", Wisp.Core.Smart.MailCategory.Promotion);
+        Assert.Equal(Wisp.Core.Smart.MailCategory.Promotion, _store.GetSenderRules(_account)[_store.HashSender("news@shop.example")]);
+        Assert.Equal(1, _store.ResetClassification());
+        Assert.Single(_store.GetClassifyQueue(10));
+
+        _store.SaveSummary(id, "Ein Angebot für Gartenmöbel.");
+        Assert.Equal("Ein Angebot für Gartenmöbel.", _store.GetSummary(id));
+        Assert.True(_store.GetMessage(id)!.HasSummary);
+        _store.Dispose();
+        SqliteConnection.ClearAllPools();
+        var content = Encoding.UTF8.GetString(File.ReadAllBytes(Path.Combine(_dir, "wisp.db")) is var db && File.Exists(Path.Combine(_dir, "wisp.db-wal"))
+            ? [.. db, .. File.ReadAllBytes(Path.Combine(_dir, "wisp.db-wal"))] : db);
+        Assert.DoesNotContain("Gartenmöbel", content);
+        Assert.DoesNotContain("shop.example", content);
+    }
+
+    [Fact]
+    public void Only_fresh_unread_inbox_mails_are_code_candidates_and_only_once()
+    {
+        _store.StoreServerMessages(_inbox, 1, [
+            Mail(1, "otp@bank.example", Wisp.Core.Smart.MailSignals.Checked),
+            Mail(2, "otp@bank.example", Wisp.Core.Smart.MailSignals.Checked, DateTimeOffset.UtcNow.AddHours(-2)),
+        ]);
+        var candidates = _store.GetCodeCandidates(DateTimeOffset.UtcNow.AddMinutes(-10));
+        var fresh = Assert.Single(candidates);
+        _store.MarkCodeChecked(fresh.Id);
+        Assert.Empty(_store.GetCodeCandidates(DateTimeOffset.UtcNow.AddMinutes(-10)));
+    }
+
+    [Fact]
+    public void The_models_verdict_is_kept_and_the_model_is_not_asked_twice()
+    {
+        _store.StoreServerMessages(_inbox, 1, [Mail(1, "news@shop.example", Wisp.Core.Smart.MailSignals.Checked)]);
+        var id = _store.GetClassifyQueue(10).Single().Id;
+        _store.SetClassification([(id, Wisp.Core.Smart.MailCategory.None, Wisp.Core.Smart.ClassifiedBy.Rules)]);
+        _store.SaveBody(id, Encoding.UTF8.GetBytes("Subject: x\r\n\r\nHallo"));
+        Assert.Single(_store.GetAiQueue(DateTimeOffset.UtcNow.AddDays(-2), 5));
+
+        _store.SetAiCategory(id, Wisp.Core.Smart.MailCategory.Promotion);
+        Assert.Empty(_store.GetAiQueue(DateTimeOffset.UtcNow.AddDays(-2), 5));
+        _store.ResetClassification(includeAi: true);
+        Assert.Equal(Wisp.Core.Smart.MailCategory.Promotion, _store.GetClassifyQueue(10).Single().AiCategory);
+    }
+
+    public void Dispose()
+    {
+        _store.Dispose();
+        SqliteConnection.ClearAllPools();
+        try { Directory.Delete(_dir, true); } catch (IOException) { }
+    }
+}

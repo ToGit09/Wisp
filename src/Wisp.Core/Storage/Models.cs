@@ -93,11 +93,13 @@ public sealed record FolderRow
 public sealed record LocalMessage(long Id, uint Uid, uint UidValidity, MessageFlags Flags, MessageState State, string? MidHash, bool HasPendingOps);
 
 /// <summary>A message as reported by the server, ready to be stored.</summary>
-public sealed record ServerMessage(uint Uid, DateTimeOffset Date, long Size, MessageFlags Flags, Envelope Envelope, bool HasAttachments);
+public sealed record ServerMessage(uint Uid, DateTimeOffset Date, long Size, MessageFlags Flags, Envelope Envelope, bool HasAttachments,
+    Smart.MailSignals Signals = Smart.MailSignals.None);
 
 public sealed record MessageListItem(
     long Id, long FolderId, long AccountId, Envelope Envelope, DateTimeOffset Date, long Size,
-    MessageFlags Flags, bool HasAttachments, bool HasBody, bool IsPending)
+    MessageFlags Flags, bool HasAttachments, bool HasBody, bool IsPending,
+    Smart.MailCategory Category = Smart.MailCategory.None, bool HasSummary = false)
 {
     public bool IsSeen => Flags.HasFlag(MessageFlags.Seen);
     public bool IsFlagged => Flags.HasFlag(MessageFlags.Flagged);

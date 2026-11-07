@@ -8,6 +8,8 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>Assets\wisp.ico</ApplicationIcon>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+    <!-- LibraryImport (Windows clipboard for one-time codes) -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
   <ItemGroup>
@@ -31,5 +33,28 @@
   <ItemGroup>
     <ProjectReference Include="..\Wisp.Core\Wisp.Core.csproj" />
   </ItemGroup>
+
+  <!-- Wisp 2 editions: "Light" (default) or "AI" (dotnet publish -p:WispEdition=AI). Only the AI edition
+       contains the local language model runtime; see Edition.cs and docs/EDITIONEN.md. -->
+  <PropertyGroup>
+    <WispEdition Condition="'$(WispEdition)' == ''">Light</WispEdition>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(WispEdition)' == 'AI'">
+    <DefineConstants>$(DefineConstants);WISP_AI</DefineConstants>
+  </PropertyGroup>
+  <ItemGroup Condition="'$(WispEdition)' == 'AI'">
+    <ProjectReference Include="..\Wisp.Ai\Wisp.Ai.csproj" />
+  </ItemGroup>
+
+  <!-- The llama.cpp package brings native libraries for every platform (~110 MB). A package for one platform
+       (dotnet publish -r win-x64) only needs its own (~20 MB). -->
+  <Target Name="WispOnlyOwnNativeRuntimes" AfterTargets="ComputeResolvedFilesToPublishList"
+          Condition="'$(WispEdition)' == 'AI' And '$(RuntimeIdentifier)' != ''">
+    <ItemGroup>
+      <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)"
+        Condition="$([System.String]::Copy('%(ResolvedFileToPublish.Identity)').Replace('\','/').Contains('/LLamaSharpRuntimes/'))
+               And !$([System.String]::Copy('%(ResolvedFileToPublish.Identity)').Replace('\','/').Contains('/LLamaSharpRuntimes/$(RuntimeIdentifier)/'))" />
+    </ItemGroup>
+  </Target>
 
 </Project>

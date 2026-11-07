@@ -39,6 +39,7 @@ public sealed partial class MainViewModel : ObservableObject
             _noticeAction = null;
         });
         _mail.Changed += OnChanged;
+        HookAi();
         ReloadSidebar();
         UpdateStatus();
         SelectedSidebarItem = Pinned.FirstOrDefault() ?? Sidebar.FirstOrDefault();
@@ -132,6 +133,7 @@ public sealed partial class MainViewModel : ObservableObject
         IsOutboxSelected = value.Kind == SidebarKind.Outbox;
         FolderTitle = value.Name;
         SearchText = "";
+        ResetCategory();
         if (value.FolderId is long folderId) _mail.FolderOpened(folderId);
         // A different folder starts empty, so the list opens at the top (newest mail), never somewhere below.
         Messages.Clear();
@@ -159,6 +161,8 @@ public sealed partial class MainViewModel : ObservableObject
                 case ChangeKind.Messages: _messagesDirty = true; _sidebarDirty = true; _statusDirty = true; break;
                 case ChangeKind.Outbox: _outboxDirty = true; _sidebarDirty = true; _statusDirty = true; break;
                 case ChangeKind.Notice: ShowNotice(change.Text); _sidebarDirty = true; break;
+                case ChangeKind.Code or ChangeKind.Summary: OnSmartChange(change); return;
+                default: return;
             }
             if (!_refreshTimer.IsEnabled) _refreshTimer.Start();
         });
@@ -183,6 +187,9 @@ public sealed partial class MainViewModel : ObservableObject
         OnPropertyChanged(nameof(SidebarAlwaysOpen));
         OnPropertyChanged(nameof(ShowQuickActions));
         OnPropertyChanged(nameof(ShowContextMenu));
+        OnPropertyChanged(nameof(ShowCategoryTabs));
+        OnPropertyChanged(nameof(ShowSortMenu));
+        if (!ShowCategoryTabs) ResetCategory();
         if (SelectedSidebarItem is null || !AllSidebar.Contains(SelectedSidebarItem))
             SelectedSidebarItem = AllSidebar.FirstOrDefault();
     }
@@ -325,9 +332,10 @@ public sealed partial class MainViewModel : ObservableObject
             return;
         }
 
-        var fresh = _mail.ListMessages(folderId, SearchText);
+        var fresh = _mail.ListMessages(folderId, SearchText, SelectedCategory);
         SyncMessages(fresh);
         IsListEmpty = Messages.Count == 0;
+        UpdateCategoryCounts();
 
         if (CurrentMessageId is long current && _mail.GetMessage(current) is { } m)
         {
@@ -480,9 +488,11 @@ public sealed partial class MainViewModel : ObservableObject
     {
         _openCts?.Cancel();
         var cts = _openCts = new CancellationTokenSource();
+        var sameMail = CurrentMessageId == messageId;
         CurrentMessageId = messageId;
         ReaderProblem = null;
         IsLoadingMail = true;
+        if (!sameMail) LoadSummary(messageId);
 
         var result = await _mail.OpenAsync(messageId, showHtml, allowImages, cts.Token);
         if (cts.IsCancellationRequested) return;
@@ -513,6 +523,7 @@ public sealed partial class MainViewModel : ObservableObject
         _openCts?.Cancel();
         CurrentMail = null;
         CurrentMessageId = null;
+        LoadSummary(null);
         ReaderProblem = null;
         IsLoadingMail = false;
         HasSelection = false;

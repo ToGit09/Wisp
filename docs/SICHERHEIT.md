@@ -26,6 +26,9 @@ verschlüsselte Werte nicht zwischen Feldern vertauscht werden können.
 | Kompletter Mailinhalt inkl. Anhängen | ja |
 | Postausgang und Entwürfe | ja |
 | Message-ID | nur als HMAC-Hash |
+| KI-Zusammenfassungen (AIEdition) | ja |
+| Absender-Regeln („immer einordnen als …“) | Absender nur als HMAC-Hash |
+| Kategorie (Wichtig/Werbung/Spamverdacht) und Kopfzeilen-Merkmale (z. B. „Newsletter“, „SPF fehlgeschlagen“) | nein – kleine Zahlen wie die Flags, für die Reiter nötig |
 | Datum, Größe, Flags (gelesen/Stern), UIDs | nein – für Sortierung nötig, enthält keinen Inhalt |
 | Darstellungs-Einstellungen | nein – enthalten keine persönlichen Daten |
 
@@ -70,3 +73,20 @@ Fehlertyp und Stacktrace, keine Fehlermeldungen, Adressen oder Mailinhalte.
 - Wer als derselbe Benutzer am entsperrten Rechner sitzt, kann Wisp öffnen (außer mit
   Master-Passwort). Das ist bei allen Mail-Clients so.
 - Während Wisp läuft, liegen geöffnete Mails entschlüsselt im Arbeitsspeicher.
+
+## Wisp 2: Sortierung, Einmalcodes und lokale KI
+
+- **Alles lokal.** Kategorien, Spamerkennung, Einmalcodes und die KI arbeiten nur auf diesem Computer.
+  Keine Mail, kein Code und keine Zusammenfassung wird irgendwohin gesendet.
+- **Wortfilter.** Die Spamerkennung lernt aus Betreff, Absender und Vorschau der Mails in Ihren Spam-Ordnern.
+  Die Wortzählungen liegen nur im Arbeitsspeicher und werden nie auf die Platte geschrieben.
+- **Einmalcodes** werden nur aus neuen (höchstens 10 Minuten alten), ungelesenen Mails im Posteingang kopiert.
+  Unter Windows bekommt der Code die Kennzeichen `ExcludeClipboardContentFromMonitorProcessing`,
+  `CanIncludeInClipboardHistory = 0` und `CanUploadToCloudClipboard = 0`: Er landet weder im
+  Zwischenablage-Verlauf (Win+V) noch in der Cloud-Zwischenablage. Nach einstellbarer Zeit (Standard 2 Minuten)
+  leert Wisp die Zwischenablage wieder – aber nur, wenn dort noch der Code steht.
+- **KI-Modell (AIEdition).** Einmaliger Download von Hugging Face über HTTPS. Datei und Version sind fest
+  im Programm hinterlegt (Commit `d7f544e…`) und werden per **SHA-256** geprüft; eine veränderte Datei wird
+  gelöscht und nicht geladen. Das Modell ist eine reine Gewichtsdatei (GGUF), kein ausführbarer Code.
+  Es liegt unverschlüsselt unter `models/` im Datenordner, da es öffentlich ist und nichts Persönliches enthält.
+  Das Modell sieht Absender, Betreff und Text einer Mail (ohne zitierte Antworten, gekürzt), nie Anhänge.

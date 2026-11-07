@@ -15,6 +15,10 @@ Ein leichter, sicherer E-Mail-Client für Windows und Linux.
   Senden mit „Rückgängig“.
 - **Abschaltbar:** Fast alles lässt sich in den Einstellungen an- und ausschalten – Seitenleiste mit
   Auto-Einklappen, Mail-Aktionen in der Seitenleiste, Rechtsklick-Menü, Absender-Kürzel, Push, einzelne Ordner u. v. m.
+- **Wisp 2 – Sortierung & KI:** Einmalcodes werden automatisch kopiert, der Posteingang sortiert sich in
+  „Wichtig“, „Werbung“, „Spamverdacht“ und „Alle“, eine erweiterte Spamerkennung lernt aus dem Spam-Ordner.
+  Die **AIEdition** fasst Mails zusätzlich mit einem lokalen KI-Modell zusammen – ohne Cloud.
+  Siehe [docs/EDITIONEN.md](docs/EDITIONEN.md).
 
 Unterstützt Gmail, Outlook.com, Yahoo, iCloud, GMX, WEB.DE, T-Online, Posteo, mailbox.org, AOL, freenet
 und jeden anderen IMAP/SMTP-Anbieter – siehe [docs/ANBIETER.md](docs/ANBIETER.md).
@@ -26,10 +30,11 @@ Voraussetzung: [.NET 10 SDK](https://dotnet.microsoft.com/download).
 ```bash
 dotnet build Wisp.slnx
 dotnet test Wisp.slnx
-dotnet run --project src/Wisp.App
+dotnet run --project src/Wisp.App                      # LightEdition
+dotnet run --project src/Wisp.App -p:WispEdition=AI    # AIEdition
 ```
 
-Eigenständige Pakete (ohne installiertes .NET):
+Eigenständige Pakete (ohne installiertes .NET), für die AIEdition zusätzlich `-p:WispEdition=AI`:
 
 ```bash
 dotnet publish src/Wisp.App -c Release -r win-x64 --self-contained -o publish/win-x64
@@ -47,20 +52,25 @@ mit einem Code-Signing-Zertifikat signiert werden.
 | Ordner | Inhalt |
 |--------|--------|
 | `src/Wisp.Core` | Konten & Anbieter, Verschlüsselung, lokaler Speicher, Sync, Offline-Warteschlange, Postausgang, Mail-Darstellung |
+| `src/Wisp.Core/Smart` | Wisp 2: Einmalcodes, Kategorien, Spamerkennung, Anbindung der lokalen KI |
+| `src/Wisp.Ai` | Lokales KI-Modell (nur in der AIEdition) |
 | `src/Wisp.App` | Oberfläche (Avalonia) |
 | `tests/Wisp.Core.Tests` | Tests, vor allem für die Sicherheits- und Löschregeln |
-| `docs/` | [Architektur](docs/ARCHITEKTUR.md) · [Sync & Offline](docs/SYNC.md) · [Sicherheit](docs/SICHERHEIT.md) · [Anbieter](docs/ANBIETER.md) |
+| `docs/` | [Architektur](docs/ARCHITEKTUR.md) · [Sync & Offline](docs/SYNC.md) · [Sicherheit](docs/SICHERHEIT.md) · [Anbieter](docs/ANBIETER.md) · [Editionen](docs/EDITIONEN.md) |
 
 ## Release veröffentlichen
+
+Wisp 2 wird auf `main` entwickelt, Fehlerbehebungen für Wisp 1 auf `release/v1` (Tags `v1.x.y` dort setzen).
+Details zu Editionen und Update-Kanälen: [docs/EDITIONEN.md](docs/EDITIONEN.md).
 
 1. Version in `Directory.Build.props` und `CHANGELOG.md` eintragen, committen, nach `main` bringen.
 2. Tag setzen und pushen:
    ```bash
-   git tag v1.0.0
-   git push origin v1.0.0
+   git tag v2.0.0
+   git push origin v2.0.0
    ```
-3. Der Workflow [`.github/workflows/release.yml`](.github/workflows/release.yml) testet, baut und packt Wisp mit
-   [Velopack](https://velopack.io) und legt einen **Entwurf** unter *Releases* an:
+3. Der Workflow [`.github/workflows/release.yml`](.github/workflows/release.yml) testet, baut beide Editionen und packt
+   jede mit [Velopack](https://velopack.io) in ihren eigenen Update-Kanal. Er legt einen **Entwurf** unter *Releases* an:
    - `Wisp-<Version>-Windows-Setup.exe`: Installation ohne Admin-Rechte, mit Startmenü- und Desktop-Verknüpfung
    - `Wisp-<Version>-Windows-Portable.zip`: zum Entpacken, aktualisiert sich ebenfalls selbst
    - `Wisp-<Version>-Linux.AppImage`: eine Datei, ausführbar machen und starten

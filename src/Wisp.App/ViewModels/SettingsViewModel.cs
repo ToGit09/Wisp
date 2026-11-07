@@ -46,6 +46,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         PollMinutes = _s.Sync.PollMinutes;
         ReloadAccounts();
         LoadFolderSync();
+        HookAi();
     }
 
     public IReadOnlyList<Choice<ThemeMode>> Themes { get; } =

@@ -24,4 +24,13 @@ Alle sind mit der GPL-3.0 vereinbar.
 | System.Security.Cryptography.ProtectedData | MIT | https://github.com/dotnet/runtime |
 | Velopack (Installation und Updates) | MIT | https://github.com/velopack/velopack |
 
+**Nur in der AIEdition:**
+
+| Bibliothek / Modell | Lizenz | Projekt |
+|---------------------|--------|---------|
+| LLamaSharp (inkl. Backend.Cpu) | MIT | https://github.com/SciSharp/LLamaSharp |
+| llama.cpp / ggml | MIT | https://github.com/ggml-org/llama.cpp |
+| Qwen3-1.7B (Sprachmodell, wird beim ersten Start geladen, nicht mitgeliefert) | Apache-2.0 | https://huggingface.co/Qwen/Qwen3-1.7B |
+| Quantisierte GGUF-Fassung des Modells | Apache-2.0 | https://huggingface.co/unsloth/Qwen3-1.7B-GGUF |
+
 Die vollständigen Lizenztexte finden sich in den jeweiligen Projekten.
