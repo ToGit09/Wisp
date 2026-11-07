@@ -94,6 +94,7 @@
     <KeyBinding Gesture="Ctrl+L" Command="{Binding ForwardCommand}" />
     <KeyBinding Gesture="F5" Command="{Binding RefreshCommand}" />
     <KeyBinding Gesture="Ctrl+U" Command="{Binding ToggleReadCommand}" />
+    <KeyBinding Gesture="Escape" Command="{Binding CloseMailCommand}" />
   </Window.KeyBindings>
 
   <Grid>
@@ -297,56 +298,62 @@
 
       <!-- ─────────── Reader ─────────── -->
       <Grid Grid.Column="3" RowDefinitions="Auto,Auto,Auto,*">
-        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="12,10" Spacing="2" IsVisible="{Binding HasSelection}">
-          <Button Classes="icon" Command="{Binding ReplyCommand}" ToolTip.Tip="Antworten (Strg+R)"
-                  IsEnabled="{Binding CurrentMail, Converter={x:Static v:Converters.NotNull}}">
-            <t:WispIcon Data="{StaticResource IconReply}" />
+        <DockPanel Grid.Row="0" Margin="12,10" IsVisible="{Binding HasSelection}">
+          <!-- Closes the mail: deselects it and empties the reader. -->
+          <Button DockPanel.Dock="Right" Classes="icon" Command="{Binding CloseMailCommand}" ToolTip.Tip="Schließen (Esc)">
+            <t:WispIcon Data="{StaticResource IconClose}" />
           </Button>
-          <Button Classes="icon" Command="{Binding ReplyAllCommand}" ToolTip.Tip="Allen antworten (Strg+Umschalt+R)"
-                  IsEnabled="{Binding CurrentMail, Converter={x:Static v:Converters.NotNull}}">
-            <t:WispIcon Data="{StaticResource IconReplyAll}" />
-          </Button>
-          <Button Classes="icon" Command="{Binding ForwardCommand}" ToolTip.Tip="Weiterleiten (Strg+L)"
-                  IsEnabled="{Binding CurrentMail, Converter={x:Static v:Converters.NotNull}}">
-            <t:WispIcon Data="{StaticResource IconForward}" />
-          </Button>
-          <Rectangle Width="1" Height="20" Margin="8,0" Fill="{DynamicResource WispBorder}" />
-          <Button Classes="icon" Command="{Binding ArchiveCommand}" ToolTip.Tip="Archivieren" IsVisible="{Binding CanArchive}">
-            <t:WispIcon Data="{StaticResource IconArchive}" />
-          </Button>
-          <Button Classes="icon" ToolTip.Tip="Verschieben">
-            <t:WispIcon Data="{StaticResource IconMove}" />
-            <Button.Flyout>
-              <Flyout Placement="BottomEdgeAlignedLeft">
-                <ScrollViewer MaxHeight="360">
-                  <ItemsControl ItemsSource="{Binding MoveTargets}">
-                    <ItemsControl.ItemTemplate>
-                      <DataTemplate x:DataType="vm:SidebarItem">
-                        <Button Classes="icon" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
-                                Command="{Binding $parent[Window].((vm:MainViewModel)DataContext).MoveToCommand}" CommandParameter="{Binding}">
-                          <StackPanel Orientation="Horizontal" Spacing="10">
-                            <t:WispIcon Data="{Binding Icon}" Foreground="{DynamicResource WispMuted}" />
-                            <TextBlock Text="{Binding Name}" />
-                          </StackPanel>
-                        </Button>
-                      </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                  </ItemsControl>
-                </ScrollViewer>
-              </Flyout>
-            </Button.Flyout>
-          </Button>
-          <Button Classes="icon" Command="{Binding DeleteCommand}" ToolTip.Tip="Löschen (Entf)">
-            <t:WispIcon Data="{StaticResource IconTrash}" />
-          </Button>
-          <Rectangle Width="1" Height="20" Margin="8,0" Fill="{DynamicResource WispBorder}" />
-          <Button Classes="icon" Command="{Binding ToggleReadCommand}" ToolTip.Tip="Gelesen / ungelesen (Strg+U)">
-            <t:WispIcon Data="{StaticResource IconMail}" />
-          </Button>
-          <Button Classes="icon" Command="{Binding ToggleFlagCommand}" ToolTip.Tip="Markieren">
-            <t:WispIcon Data="{StaticResource IconStar}" />
-          </Button>
-        </StackPanel>
+          <StackPanel Orientation="Horizontal" Spacing="2">
+            <Button Classes="icon" Command="{Binding ReplyCommand}" ToolTip.Tip="Antworten (Strg+R)"
+                    IsEnabled="{Binding CurrentMail, Converter={x:Static v:Converters.NotNull}}">
+              <t:WispIcon Data="{StaticResource IconReply}" />
+            </Button>
+            <Button Classes="icon" Command="{Binding ReplyAllCommand}" ToolTip.Tip="Allen antworten (Strg+Umschalt+R)"
+                    IsEnabled="{Binding CurrentMail, Converter={x:Static v:Converters.NotNull}}">
+              <t:WispIcon Data="{StaticResource IconReplyAll}" />
+            </Button>
+            <Button Classes="icon" Command="{Binding ForwardCommand}" ToolTip.Tip="Weiterleiten (Strg+L)"
+                    IsEnabled="{Binding CurrentMail, Converter={x:Static v:Converters.NotNull}}">
+              <t:WispIcon Data="{StaticResource IconForward}" />
+            </Button>
+            <Rectangle Width="1" Height="20" Margin="8,0" Fill="{DynamicResource WispBorder}" />
+            <Button Classes="icon" Command="{Binding ArchiveCommand}" ToolTip.Tip="Archivieren" IsVisible="{Binding CanArchive}">
+              <t:WispIcon Data="{StaticResource IconArchive}" />
+            </Button>
+            <Button Classes="icon" ToolTip.Tip="Verschieben">
+              <t:WispIcon Data="{StaticResource IconMove}" />
+              <Button.Flyout>
+                <Flyout Placement="BottomEdgeAlignedLeft">
+                  <ScrollViewer MaxHeight="360">
+                    <ItemsControl ItemsSource="{Binding MoveTargets}">
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:SidebarItem">
+                          <Button Classes="icon" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                                  Command="{Binding $parent[Window].((vm:MainViewModel)DataContext).MoveToCommand}" CommandParameter="{Binding}">
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                              <t:WispIcon Data="{Binding Icon}" Foreground="{DynamicResource WispMuted}" />
+                              <TextBlock Text="{Binding Name}" />
+                            </StackPanel>
+                          </Button>
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                  </ScrollViewer>
+                </Flyout>
+              </Button.Flyout>
+            </Button>
+            <Button Classes="icon" Command="{Binding DeleteCommand}" ToolTip.Tip="Löschen (Entf)">
+              <t:WispIcon Data="{StaticResource IconTrash}" />
+            </Button>
+            <Rectangle Width="1" Height="20" Margin="8,0" Fill="{DynamicResource WispBorder}" />
+            <Button Classes="icon" Command="{Binding ToggleReadCommand}" ToolTip.Tip="Gelesen / ungelesen (Strg+U)">
+              <t:WispIcon Data="{StaticResource IconMail}" />
+            </Button>
+            <Button Classes="icon" Command="{Binding ToggleFlagCommand}" ToolTip.Tip="Markieren">
+              <t:WispIcon Data="{StaticResource IconStar}" />
+            </Button>
+          </StackPanel>
+        </DockPanel>
 
         <!-- Compact header: subject, then sender with the date on the right, then recipients in one small line.
              Double-clicking an address selects all of it (see MainWindow.axaml.cs). -->
