@@ -8,15 +8,21 @@ using Wisp.Core.Sync;
 
 namespace Wisp.App.ViewModels;
 
-/// <summary>A tab above the inbox: "Wichtig", "Werbung", "Spamverdacht", "Alle".</summary>
-public sealed partial class CategoryTab(string label, MailCategory? category) : ObservableObject
+/// <summary>A tab above the inbox: "Persönlich", "Rechnungen", "Werbung", "Spamverdacht", "Alle".</summary>
+public sealed partial class CategoryTab(string label, MailCategory? category, string icon) : ObservableObject
 {
     public string Label { get; } = label;
     public MailCategory? Category { get; } = category;
+    public Avalonia.Media.Geometry? Icon => SidebarItem.Find(icon);
     [ObservableProperty] public partial int Unread { get; set; }
     [ObservableProperty] public partial bool IsSelected { get; set; }
     public bool HasUnread => Unread > 0;
-    partial void OnUnreadChanged(int value) => OnPropertyChanged(nameof(HasUnread));
+    public string UnreadText => Unread > 99 ? "99+" : Unread.ToString();
+    partial void OnUnreadChanged(int value)
+    {
+        OnPropertyChanged(nameof(HasUnread));
+        OnPropertyChanged(nameof(UnreadText));
+    }
 }
 
 /// <summary>Wisp 2: inbox tabs, one-time codes and AI summaries.</summary>
@@ -24,10 +30,11 @@ public sealed partial class MainViewModel
 {
     public ObservableCollection<CategoryTab> CategoryTabs { get; } =
     [
-        new("Wichtig", MailCategory.Important),
-        new("Werbung", MailCategory.Promotion),
-        new("Spamverdacht", MailCategory.SuspectedSpam),
-        new("Alle", null) { IsSelected = true },
+        new("Persönlich", MailCategory.Personal, "IconPerson"),
+        new("Rechnungen", MailCategory.Invoice, "IconReceipt"),
+        new("Werbung", MailCategory.Promotion, "IconTag"),
+        new("Spamverdacht", MailCategory.SuspectedSpam, "IconJunk"),
+        new("Alle", null, "IconInbox") { IsSelected = true },
     ];
 
     MailCategory? SelectedCategory => ShowCategoryTabs ? CategoryTabs.FirstOrDefault(t => t.IsSelected)?.Category : null;
@@ -71,7 +78,8 @@ public sealed partial class MainViewModel
         _mail.SetSenderCategory(id, category);
         ShowNotice(category switch
         {
-            MailCategory.Important => "Mails dieses Absenders landen ab jetzt unter „Wichtig“.",
+            MailCategory.Personal => "Mails dieses Absenders landen ab jetzt unter „Persönlich“.",
+            MailCategory.Invoice => "Mails dieses Absenders landen ab jetzt unter „Rechnungen“.",
             MailCategory.Promotion => "Mails dieses Absenders landen ab jetzt unter „Werbung“.",
             MailCategory.SuspectedSpam => "Mails dieses Absenders landen ab jetzt unter „Spamverdacht“.",
             _ => "Mails dieses Absenders werden wieder automatisch eingeordnet.",

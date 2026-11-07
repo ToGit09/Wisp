@@ -124,6 +124,8 @@ public sealed class SmartService : IAsyncDisposable
         var known = ContactsOf(c.AccountId).Contains(c.Envelope.FromAddress.ToLowerInvariant()) || c.Flags.HasFlag(MessageFlags.Answered);
         if (hasRule || known) return (c.Id, rules, ClassifiedBy.Rules);
         if (!s.SpamDetection && ai == MailCategory.SuspectedSpam) return (c.Id, rules, ClassifiedBy.Rules);
+        // Order and invoice words are reliable; the small model sometimes calls them "persönlich".
+        if (rules == MailCategory.Invoice && ai != MailCategory.SuspectedSpam) return (c.Id, rules, ClassifiedBy.Rules);
         return (c.Id, ai.Value, ClassifiedBy.Ai);
     }
 

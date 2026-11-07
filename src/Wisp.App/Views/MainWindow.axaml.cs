@@ -59,6 +59,14 @@ public partial class MainWindow : Window, IDialogs
         };
 
         MessageList.ContextRequested += OnMessageContextRequested;
+        // After deleting (archiving, moving …) the next mail is selected and opened. The keyboard stays in the
+        // list, so Entf right away deletes that one too.
+        _vm.SelectRequested += item =>
+        {
+            MessageList.SelectedItem = item;
+            MessageList.ScrollIntoView(item);
+            Dispatcher.UIThread.Post(() => MessageList.ContainerFromItem(item)?.Focus(), DispatcherPriority.Loaded);
+        };
 
         // Two lists (pinned inbox + folders) act as one selection.
         PinnedList.SelectionChanged += (_, _) => OnSidebarListSelected(PinnedList, FolderList);
@@ -158,7 +166,8 @@ public partial class MainWindow : Window, IDialogs
             IsEnabled = enabled,
             ItemsSource = new[]
             {
-                Entry("Wichtig", Core.Smart.MailCategory.Important),
+                Entry("Persönlich", Core.Smart.MailCategory.Personal),
+                Entry("Rechnungen", Core.Smart.MailCategory.Invoice),
                 Entry("Werbung", Core.Smart.MailCategory.Promotion),
                 Entry("Spamverdacht", Core.Smart.MailCategory.SuspectedSpam),
                 Entry("Keine Regel (automatisch)", null),

@@ -533,8 +533,8 @@
             <StackPanel>
               <Grid Classes="row" ColumnDefinitions="*,Auto">
                 <StackPanel>
-                  <TextBlock Classes="label" Text="Reiter „Wichtig“, „Werbung“, „Spamverdacht“, „Alle“" />
-                  <TextBlock Classes="hint" Text="Wichtig: Menschen, denen Sie schon geschrieben haben, persönliche Mails und markierte Mails. Werbung: Newsletter und Massenversand. Rechtsklick auf eine Mail → „Absender immer einordnen als …“ korrigiert die Sortierung." />
+                  <TextBlock Classes="label" Text="Reiter „Persönlich“, „Rechnungen“, „Werbung“, „Spamverdacht“, „Alle“" />
+                  <TextBlock Classes="hint" Text="Persönlich: Menschen, denen Sie schon geschrieben haben, persönliche Mails und markierte Mails. Rechnungen: Rechnungen, Bestellungen, Zahlungen und Versandbestätigungen. Werbung: Newsletter und Massenversand. Rechtsklick auf eine Mail → „Absender immer einordnen als …“ korrigiert die Sortierung." />
                 </StackPanel>
                 <ToggleSwitch Grid.Column="1" IsChecked="{Binding Categories}" />
               </Grid>

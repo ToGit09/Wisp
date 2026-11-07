@@ -5,7 +5,7 @@
 | | LightEdition | AIEdition |
 |---|---|---|
 | Einmalcodes automatisch kopieren | ✓ | ✓ |
-| Reiter „Wichtig / Werbung / Spamverdacht / Alle“ | ✓ (Regeln) | ✓ (Regeln + KI für neue Mails) |
+| Reiter „Persönlich / Rechnungen / Werbung / Spamverdacht / Alle“ | ✓ (Regeln) | ✓ (Regeln + KI für neue Mails) |
 | Erweiterte Spamerkennung (SPF/DKIM/DMARC, gefälschte Namen, lernender Wortfilter) | ✓ | ✓ |
 | KI-Zusammenfassung | – | ✓ neue Mails im Hintergrund, ältere auf Knopfdruck |
 | App-Icon | Wisp-Icon | Wisp-Icon mit kleinem Funkeln (✦) oben links |
@@ -49,7 +49,7 @@ Er erscheint nur, wenn auf GitHub bereits ein Wisp 2 veröffentlicht ist. Er lä
 Wisp-1-Nutzer mit 1.0.0–1.0.2 bekommen 1.0.3 vorher ganz normal als Update.
 
 Mails, Konten und Einstellungen bleiben beim Upgrade und beim Editionswechsel erhalten; die Datenbank wird beim
-ersten Start von Wisp 2 einmalig erweitert (Schema 3). Ein Zurück auf Wisp 1 ist nicht vorgesehen.
+ersten Start von Wisp 2 einmalig erweitert (Schema 4). Ein Zurück auf Wisp 1 ist nicht vorgesehen.
 
 ## Branches und Releases
 

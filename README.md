@@ -16,7 +16,7 @@ Ein leichter, sicherer E-Mail-Client für Windows und Linux.
 - **Abschaltbar:** Fast alles lässt sich in den Einstellungen an- und ausschalten – Seitenleiste mit
   Auto-Einklappen, Mail-Aktionen in der Seitenleiste, Rechtsklick-Menü, Absender-Kürzel, Push, einzelne Ordner u. v. m.
 - **Wisp 2 – Sortierung & KI:** Einmalcodes werden automatisch kopiert, der Posteingang sortiert sich in
-  „Wichtig“, „Werbung“, „Spamverdacht“ und „Alle“, eine erweiterte Spamerkennung lernt aus dem Spam-Ordner.
+  „Persönlich“, „Rechnungen“, „Werbung“, „Spamverdacht“ und „Alle“, eine erweiterte Spamerkennung lernt aus dem Spam-Ordner.
   Die **AIEdition** fasst Mails zusätzlich mit einem lokalen KI-Modell zusammen – ohne Cloud.
   Siehe [docs/EDITIONEN.md](docs/EDITIONEN.md).
 

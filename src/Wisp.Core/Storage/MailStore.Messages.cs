@@ -133,11 +133,11 @@ public sealed partial class MailStore
         Query(ListColumns + " WHERE m.folder_id = $f AND m.state = 0" + CategoryFilter(category) + " ORDER BY m.date DESC LIMIT $n", ReadListItem,
             ("$f", folderId), ("$n", limit), ("$c", (int)(category ?? 0))));
 
-    /// <summary>"Wichtig" also contains everything the user starred.</summary>
+    /// <summary>"Persönlich" also contains everything the user starred.</summary>
     static string CategoryFilter(Smart.MailCategory? category) => category switch
     {
         null => "",
-        Smart.MailCategory.Important => " AND (m.category = $c OR (m.flags & 2) != 0)",
+        Smart.MailCategory.Personal => " AND (m.category = $c OR (m.flags & 2) != 0)",
         _ => " AND m.category = $c AND (m.flags & 2) = 0",
     };
 

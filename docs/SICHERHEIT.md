@@ -28,7 +28,7 @@ verschlüsselte Werte nicht zwischen Feldern vertauscht werden können.
 | Message-ID | nur als HMAC-Hash |
 | KI-Zusammenfassungen (AIEdition) | ja |
 | Absender-Regeln („immer einordnen als …“) | Absender nur als HMAC-Hash |
-| Kategorie (Wichtig/Werbung/Spamverdacht) und Kopfzeilen-Merkmale (z. B. „Newsletter“, „SPF fehlgeschlagen“) | nein – kleine Zahlen wie die Flags, für die Reiter nötig |
+| Kategorie (Persönlich/Rechnungen/Werbung/Spamverdacht) und Kopfzeilen-Merkmale (z. B. „Newsletter“, „SPF fehlgeschlagen“) | nein – kleine Zahlen wie die Flags, für die Reiter nötig |
 | Datum, Größe, Flags (gelesen/Stern), UIDs | nein – für Sortierung nötig, enthält keinen Inhalt |
 | Darstellungs-Einstellungen | nein – enthalten keine persönlichen Daten |
 

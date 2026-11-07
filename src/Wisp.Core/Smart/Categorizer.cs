@@ -3,13 +3,21 @@ using Wisp.Core.Storage;
 
 namespace Wisp.Core.Smart;
 
-/// <summary>The tabs above the inbox. "Alle" shows everything; <see cref="None"/> mails appear only there.</summary>
+/// <summary>
+/// The tabs above the inbox. "Alle" shows everything; <see cref="None"/> mails appear only there.
+/// The numbers are stored in the database (messages.category, sender_rules) and must not change.
+/// </summary>
 public enum MailCategory
 {
     None = 0,
-    Important = 1,
+    /// <summary>"Persönlich": people writing to the user, contacts, starred mails.</summary>
+    Personal = 1,
+    /// <summary>"Werbung"</summary>
     Promotion = 2,
+    /// <summary>"Spamverdacht"</summary>
     SuspectedSpam = 3,
+    /// <summary>"Rechnungen": invoices, orders, payments, shipping notices, statements.</summary>
+    Invoice = 4,
 }
 
 /// <summary>How a mail was sorted: not yet, by the rules, or by the local AI model.</summary>
@@ -40,14 +48,16 @@ public static class Categorizer
         if (input.SenderRule is { } rule) return new Classification(rule, rule == MailCategory.SuspectedSpam ? 1 : Math.Min(spam, 0.2));
 
         var bulk = s.HasFlag(MailSignals.Newsletter) || s.HasFlag(MailSignals.Bulk);
-        if (input.KnownContact && !bulk) return new Classification(MailCategory.Important, spam);
+        if (input.KnownContact && !bulk) return new Classification(MailCategory.Personal, spam);
+        // Spam first: a fake "Ihre Rechnung" is phishing, not an invoice.
         if (spam >= SpamThreshold) return new Classification(MailCategory.SuspectedSpam, spam);
+        if (IsInvoice(input.Envelope)) return new Classification(MailCategory.Invoice, spam);
         if (bulk) return new Classification(MailCategory.Promotion, spam);
-        if (input.KnownContact) return new Classification(MailCategory.Important, spam);
+        if (input.KnownContact) return new Classification(MailCategory.Personal, spam);
 
         // A person writing to me directly (not a machine, not a mailing) is worth a look.
         var personal = s.HasFlag(MailSignals.DirectlyAddressed) && !s.HasFlag(MailSignals.Automated);
-        if (personal && (s.HasFlag(MailSignals.HighPriority) || spam < 0.25)) return new Classification(MailCategory.Important, spam);
+        if (personal && (s.HasFlag(MailSignals.HighPriority) || spam < 0.25)) return new Classification(MailCategory.Personal, spam);
         return new Classification(MailCategory.None, spam);
     }
 
@@ -73,7 +83,32 @@ public static class Categorizer
         return Math.Clamp(score, 0, 1);
     }
 
-    static readonly Regex Shouting = new(@"\b[A-ZÄÖÜ]{6,}\b", RegexOptions.Compiled);
+    // Words in the subject that make a mail a receipt: invoices, orders, payments, shipping, statements.
+    static readonly Regex InvoiceSubject = new(
+        @"rechnung|invoice|receipt|quittung|\bbeleg\b|kassenbon|zahlungsbestätigung|zahlungseingang|zahlung erhalten|payment (received|confirmation)|" +
+        @"zahlungserinnerung|mahnung|lastschrift|abbuchung|gutschrift|kontoauszug|abrechnung|beitragsrechnung|" +
+        @"bestellbestätigung|auftragsbestätigung|buchungsbestätigung|order confirm|(ihre|deine|your) (bestellung|order|buchung|zahlung|lieferung)|" +
+        @"bestellung (nr|#|\d)|order (no|#|\d)|versandbestätigung|versendet|verschickt|has shipped|wurde zugestellt|ist unterwegs|out for delivery|" +
+        @"(sie haben|du hast) (eine zahlung|geld) gesendet|you sent a payment|vertragsbestätigung",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase);
+    // The same in the first lines of the text, but only with a number next to it (not "Jetzt bestellen!").
+    static readonly Regex InvoiceText = new(
+        @"(rechnungs|bestell|auftrags|buchungs|kunden|vertrags)-?(nummer|nr\.?)\s*[:#]?\s*[A-Z0-9-]{4,}|(invoice|order) (number|no\.?|#)\s*[:#]?\s*[A-Z0-9-]{4,}|" +
+        @"(rechnungsbetrag|gesamtbetrag|zu zahlender betrag|amount due|order total)\s*:?\s*[\d€$]",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase);
+    // Advertising that only borrows the words ("10 % auf deine nächste Bestellung").
+    static readonly Regex InvoiceDecoy = new(
+        @"\d+\s*%|rabatt|gutschein|coupon|angebot|\bsale\b|deal|spare|sparen|gratis|kostenlos|newsletter|gewinnspiel|nur heute|jetzt bestellen",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
+    /// <summary>Invoices, orders, payment and shipping confirmations ("Rechnungen").</summary>
+    public static bool IsInvoice(Envelope e)
+    {
+        if (InvoiceDecoy.IsMatch(e.Subject)) return false;
+        return InvoiceSubject.IsMatch(e.Subject) || InvoiceText.IsMatch(e.Preview);
+    }
+
+    static readonly Regex Shouting =new(@"\b[A-ZÄÖÜ]{6,}\b", RegexOptions.Compiled);
     static readonly Regex Bait = new(
         @"gewinn|gewonnen|lotterie|erbschaft|bitcoin|krypto|crypto|viagra|casino|kredit ohne|sofort geld|million|dringend.*konto|konto.*gesperrt|account.*(suspend|locked)|verify your account|bestätigen sie ihr konto|ihr paket konnte nicht|zahlung fehlgeschlagen|you have won|prince|inheritance",
         RegexOptions.Compiled | RegexOptions.IgnoreCase);

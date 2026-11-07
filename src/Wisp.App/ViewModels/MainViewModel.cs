@@ -541,6 +541,36 @@ public sealed partial class MainViewModel : ObservableObject
 
     IReadOnlyCollection<long> Targets => _selection.Count > 0 ? _selection : CurrentMessageId is long id ? [id] : [];
 
+    /// <summary>Asks the view to select (and so open) a mail – the next one after deleting, archiving, moving.</summary>
+    public event Action<MessageItem>? SelectRequested;
+
+    /// <summary>The mail below the ones about to leave the list; above them if they were at the very end.</summary>
+    long? NeighbourOf(IReadOnlyCollection<long> leaving)
+    {
+        var last = -1;
+        var first = int.MaxValue;
+        for (var i = 0; i < Messages.Count; i++)
+        {
+            if (!leaving.Contains(Messages[i].Id)) continue;
+            last = i;
+            first = Math.Min(first, i);
+        }
+        if (last < 0) return null;
+        for (var i = last + 1; i < Messages.Count; i++)
+            if (!leaving.Contains(Messages[i].Id)) return Messages[i].Id;
+        for (var i = first - 1; i >= 0; i--)
+            if (!leaving.Contains(Messages[i].Id)) return Messages[i].Id;
+        return null;
+    }
+
+    /// <summary>After mails left the list: reload it and continue with the neighbouring mail, like in other mail apps.</summary>
+    void ReloadAndSelect(long? next)
+    {
+        ClearReader();
+        ReloadMessages();
+        if (next is long id && Messages.FirstOrDefault(m => m.Id == id) is { } item) SelectRequested?.Invoke(item);
+    }
+
     // ───────────────────────── Commands ─────────────────────────
 
     [RelayCommand]
@@ -593,9 +623,9 @@ public sealed partial class MainViewModel : ObservableObject
         var ids = Targets.ToList();
         if (ids.Count == 0 || SelectedSidebarItem is not { FolderId: long junk } current) return;
         if (Pinned.FirstOrDefault(p => p.AccountId == current.AccountId)?.FolderId is not long inbox) return;
+        var next = NeighbourOf(ids);
         _mail.Move(ids, inbox);
-        ClearReader();
-        ReloadMessages();
+        ReloadAndSelect(next);
         ShowNotice(ids.Count == 1 ? "In den Posteingang verschoben." : $"{ids.Count} Mails in den Posteingang verschoben.", "Rückgängig", () =>
         {
             _mail.Move(ids, junk);
@@ -615,9 +645,9 @@ public sealed partial class MainViewModel : ObservableObject
         var ids = Targets.ToList();
         if (ids.Count == 0 || SelectedSidebarItem is not { FolderId: long from } current) return;
         if (JunkFolder(current.AccountId) is not long junk || junk == from) return;
+        var next = NeighbourOf(ids);
         _mail.Move(ids, junk);
-        ClearReader();
-        ReloadMessages();
+        ReloadAndSelect(next);
         ShowNotice(ids.Count == 1 ? "Als Spam markiert." : $"{ids.Count} Mails als Spam markiert.", "Rückgängig", () =>
         {
             _mail.Move(ids, from);
@@ -631,10 +661,10 @@ public sealed partial class MainViewModel : ObservableObject
     {
         var ids = Targets.ToList();
         if (ids.Count == 0) return;
+        var next = NeighbourOf(ids);
         var restored = _mail.Restore(ids);
         if (restored == 0) return;
-        ClearReader();
-        ReloadMessages();
+        ReloadAndSelect(next);
         ShowNotice(restored == 1 ? "Mail wiederhergestellt." : $"{restored} Mails wiederhergestellt.");
     }
 
@@ -673,6 +703,7 @@ public sealed partial class MainViewModel : ObservableObject
         var ids = Targets.ToList();
         if (ids.Count == 0) return;
         var from = SelectedSidebarItem?.FolderId;
+        var next = NeighbourOf(ids);
         var outcome = _mail.Delete(ids);
         if (outcome == DeleteOutcome.NeedsConfirmation)
         {
@@ -681,8 +712,7 @@ public sealed partial class MainViewModel : ObservableObject
                 _mail.DeletePermanently(ids);
             else return;
         }
-        ClearReader();
-        ReloadMessages();
+        ReloadAndSelect(next);
 
         if (outcome == DeleteOutcome.MovedToTrash && from is long folderId)
         {
@@ -699,20 +729,19 @@ public sealed partial class MainViewModel : ObservableObject
     [RelayCommand]
     void Archive()
     {
-        if (Targets.Count > 0 && _mail.Archive(Targets))
-        {
-            ClearReader();
-            ReloadMessages();
-        }
+        var ids = Targets.ToList();
+        var next = NeighbourOf(ids);
+        if (ids.Count > 0 && _mail.Archive(ids)) ReloadAndSelect(next);
     }
 
     [RelayCommand]
     void MoveTo(SidebarItem? target)
     {
-        if (target?.FolderId is not long folderId || Targets.Count == 0) return;
-        _mail.Move(Targets, folderId);
-        ClearReader();
-        ReloadMessages();
+        var ids = Targets.ToList();
+        if (target?.FolderId is not long folderId || ids.Count == 0) return;
+        var next = NeighbourOf(ids);
+        _mail.Move(ids, folderId);
+        ReloadAndSelect(next);
     }
 
     [RelayCommand]

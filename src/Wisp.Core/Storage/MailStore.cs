@@ -10,7 +10,7 @@ namespace Wisp.Core.Storage;
 /// </summary>
 public sealed partial class MailStore : IDisposable
 {
-    const int SchemaVersion = 3;
+    const int SchemaVersion = 4;
 
     readonly SqliteConnection _db;
     readonly Crypto _crypto;
@@ -154,6 +154,12 @@ public sealed partial class MailStore : IDisposable
             // Mails that were already there must not be treated as fresh: no code copying for them.
             Exec("UPDATE messages SET code_state = 1");
         }
+        if (from < 4)
+        {
+            // New tab "Rechnungen": sort everything again. The model's old "wichtig" also meant invoices,
+            // so those verdicts are asked again (only recent mails are, see SmartService.AiWindow).
+            Exec("UPDATE messages SET classified = 0; UPDATE messages SET ai_category = NULL WHERE ai_category = 1");
+        }
         Exec($"PRAGMA user_version = {SchemaVersion}");
         return 0;
     });
@@ -161,7 +167,7 @@ public sealed partial class MailStore : IDisposable
     bool HasColumn(string table, string column) =>
         Query($"PRAGMA table_info({table})", r => r.GetString(1)).Contains(column, StringComparer.OrdinalIgnoreCase);
 
-    // ───────────────────────── Accounts ─────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Accounts â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     public long AddAccount(AccountConfig config, Credentials credentials) => Tx(() =>
     {
@@ -190,7 +196,7 @@ public sealed partial class MailStore : IDisposable
     /// <summary>Removes an account and all its cached data from this device. Never touches the server.</summary>
     public void DeleteAccount(long accountId) => Tx(() => Exec("DELETE FROM accounts WHERE id = $id", ("$id", accountId)));
 
-    // ───────────────────────── Folders ─────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Folders â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     const string FolderColumns =
         "id, account_id, path, name, depth, role, uidvalidity, uid_high, uid_low, highest_modseq, unread, total, sync_enabled, mass_warning, mass_approved, present";
@@ -291,7 +297,7 @@ public sealed partial class MailStore : IDisposable
         WHERE id = $f
         """, ("$f", folderId)));
 
-    // ───────────────────────── helpers ─────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     T Read<T>(Func<T> action)
     {

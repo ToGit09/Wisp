@@ -81,8 +81,8 @@ public class CategorizerTests
         signals | MailSignals.Checked, MessageFlags.None, known, rule);
 
     [Fact]
-    public void ContactIsImportant() =>
-        Assert.Equal(MailCategory.Important, Categorizer.Classify(Input(MailSignals.DirectlyAddressed, known: true), null).Category);
+    public void ContactIsPersonal() =>
+        Assert.Equal(MailCategory.Personal, Categorizer.Classify(Input(MailSignals.DirectlyAddressed, known: true), null).Category);
 
     [Fact]
     public void NewsletterIsPromotion() =>
@@ -101,8 +101,36 @@ public class CategorizerTests
         Assert.Equal(MailCategory.Promotion, Categorizer.Classify(Input(MailSignals.DirectlyAddressed, known: true, rule: MailCategory.Promotion), null).Category);
 
     [Fact]
-    public void PersonalMailFromStrangerIsImportant() =>
-        Assert.Equal(MailCategory.Important, Categorizer.Classify(Input(MailSignals.DirectlyAddressed | MailSignals.AuthPassed), null).Category);
+    public void PersonalMailFromStrangerIsPersonal() =>
+        Assert.Equal(MailCategory.Personal, Categorizer.Classify(Input(MailSignals.DirectlyAddressed | MailSignals.AuthPassed), null).Category);
+
+    [Theory]
+    [InlineData("Ihre Rechnung Nr. 2026-1142")]
+    [InlineData("Bestellbestätigung: Ihre Bestellung bei Beispiel-Shop")]
+    [InlineData("Deine Bestellung wurde versendet")]
+    [InlineData("Your order has shipped")]
+    [InlineData("Ihre Jahresabrechnung 2026")]
+    [InlineData("Zahlungsbestätigung")]
+    public void ReceiptsAreInvoices(string subject) =>
+        Assert.Equal(MailCategory.Invoice, Categorizer.Classify(Input(MailSignals.DirectlyAddressed | MailSignals.Automated, subject: subject), null).Category);
+
+    [Fact]
+    public void InvoiceEvenFromAShopNewsletterSender() =>
+        Assert.Equal(MailCategory.Invoice, Categorizer.Classify(Input(MailSignals.Bulk | MailSignals.Newsletter, subject: "Ihre Rechnung zur Bestellung 4711"), null).Category);
+
+    [Theory]
+    [InlineData("10 % Rabatt auf deine nächste Bestellung")]
+    [InlineData("Jetzt bestellen: Gratis-Versand nur heute")]
+    public void AdvertisingAboutOrdersIsNoInvoice(string subject) =>
+        Assert.Equal(MailCategory.Promotion, Categorizer.Classify(Input(MailSignals.Newsletter, subject: subject), null).Category);
+
+    [Fact]
+    public void FakeInvoiceIsSpamNotInvoice() =>
+        Assert.Equal(MailCategory.SuspectedSpam, Categorizer.Classify(Input(MailSignals.ServerSpam | MailSignals.AuthFailed, subject: "Ihre Rechnung"), null).Category);
+
+    [Fact]
+    public void OrderNumberInTextIsInvoice() =>
+        Assert.True(Categorizer.IsInvoice(new Envelope { Subject = "Danke für Ihren Einkauf", Preview = "Bestellnummer: 302-1234567 · Gesamtbetrag 23,90 €" }));
 
     [Fact]
     public void WordFilterLearns()

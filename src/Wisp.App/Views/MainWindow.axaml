@@ -111,23 +111,32 @@
             </DockPanel>
           </Border>
           <!-- Wisp 2: inbox tabs (Einstellungen → Sortierung & KI) -->
-          <ItemsControl ItemsSource="{Binding CategoryTabs}" IsVisible="{Binding ShowCategoryTabs}">
-            <ItemsControl.ItemsPanel>
-              <ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="2" /></ItemsPanelTemplate>
-            </ItemsControl.ItemsPanel>
-            <ItemsControl.ItemTemplate>
-              <DataTemplate x:DataType="vm:CategoryTab">
-                <Button Classes="tab" Classes.selected="{Binding IsSelected}"
-                        Command="{Binding $parent[ItemsControl].((vm:MainViewModel)DataContext).SelectCategoryCommand}" CommandParameter="{Binding}">
-                  <StackPanel Orientation="Horizontal" Spacing="4" HorizontalAlignment="Center">
-                    <TextBlock Text="{Binding Label}" Classes="small" TextTrimming="CharacterEllipsis" />
-                    <TextBlock Text="{Binding Unread}" Classes="small" FontWeight="SemiBold" Foreground="{DynamicResource WispAccent}"
-                               IsVisible="{Binding HasUnread}" />
-                  </StackPanel>
-                </Button>
-              </DataTemplate>
-            </ItemsControl.ItemTemplate>
-          </ItemsControl>
+          <!-- Segmented bar: soft rounded track, the chosen tab is a raised pill with its name; the others
+               show their symbol and unread count (name as tooltip), so all five fit the list column.
+               Scrolls sideways (mouse wheel) if the column is made narrower still. -->
+          <Border Classes="tabs" IsVisible="{Binding ShowCategoryTabs}" HorizontalAlignment="Left">
+            <ScrollViewer HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled">
+              <ItemsControl ItemsSource="{Binding CategoryTabs}">
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="2" /></ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:CategoryTab">
+                    <Button Classes="tab" Classes.selected="{Binding IsSelected}" ToolTip.Tip="{Binding Label}"
+                            Command="{Binding $parent[ItemsControl].((vm:MainViewModel)DataContext).SelectCategoryCommand}" CommandParameter="{Binding}">
+                      <StackPanel Orientation="Horizontal" Spacing="5">
+                        <t:WispIcon Data="{Binding Icon}" Width="15" Height="15" VerticalAlignment="Center" />
+                        <TextBlock Text="{Binding Label}" Classes="small" VerticalAlignment="Center" IsVisible="{Binding IsSelected}" />
+                        <Border Classes="count" IsVisible="{Binding HasUnread}">
+                          <TextBlock Text="{Binding UnreadText}" />
+                        </Border>
+                      </StackPanel>
+                    </Button>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </ScrollViewer>
+          </Border>
           <Border Classes="notice" IsVisible="{Binding FolderWarning, Converter={x:Static v:Converters.NotNull}}">
             <StackPanel Spacing="8">
               <TextBlock Text="{Binding FolderWarning}" TextWrapping="Wrap" />

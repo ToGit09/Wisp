@@ -92,7 +92,7 @@ public sealed class SmartSettings
     public bool CopyCodes { get; set; } = true;
     /// <summary>The clipboard is emptied again after this many seconds (only if it still holds the code). 0 = never.</summary>
     public int ClearCodeAfterSeconds { get; set; } = 120;
-    /// <summary>Tabs "Wichtig / Werbung / Spamverdacht / Alle" above the inbox.</summary>
+    /// <summary>Tabs "Persönlich / Rechnungen / Werbung / Spamverdacht / Alle" above the inbox.</summary>
     public bool Categories { get; set; } = true;
     /// <summary>Extended spam detection (headers, sender checks, a word filter that learns from the spam folder).</summary>
     public bool SpamDetection { get; set; } = true;

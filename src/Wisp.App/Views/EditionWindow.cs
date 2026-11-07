@@ -33,7 +33,7 @@ public sealed class EditionWindow : Window
 
         _light.Content = Option("LightEdition",
             "Schnell und schlank wie bisher. Dazu neu: Einmalcodes werden automatisch kopiert, der Posteingang wird in " +
-            "„Wichtig“, „Werbung“ und „Spamverdacht“ sortiert, und eine erweiterte Spamerkennung lernt aus Ihrem Spam-Ordner.");
+            "„Persönlich“, „Rechnungen“, „Werbung“ und „Spamverdacht“ sortiert, und eine erweiterte Spamerkennung lernt aus Ihrem Spam-Ordner.");
         _ai.Content = Option("AIEdition",
             "Alles aus der LightEdition, plus ein lokales KI-Modell: Es fasst Mails zusammen (neue im Hintergrund, ältere auf Knopfdruck) " +
             "und sortiert neue Mails genauer. Läuft komplett auf diesem Computer, ohne Cloud. Einmaliger Download von etwa 1,1 GB; " +

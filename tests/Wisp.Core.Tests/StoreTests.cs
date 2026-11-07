@@ -278,10 +278,10 @@ public sealed class SmartStoreTests : IDisposable
         Assert.Empty(_store.GetClassifyQueue(10));
 
         Assert.Single(_store.ListMessages(_inbox, 10, Wisp.Core.Smart.MailCategory.Promotion));
-        Assert.Empty(_store.ListMessages(_inbox, 10, Wisp.Core.Smart.MailCategory.Important));
+        Assert.Empty(_store.ListMessages(_inbox, 10, Wisp.Core.Smart.MailCategory.Personal));
         var anna = _store.ListMessages(_inbox, 10).Single(m => m.Envelope.FromAddress == "anna@example.net");
         _store.SetFlagLocally([anna.Id], MessageFlags.Flagged, true);
-        Assert.Single(_store.ListMessages(_inbox, 10, Wisp.Core.Smart.MailCategory.Important));
+        Assert.Single(_store.ListMessages(_inbox, 10, Wisp.Core.Smart.MailCategory.Personal));
         Assert.Equal(2, _store.ListMessages(_inbox, 10).Count);
     }
 

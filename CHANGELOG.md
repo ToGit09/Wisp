@@ -5,10 +5,11 @@
 Zwei Editionen: **LightEdition** und **AIEdition**. Beim ersten Start wählen Sie eine aus, wechseln lässt sie sich jederzeit unter *Einstellungen → Sortierung & KI*. Jede Edition bekommt nur ihre eigenen Updates. Wisp 1 wird nicht automatisch auf Wisp 2 aktualisiert (siehe [docs/EDITIONEN.md](docs/EDITIONEN.md)).
 
 - Einmalcodes (Bestätigungs-, Anmelde-, TAN-Codes) aus neuen Mails werden automatisch kopiert, erscheinen nicht im Windows-Zwischenablage-Verlauf und werden nach 2 Minuten wieder entfernt
-- Posteingang mit Reitern „Wichtig“, „Werbung“, „Spamverdacht“ und „Alle“; Rechtsklick → „Absender immer einordnen als …“
+- Posteingang mit Reitern „Persönlich“, „Rechnungen“, „Werbung“, „Spamverdacht“ und „Alle“; Rechtsklick → „Absender immer einordnen als …“
 - Erweiterte Spamerkennung: SPF/DKIM/DMARC, gefälschte Absendernamen, abweichende Antwortadressen, Spam-Kennzeichen des Servers und ein Wortfilter, der aus Ihrem Spam-Ordner lernt. Verdächtige Mails werden markiert, nie verschoben
 - AIEdition: ein lokales KI-Modell (Qwen3 1.7B) fasst neue Mails im Hintergrund zusammen und sortiert sie genauer; ältere Mails auf Knopfdruck. Läuft komplett offline auf dem eigenen Computer
 - AIEdition: eigenes App-Icon mit einem kleinen Funkeln, damit man die Editionen in Taskleiste und Startmenü unterscheiden kann
+- Nach dem Löschen (ebenso Archivieren, Verschieben, Spam) wird gleich die nächste Mail der Liste ausgewählt und geöffnet
 
 ## 1.0.2 – Fehlerbehebungen
 

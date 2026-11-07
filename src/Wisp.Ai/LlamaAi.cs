@@ -166,9 +166,10 @@ public sealed class LlamaAi : ILocalAi
 
     const string AnalysisInstruction =
         "Du sortierst E-Mails und fasst sie auf Deutsch zusammen. Antworte genau in diesem Format und sonst nichts:\n" +
-        "KATEGORIE: wichtig | werbung | spam | normal\n" +
+        "KATEGORIE: persönlich | rechnung | werbung | spam | normal\n" +
         "ZUSAMMENFASSUNG: höchstens zwei kurze Sätze\n\n" +
-        "wichtig = persönliche Nachricht oder etwas, das der Empfänger wissen oder tun muss (Rechnung, Termin, Frist, Konto, Lieferung).\n" +
+        "persönlich = ein Mensch schreibt dem Empfänger persönlich, oder er muss etwas wissen oder tun (Termin, Frist, Konto).\n" +
+        "rechnung = Rechnung, Bestellung, Zahlung, Versand oder Lieferung eines Einkaufs, Abrechnung, Kontoauszug.\n" +
         "werbung = Newsletter, Angebote, Rabatte, Marketing.\n" +
         "spam = unerwünscht, Betrug, Phishing, gefälschter Absender.\n" +
         "normal = alles andere.";
@@ -204,7 +205,8 @@ public sealed class LlamaAi : ILocalAi
             if (line.StartsWith("KATEGORIE", StringComparison.OrdinalIgnoreCase))
             {
                 var value = line[(line.IndexOf(':') + 1)..].Trim().ToLowerInvariant();
-                category = value.StartsWith("wichtig") ? MailCategory.Important
+                category = value.StartsWith("pers") || value.StartsWith("wichtig") ? MailCategory.Personal
+                    : value.StartsWith("rechnung") || value.StartsWith("bestell") ? MailCategory.Invoice
                     : value.StartsWith("werbung") ? MailCategory.Promotion
                     : value.StartsWith("spam") ? MailCategory.SuspectedSpam
                     : value.StartsWith("normal") ? MailCategory.None

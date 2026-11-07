@@ -130,24 +130,66 @@
     <Setter Property="Padding" Value="16" />
   </Style>
   <!-- Wisp 2: inbox tabs, spam tag, AI summary -->
+  <Style Selector="Border.tabs">
+    <Setter Property="Background" Value="{DynamicResource WispSidebar}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource WispBorder}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="11" />
+    <Setter Property="Padding" Value="3" />
+  </Style>
   <Style Selector="Button.tab">
     <Setter Property="Background" Value="Transparent" />
-    <Setter Property="BorderThickness" Value="0,0,0,2" />
-    <Setter Property="BorderBrush" Value="Transparent" />
-    <Setter Property="CornerRadius" Value="0" />
-    <Setter Property="Padding" Value="7,4" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="CornerRadius" Value="8" />
+    <Setter Property="Padding" Value="8,5" />
+    <Setter Property="MinHeight" Value="0" />
     <Setter Property="Foreground" Value="{DynamicResource WispMuted}" />
-    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <BrushTransition Property="Background" Duration="0:0:0.12" />
+      </Transitions>
+    </Setter>
   </Style>
   <Style Selector="Button.tab:pointerover /template/ ContentPresenter">
     <Setter Property="Background" Value="{DynamicResource WispHover}" />
+    <Setter Property="Foreground" Value="{DynamicResource WispText}" />
   </Style>
   <Style Selector="Button.tab.selected">
-    <Setter Property="BorderBrush" Value="{DynamicResource WispAccent}" />
+    <Setter Property="Background" Value="{DynamicResource WispSurface}" />
     <Setter Property="Foreground" Value="{DynamicResource WispText}" />
+  </Style>
+  <Style Selector="Button.tab.selected /template/ ContentPresenter">
+    <Setter Property="BoxShadow" Value="0 1 3 0 #26000000" />
+  </Style>
+  <Style Selector="Button.tab.selected:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource WispSurface}" />
   </Style>
   <Style Selector="Button.tab.selected TextBlock">
     <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+  <Style Selector="Button.tab.selected t|WispIcon">
+    <Setter Property="Foreground" Value="{DynamicResource WispAccent}" />
+  </Style>
+  <!-- Unread count in a tab: small accent pill -->
+  <Style Selector="Border.count">
+    <Setter Property="Background" Value="{DynamicResource WispAccentSoft}" />
+    <Setter Property="CornerRadius" Value="8" />
+    <Setter Property="Padding" Value="5,0" />
+    <Setter Property="MinWidth" Value="16" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+  <!-- Tabs that are not chosen: just the number, so all five fit -->
+  <Style Selector="Button.tab:not(.selected) Border.count">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="MinWidth" Value="0" />
+  </Style>
+  <Style Selector="Border.count TextBlock">
+    <Setter Property="FontSize" Value="11" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Foreground" Value="{DynamicResource WispAccent}" />
+    <Setter Property="HorizontalAlignment" Value="Center" />
   </Style>
   <Style Selector="Border.tag">
     <Setter Property="CornerRadius" Value="4" />
