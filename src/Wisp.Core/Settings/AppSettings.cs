@@ -83,6 +83,25 @@ public sealed class SyncSettings
     public bool UsePush { get; set; } = true;
 }
 
+/// <summary>Wisp 2: helpers that sort and read mail on this device. Nothing leaves the computer.</summary>
+public sealed class SmartSettings
+{
+    /// <summary>The first-start question "Light or AI edition?" has been answered.</summary>
+    public bool EditionChosen { get; set; }
+    /// <summary>One-time codes (2FA, verification) in fresh mails are copied to the clipboard.</summary>
+    public bool CopyCodes { get; set; } = true;
+    /// <summary>The clipboard is emptied again after this many seconds (only if it still holds the code). 0 = never.</summary>
+    public int ClearCodeAfterSeconds { get; set; } = 120;
+    /// <summary>Tabs "Wichtig / Werbung / Spamverdacht / Alle" above the inbox.</summary>
+    public bool Categories { get; set; } = true;
+    /// <summary>Extended spam detection (headers, sender checks, a word filter that learns from the spam folder).</summary>
+    public bool SpamDetection { get; set; } = true;
+    /// <summary>AI edition: new mails are summarised and sorted by the local model in the background.</summary>
+    public bool AiBackground { get; set; } = true;
+    /// <summary>AI edition: the local model may be used at all (download accepted).</summary>
+    public bool AiEnabled { get; set; } = true;
+}
+
 public sealed class AppSettings
 {
     static readonly JsonSerializerOptions Options = new()
@@ -96,6 +115,7 @@ public sealed class AppSettings
     public ReadingSettings Reading { get; set; } = new();
     public ComposeSettings Compose { get; set; } = new();
     public SyncSettings Sync { get; set; } = new();
+    public SmartSettings Smart { get; set; } = new();
     public double WindowWidth { get; set; } = 1200;
     public double WindowHeight { get; set; } = 760;
 

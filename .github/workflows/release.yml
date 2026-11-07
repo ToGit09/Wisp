@@ -1,10 +1,17 @@
-# Baut Wisp für Windows und Linux, packt es mit Velopack (Setup + Auto-Update)
-# und legt einen Release-Entwurf an, sobald ein Tag wie "v1.0.0" gepusht wird.
+# Baut Wisp 2 für Windows und Linux in zwei Editionen (Light und AI), packt jede mit Velopack
+# in ihren eigenen Update-Kanal und legt einen Release-Entwurf an, sobald ein Tag wie "v2.0.0" gepusht wird.
+#
+# Kanäle (siehe docs/EDITIONEN.md):
+#   v2-light-win, v2-light-linux   LightEdition
+#   v2-ai-win,    v2-ai-linux      AIEdition
+# Wisp 1 nutzt die Standardkanäle "win"/"linux". Die gibt es in Wisp-2-Releases nie, deshalb
+# aktualisiert sich Wisp 1 nie von selbst auf Wisp 2 (nur über den Upgrade-Knopf).
+# Wisp-1-Patches werden vom Branch release/v1 aus getaggt (v1.x.y) und nutzen dessen eigene Workflow-Datei.
 name: Release
 
 on:
   push:
-    tags: ["v*"]
+    tags: ["v2.*"]
 
 permissions:
   contents: write
@@ -16,6 +23,7 @@ env:
   # Nicht "Wisp": Velopack installiert nach %LocalAppData%\<packId> und löscht den Ordner beim
   # Deinstallieren – dort liegen aber Wisps Mails und Tresor (siehe AppPaths.DataDir).
   PACK_ID: WispMail
+  MAJOR: 2
 
 jobs:
   test:
@@ -31,16 +39,26 @@ jobs:
     needs: test
     strategy:
       matrix:
+        rid: [win-x64, linux-x64]
+        edition: [light, ai]
         include:
           - rid: win-x64
             os: windows-latest
+            osname: win
             exe: Wisp.exe
             icon: src/Wisp.App/Assets/wisp.ico
           - rid: linux-x64
             os: ubuntu-latest
+            osname: linux
             exe: Wisp
             icon: src/Wisp.App/Assets/wisp.png
+          - edition: light
+            msbuild: Light
+          - edition: ai
+            msbuild: AI
     runs-on: ${{ matrix.os }}
+    env:
+      CHANNEL: v2-${{ matrix.edition }}-${{ matrix.osname }}
     defaults:
       run:
         shell: bash
@@ -52,22 +70,26 @@ jobs:
       - run: dotnet tool install -g vpk --version $VPK_VERSION
 
       - name: Version aus dem Tag lesen
-        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          case "$VERSION" in "$MAJOR".*) ;; *) echo "Tag $GITHUB_REF_NAME passt nicht zu Wisp $MAJOR"; exit 1 ;; esac
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
 
       - name: Veröffentlichen
         run: >
           dotnet publish src/Wisp.App -c Release -r ${{ matrix.rid }} --self-contained
           -p:Version=$VERSION
+          -p:WispEdition=${{ matrix.msbuild }}
           -p:DebugType=embedded
           -o out/Wisp
 
       - name: Lizenz und Hinweise beilegen
         run: cp LICENSE README.md CHANGELOG.md THIRD-PARTY-NOTICES.md out/Wisp/
 
-      # Die letzte Version holen, damit vpk kleine Delta-Updates erzeugen kann.
-      # Beim allerersten Release gibt es noch keine – dann geht es ohne weiter.
+      # Die letzte Version dieses Kanals holen, damit vpk kleine Delta-Updates erzeugen kann.
+      # Beim ersten Release eines Kanals gibt es noch keine – dann geht es ohne weiter.
       - name: Vorige Version laden
-        run: vpk download github --repoUrl "${{ github.server_url }}/${{ github.repository }}" --token "${{ secrets.GITHUB_TOKEN }}" -o Releases || true
+        run: vpk download github --repoUrl "${{ github.server_url }}/${{ github.repository }}" --channel "$CHANNEL" --token "${{ secrets.GITHUB_TOKEN }}" -o Releases || true
 
       - name: Packen
         run: >
@@ -79,11 +101,12 @@ jobs:
           --packDir out/Wisp
           --mainExe ${{ matrix.exe }}
           --icon ${{ matrix.icon }}
+          --channel "$CHANNEL"
           -o Releases
 
       - uses: actions/upload-artifact@v4
         with:
-          name: wisp-${{ matrix.rid }}
+          name: wisp-${{ matrix.rid }}-${{ matrix.edition }}
           path: Releases/*
 
   release:
@@ -95,7 +118,9 @@ jobs:
           path: dist
           merge-multiple: true
       # Vom Vorgänger geladene Pakete nicht erneut hochladen; die Downloads für Menschen lesbar benennen.
-      # Das Update-Feed (releases.*.json) verweist nur auf die .nupkg-Dateien, die bleiben unverändert.
+      # Es gibt nur EIN Setup (LightEdition): Wer die AIEdition will, wählt sie beim ersten Start, und Wisp
+      # lädt sie aus dem Kanal v2-ai-*. Die Update-Feeds (releases.*.json, assets.*.json, RELEASES-*) und
+      # .nupkg-Dateien beider Editionen bleiben unverändert – installierte Wisp-Versionen brauchen sie.
       - name: Aufräumen
         run: |
           cd dist
@@ -104,9 +129,10 @@ jobs:
             [ -e "$f" ] || continue
             case "$f" in *"-$V-"*) ;; *) rm "$f" ;; esac
           done
-          mv "$PACK_ID-win-Setup.exe" "Wisp-$V-Windows-Setup.exe"
-          mv "$PACK_ID-win-Portable.zip" "Wisp-$V-Windows-Portable.zip"
-          mv "$PACK_ID.AppImage" "Wisp-$V-Linux.AppImage"
+          rm -f "$PACK_ID"-v2-ai-*-Setup.exe "$PACK_ID"-v2-ai-*-Portable.zip "$PACK_ID"-v2-ai-*.AppImage
+          mv "$PACK_ID-v2-light-win-Setup.exe" "Wisp-$V-Windows-Setup.exe"
+          mv "$PACK_ID-v2-light-win-Portable.zip" "Wisp-$V-Windows-Portable.zip"
+          mv "$PACK_ID-v2-light-linux.AppImage" "Wisp-$V-Linux.AppImage"
           sha256sum * > SHA256SUMS.txt
           ls -la
       - uses: softprops/action-gh-release@v2

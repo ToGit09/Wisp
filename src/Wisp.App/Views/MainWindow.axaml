@@ -104,6 +104,30 @@
         <StackPanel DockPanel.Dock="Top" Margin="16,16,16,8" Spacing="10">
           <TextBlock Text="{Binding FolderTitle}" Classes="title" TextTrimming="CharacterEllipsis" />
           <TextBox Text="{Binding SearchText}" PlaceholderText="Suchen …" IsVisible="{Binding !IsOutboxSelected}" />
+          <Border Classes="notice" IsVisible="{Binding AiNotice, Converter={x:Static v:Converters.NotNull}}">
+            <DockPanel>
+              <Button DockPanel.Dock="Right" Classes="link" Content="OK" Margin="12,0,0,0" Command="{Binding DismissAiNoticeCommand}" />
+              <TextBlock Text="{Binding AiNotice}" TextWrapping="Wrap" />
+            </DockPanel>
+          </Border>
+          <!-- Wisp 2: inbox tabs (Einstellungen → Sortierung & KI) -->
+          <ItemsControl ItemsSource="{Binding CategoryTabs}" IsVisible="{Binding ShowCategoryTabs}">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="2" /></ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:CategoryTab">
+                <Button Classes="tab" Classes.selected="{Binding IsSelected}"
+                        Command="{Binding $parent[ItemsControl].((vm:MainViewModel)DataContext).SelectCategoryCommand}" CommandParameter="{Binding}">
+                  <StackPanel Orientation="Horizontal" Spacing="4" HorizontalAlignment="Center">
+                    <TextBlock Text="{Binding Label}" Classes="small" TextTrimming="CharacterEllipsis" />
+                    <TextBlock Text="{Binding Unread}" Classes="small" FontWeight="SemiBold" Foreground="{DynamicResource WispAccent}"
+                               IsVisible="{Binding HasUnread}" />
+                  </StackPanel>
+                </Button>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
           <Border Classes="notice" IsVisible="{Binding FolderWarning, Converter={x:Static v:Converters.NotNull}}">
             <StackPanel Spacing="8">
               <TextBlock Text="{Binding FolderWarning}" TextWrapping="Wrap" />
@@ -246,6 +270,9 @@
                            VerticalAlignment="Center" HorizontalAlignment="Left" />
                   <TextBlock Grid.Column="1" Text="{Binding From}" FontWeight="{Binding Weight}" TextTrimming="CharacterEllipsis" />
                   <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6" Margin="8,0,0,0">
+                    <Border Classes="tag" IsVisible="{Binding IsSuspect}" ToolTip.Tip="Spamverdacht – Absender, Kopfzeilen oder Inhalt wirken verdächtig">
+                      <TextBlock Text="Spam?" Classes="small" Foreground="{DynamicResource WispDanger}" FontWeight="SemiBold" />
+                    </Border>
                     <t:WispIcon Data="{StaticResource IconClock}" Width="12" Height="12" IsVisible="{Binding IsPending}"
                                 Foreground="{DynamicResource WispMuted}" ToolTip.Tip="Änderung wird übertragen, sobald eine Verbindung besteht" />
                     <t:WispIcon Data="{StaticResource IconAttach}" Width="12" Height="12" IsVisible="{Binding HasAttachments}"
@@ -360,6 +387,25 @@
         </StackPanel>
 
         <StackPanel Grid.Row="2" Margin="24,0,24,8" Spacing="8">
+          <!-- Wisp 2 (AIEdition): summary by the local model -->
+          <Border Classes="summary" IsVisible="{Binding ShowSummary}">
+            <StackPanel Spacing="4">
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <t:WispIcon Data="{StaticResource IconSpark}" Width="13" Height="13" Foreground="{DynamicResource WispAccent}" />
+                <TextBlock Text="Zusammenfassung" Classes="small" FontWeight="SemiBold" Foreground="{DynamicResource WispAccent}" />
+                <TextBlock Text="· lokal erstellt, kann Fehler enthalten" Classes="muted small" />
+              </StackPanel>
+              <SelectableTextBlock Text="{Binding Summary}" TextWrapping="Wrap" />
+              <TextBlock Text="Wird zusammengefasst …" Classes="muted small" IsVisible="{Binding IsSummarizing}" />
+            </StackPanel>
+          </Border>
+          <Button Classes="link" HorizontalAlignment="Left" IsVisible="{Binding CanSummarize}" Command="{Binding SummarizeCommand}"
+                  ToolTip.Tip="Das lokale KI-Modell fasst diese Mail zusammen. Nichts verlässt Ihren Computer.">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <t:WispIcon Data="{StaticResource IconSpark}" Width="13" Height="13" />
+              <TextBlock Text="Zusammenfassen" />
+            </StackPanel>
+          </Button>
           <Border Classes="notice" IsVisible="{Binding ShowRemoteImageBanner}">
             <DockPanel>
               <Button DockPanel.Dock="Right" Classes="link" Content="Bilder laden" Command="{Binding LoadImagesCommand}" />

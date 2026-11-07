@@ -11,5 +11,6 @@ public partial class SettingsWindow : Window
     {
         InitializeComponent();
         DataContext = vm;
+        Closed += (_, _) => vm?.Detach();
     }
 }

@@ -74,10 +74,33 @@ public partial class App : Application
             return;
         }
 
+        // Wisp 2, first start (new installation or upgrade from Wisp 1): which edition?
+        if (!settings.Smart.EditionChosen)
+        {
+            var choice = new EditionWindow();
+            var closed = new TaskCompletionSource();
+            choice.Closed += (_, _) => closed.TrySetResult();
+            choice.Show();
+            await closed.Task;
+            settings.Smart.EditionChosen = true;
+            try { settings.Save(AppPaths.SettingsFile); } catch (IOException) { }
+            if (!choice.ContinueStart)
+            {
+                // The other edition is downloaded; Velopack installs it once Wisp has exited and starts it.
+                System.Security.Cryptography.CryptographicOperations.ZeroMemory(key);
+                desktop.Shutdown();
+                return;
+            }
+        }
+
         try
         {
             _mail = MailService.Open(key, settings);
+            _mail.Ai = Edition.CreateAi();
             _mail.Start();
+            // The AI edition was chosen deliberately: fetch the model right away (once, resumable).
+            if (_mail.Ai is { State: Core.Smart.AiState.NotInstalled } ai && settings.Smart.AiEnabled)
+                _ = ai.DownloadAsync(CancellationToken.None);
             var main = new MainWindow(_mail, vault);
             main.Closed += (_, _) => desktop.Shutdown();
             desktop.MainWindow = main;

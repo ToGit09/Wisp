@@ -11,4 +11,8 @@ public interface IDialogs
     Task OpenAccountSetupAsync();
     Task<Stream?> SaveFileAsync(string suggestedName);
     Task OpenLinkAsync(string url, bool suspicious);
+    /// <summary>Puts a one-time code on the clipboard (kept out of clipboard history where possible).</summary>
+    Task CopySecretAsync(string text);
+    /// <summary>Empties the clipboard, but only if it still holds <paramref name="text"/>.</summary>
+    Task ClearClipboardIfAsync(string text);
 }

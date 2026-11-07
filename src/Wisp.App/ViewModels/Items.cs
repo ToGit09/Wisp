@@ -131,6 +131,9 @@ public sealed partial class MessageItem : ObservableObject
     [ObservableProperty] public partial bool HasAttachments { get; set; }
     [ObservableProperty] public partial bool IsPending { get; set; }
     [ObservableProperty] public partial bool IsOffline { get; set; }
+    /// <summary>Wisp 2: shown with a warning tag in the list ("Spamverdacht").</summary>
+    [ObservableProperty] public partial bool IsSuspect { get; set; }
+    [ObservableProperty] public partial bool HasSummary { get; set; }
 
     public FontWeight Weight => IsUnread ? FontWeight.SemiBold : FontWeight.Normal;
 
@@ -172,6 +175,8 @@ public sealed partial class MessageItem : ObservableObject
         HasAttachments = m.HasAttachments;
         IsPending = m.IsPending;
         IsOffline = m.HasBody;
+        IsSuspect = m.Category == Wisp.Core.Smart.MailCategory.SuspectedSpam;
+        HasSummary = m.HasSummary;
     }
 
     public static string FormatDate(DateTimeOffset date)

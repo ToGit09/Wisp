@@ -1,5 +1,14 @@
 # Änderungen
 
+## 2.0.0 – Wisp 2
+
+Zwei Editionen: **LightEdition** und **AIEdition**. Beim ersten Start wählen Sie eine aus, wechseln lässt sie sich jederzeit unter *Einstellungen → Sortierung & KI*. Jede Edition bekommt nur ihre eigenen Updates. Wisp 1 wird nicht automatisch auf Wisp 2 aktualisiert (siehe [docs/EDITIONEN.md](docs/EDITIONEN.md)).
+
+- Einmalcodes (Bestätigungs-, Anmelde-, TAN-Codes) aus neuen Mails werden automatisch kopiert, erscheinen nicht im Windows-Zwischenablage-Verlauf und werden nach 2 Minuten wieder entfernt
+- Posteingang mit Reitern „Wichtig“, „Werbung“, „Spamverdacht“ und „Alle“; Rechtsklick → „Absender immer einordnen als …“
+- Erweiterte Spamerkennung: SPF/DKIM/DMARC, gefälschte Absendernamen, abweichende Antwortadressen, Spam-Kennzeichen des Servers und ein Wortfilter, der aus Ihrem Spam-Ordner lernt. Verdächtige Mails werden markiert, nie verschoben
+- AIEdition: ein lokales KI-Modell (Qwen3 1.7B) fasst neue Mails im Hintergrund zusammen und sortiert sie genauer; ältere Mails auf Knopfdruck. Läuft komplett offline auf dem eigenen Computer
+
 ## 1.0.2 – Fehlerbehebungen
 
 - HTML-Mails (z. B. Netflix): Bilder ohne `alt`-Wert verloren ihre Breite und sprengten das Layout; Spalten fester Breite werden jetzt zentriert, Hintergrundbilder füllen ihre Zelle, Titel werden nicht mehr abgeschnitten

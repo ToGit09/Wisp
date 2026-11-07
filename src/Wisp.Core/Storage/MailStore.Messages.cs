@@ -40,6 +40,8 @@ public sealed partial class MailStore
                 ("$f", folderId), ("$v", (long)uidValidity), ("$u", (long)msg.Uid)).FirstOrDefault();
             if (known.Id != 0)
             {
+                if (msg.Signals != Smart.MailSignals.None)
+                    Exec("UPDATE messages SET signals = $sg, classified = 0 WHERE id = $id AND signals = 0", ("$sg", (int)msg.Signals), ("$id", known.Id));
                 Exec(known.Pending
                         ? "UPDATE messages SET state = 0 WHERE id = $id AND state = 1"
                         : "UPDATE messages SET flags = $fl, state = CASE state WHEN 1 THEN 0 ELSE state END WHERE id = $id",
@@ -64,12 +66,13 @@ public sealed partial class MailStore
             }
 
             Exec("""
-                INSERT INTO messages(folder_id, uid, uidvalidity, mid_hash, date, size, flags, has_attachments, envelope)
-                VALUES($f, $u, $v, $h, $d, $s, $fl, $a, $e)
+                INSERT INTO messages(folder_id, uid, uidvalidity, mid_hash, date, size, flags, has_attachments, envelope, signals)
+                VALUES($f, $u, $v, $h, $d, $s, $fl, $a, $e, $sg)
                 """,
                 ("$f", folderId), ("$u", (long)msg.Uid), ("$v", (long)uidValidity), ("$h", midHash),
                 ("$d", msg.Date.ToUnixTimeSeconds()), ("$s", msg.Size), ("$fl", (int)msg.Flags),
-                ("$a", msg.HasAttachments), ("$e", _crypto.EncryptJson(msg.Envelope, "message.envelope")));
+                ("$a", msg.HasAttachments), ("$e", _crypto.EncryptJson(msg.Envelope, "message.envelope")),
+                ("$sg", (int)msg.Signals));
             added++;
         }
         return added;
@@ -114,7 +117,8 @@ public sealed partial class MailStore
     const string ListColumns = """
         SELECT m.id, m.folder_id, f.account_id, m.envelope, m.date, m.size, m.flags, m.has_attachments,
                EXISTS(SELECT 1 FROM bodies b WHERE b.message_id = m.id),
-               EXISTS(SELECT 1 FROM pending_ops o WHERE o.message_id = m.id)
+               EXISTS(SELECT 1 FROM pending_ops o WHERE o.message_id = m.id),
+               m.category, m.summary IS NOT NULL
         FROM messages m JOIN folders f ON f.id = m.folder_id
         """;
 
@@ -122,11 +126,20 @@ public sealed partial class MailStore
         r.GetInt64(0), r.GetInt64(1), r.GetInt64(2),
         _crypto.DecryptJson<Envelope>(Blob(r, 3), "message.envelope"),
         DateTimeOffset.FromUnixTimeSeconds(r.GetInt64(4)), r.GetInt64(5),
-        (MessageFlags)r.GetInt32(6), r.GetBoolean(7), r.GetBoolean(8), r.GetBoolean(9));
+        (MessageFlags)r.GetInt32(6), r.GetBoolean(7), r.GetBoolean(8), r.GetBoolean(9),
+        (Smart.MailCategory)r.GetInt32(10), r.GetBoolean(11));
 
-    public IReadOnlyList<MessageListItem> ListMessages(long folderId, int limit) => Read(() =>
-        Query(ListColumns + " WHERE m.folder_id = $f AND m.state = 0 ORDER BY m.date DESC LIMIT $n", ReadListItem,
-            ("$f", folderId), ("$n", limit)));
+    public IReadOnlyList<MessageListItem> ListMessages(long folderId, int limit, Smart.MailCategory? category = null) => Read(() =>
+        Query(ListColumns + " WHERE m.folder_id = $f AND m.state = 0" + CategoryFilter(category) + " ORDER BY m.date DESC LIMIT $n", ReadListItem,
+            ("$f", folderId), ("$n", limit), ("$c", (int)(category ?? 0))));
+
+    /// <summary>"Wichtig" also contains everything the user starred.</summary>
+    static string CategoryFilter(Smart.MailCategory? category) => category switch
+    {
+        null => "",
+        Smart.MailCategory.Important => " AND (m.category = $c OR (m.flags & 2) != 0)",
+        _ => " AND m.category = $c AND (m.flags & 2) = 0",
+    };
 
     public MessageListItem? GetMessage(long id) => Read(() =>
         Query(ListColumns + " WHERE m.id = $id", ReadListItem, ("$id", id)).FirstOrDefault());
@@ -216,6 +229,9 @@ public sealed partial class MailStore
             // Remember where a mail was deleted from, so "Wiederherstellen" can put it back there.
             if (target.Role == FolderRole.Trash)
                 Exec("UPDATE messages SET origin_folder_id = $o WHERE id = $id", ("$o", msg.FolderId), ("$id", id));
+            // Arriving in the inbox (e.g. "Kein Spam"): sort it again there.
+            if (target.Role == FolderRole.Inbox)
+                Exec("UPDATE messages SET classified = 0, category = 0 WHERE id = $id", ("$id", id));
 
             if (msg.SrcFolderId is long srcFolder)
             {

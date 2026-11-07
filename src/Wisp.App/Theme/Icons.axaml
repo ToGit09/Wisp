@@ -26,4 +26,6 @@
   <StreamGeometry x:Key="IconAll">M4 6h16 M4 12h16 M4 18h16</StreamGeometry>
   <StreamGeometry x:Key="IconSwitch">M8 9l4-4 4 4 M8 15l4 4 4-4</StreamGeometry>
   <StreamGeometry x:Key="IconCheck">M5 12l5 5 9-11</StreamGeometry>
+  <!-- Wisp 2: AI summary (a small spark) -->
+  <StreamGeometry x:Key="IconSpark">M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z M19 15l0.8 2.2L22 18l-2.2 0.8L19 21l-0.8-2.2L16 18l2.2-0.8z</StreamGeometry>
 </ResourceDictionary>

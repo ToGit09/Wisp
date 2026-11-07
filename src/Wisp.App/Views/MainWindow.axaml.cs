@@ -134,9 +134,36 @@ public partial class MainWindow : Window, IDialogs
                     : MenuEntry("Als Spam markieren", "IconJunk", _vm.MarkSpamCommand, enabled: _vm.CanMarkSpam),
                 MenuEntry("Archivieren", "IconArchive", _vm.ArchiveCommand, enabled: _vm.CanArchive),
                 MenuEntry("Löschen", "IconTrash", _vm.DeleteCommand, gesture: "Delete"),
+                new Separator { IsVisible = _vm.ShowSortMenu },
+                SortMenu(enabled: single),
             },
         };
         menu.Open(MessageList);
+    }
+
+    /// <summary>Wisp 2: "Absender immer einordnen als …" – a rule for every mail of this sender.</summary>
+    MenuItem SortMenu(bool enabled)
+    {
+        MenuItem Entry(string header, Core.Smart.MailCategory? category) => new()
+        {
+            Header = header,
+            Command = _vm.SortSenderCommand,
+            CommandParameter = category is null ? "none" : category.ToString(),
+        };
+        return new MenuItem
+        {
+            Header = "Absender immer einordnen als",
+            Icon = MenuIcon("IconFolder"),
+            IsVisible = _vm.ShowSortMenu,
+            IsEnabled = enabled,
+            ItemsSource = new[]
+            {
+                Entry("Wichtig", Core.Smart.MailCategory.Important),
+                Entry("Werbung", Core.Smart.MailCategory.Promotion),
+                Entry("Spamverdacht", Core.Smart.MailCategory.SuspectedSpam),
+                Entry("Keine Regel (automatisch)", null),
+            },
+        };
     }
 
     MenuItem MoveMenu()
@@ -478,4 +505,8 @@ public partial class MainWindow : Window, IDialogs
 
         await Launcher.LaunchUriAsync(uri);
     }
+
+    public Task CopySecretAsync(string text) => SecretClipboard.SetAsync(Clipboard, text);
+
+    public Task ClearClipboardIfAsync(string text) => SecretClipboard.ClearIfAsync(Clipboard, text);
 }

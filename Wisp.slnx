@@ -1,5 +1,6 @@
 <Solution>
   <Folder Name="/src/">
+    <Project Path="src/Wisp.Ai/Wisp.Ai.csproj" />
     <Project Path="src/Wisp.App/Wisp.App.csproj" />
     <Project Path="src/Wisp.Core/Wisp.Core.csproj" />
   </Folder>

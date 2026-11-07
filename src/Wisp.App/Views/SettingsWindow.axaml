@@ -485,8 +485,115 @@
           <Button Classes="primary" Content="Konto hinzufügen" Command="{Binding AddAccountCommand}" HorizontalAlignment="Left" Margin="0,8,0,0" />
         </StackPanel>
 
-        <!-- ─────────── Über ─────────── -->
+        <!-- ─────────── Sortierung & KI (Wisp 2) ─────────── -->
         <StackPanel Classes="page" IsVisible="{Binding SectionIndex, Converter={StaticResource Is}, ConverterParameter=6}">
+          <TextBlock Text="Sortierung &amp; KI" Classes="title" />
+          <TextBlock Classes="pagehint" Text="Alle Helfer arbeiten nur auf diesem Computer. Keine Mail und kein Code verlässt ihn." />
+
+          <TextBlock Classes="grouptitle" Text="EDITION" />
+          <Border Classes="group">
+            <StackPanel>
+              <Grid Classes="row" ColumnDefinitions="*,Auto">
+                <StackPanel>
+                  <TextBlock Classes="label" Text="{Binding EditionText}" />
+                  <TextBlock Classes="hint" Text="Ein Wechsel lädt die andere Edition von GitHub und startet Wisp neu. Updates kommen danach für die gewählte Edition." />
+                </StackPanel>
+                <Button Grid.Column="1" Content="{Binding SwitchEditionLabel}" Command="{Binding SwitchEditionCommand}"
+                        IsEnabled="{Binding !IsSwitchingEdition}" VerticalAlignment="Center" />
+              </Grid>
+              <StackPanel Margin="16,0,16,12" Spacing="6" IsVisible="{Binding EditionStatus, Converter={x:Static v:Converters.NotNull}}">
+                <ProgressBar Minimum="0" Maximum="100" Value="{Binding SwitchProgress}" Height="6" IsVisible="{Binding IsSwitchingEdition}" />
+                <TextBlock Classes="hint" Text="{Binding EditionStatus}" />
+              </StackPanel>
+            </StackPanel>
+          </Border>
+
+          <TextBlock Classes="grouptitle" Text="EINMALCODES" />
+          <Border Classes="group">
+            <StackPanel>
+              <Grid Classes="row" ColumnDefinitions="*,Auto">
+                <StackPanel>
+                  <TextBlock Classes="label" Text="Einmalcodes automatisch kopieren" />
+                  <TextBlock Classes="hint" Text="Kommt eine Mail mit Bestätigungs- oder Anmeldecode an, liegt der Code sofort in der Zwischenablage. Nur für neue, ungelesene Mails im Posteingang. Unter Windows erscheint er nicht im Zwischenablage-Verlauf." />
+                </StackPanel>
+                <ToggleSwitch Grid.Column="1" IsChecked="{Binding CopyCodes}" />
+              </Grid>
+              <Border Classes="divider" />
+              <Grid Classes="row" ColumnDefinitions="*,Auto">
+                <StackPanel>
+                  <TextBlock Classes="label" Text="Code danach aus der Zwischenablage entfernen" />
+                </StackPanel>
+                <ComboBox Grid.Column="1" ItemsSource="{Binding ClearCodeChoices}" SelectedItem="{Binding ClearCodeAfter}" IsEnabled="{Binding CopyCodes}" />
+              </Grid>
+            </StackPanel>
+          </Border>
+
+          <TextBlock Classes="grouptitle" Text="POSTEINGANG SORTIEREN" />
+          <Border Classes="group">
+            <StackPanel>
+              <Grid Classes="row" ColumnDefinitions="*,Auto">
+                <StackPanel>
+                  <TextBlock Classes="label" Text="Reiter „Wichtig“, „Werbung“, „Spamverdacht“, „Alle“" />
+                  <TextBlock Classes="hint" Text="Wichtig: Menschen, denen Sie schon geschrieben haben, persönliche Mails und markierte Mails. Werbung: Newsletter und Massenversand. Rechtsklick auf eine Mail → „Absender immer einordnen als …“ korrigiert die Sortierung." />
+                </StackPanel>
+                <ToggleSwitch Grid.Column="1" IsChecked="{Binding Categories}" />
+              </Grid>
+              <Border Classes="divider" />
+              <Grid Classes="row" ColumnDefinitions="*,Auto">
+                <StackPanel>
+                  <TextBlock Classes="label" Text="Erweiterte Spamerkennung" />
+                  <TextBlock Classes="hint" Text="Prüft Absender-Echtheit (SPF, DKIM, DMARC), gefälschte Absendernamen, abweichende Antwortadressen und typische Betrugsformulierungen. Verdächtige Mails werden markiert, nie gelöscht oder verschoben." />
+                  <TextBlock Classes="hint" Text="{Binding SpamFilterText}" />
+                </StackPanel>
+                <ToggleSwitch Grid.Column="1" IsChecked="{Binding SpamDetection}" />
+              </Grid>
+              <Border Classes="divider" IsVisible="{Binding HasSenderRules}" />
+              <Grid Classes="row" ColumnDefinitions="*,Auto" IsVisible="{Binding HasSenderRules}">
+                <StackPanel>
+                  <TextBlock Classes="label" Text="{Binding SenderRuleText}" />
+                </StackPanel>
+                <Button Grid.Column="1" Content="Alle löschen" Command="{Binding ClearSenderRulesCommand}" />
+              </Grid>
+            </StackPanel>
+          </Border>
+
+          <TextBlock Classes="grouptitle" Text="LOKALE KI" IsVisible="{Binding IsAiEdition}" />
+          <Border Classes="group" IsVisible="{Binding IsAiEdition}">
+            <StackPanel>
+              <Grid Classes="row" ColumnDefinitions="*,Auto">
+                <StackPanel>
+                  <TextBlock Classes="label" Text="KI-Modell verwenden" />
+                  <TextBlock Classes="hint" Text="{Binding ModelDescription}" />
+                </StackPanel>
+                <ToggleSwitch Grid.Column="1" IsChecked="{Binding AiEnabled}" />
+              </Grid>
+              <Border Classes="divider" />
+              <Grid Classes="row" ColumnDefinitions="*,Auto">
+                <StackPanel>
+                  <TextBlock Classes="label" Text="Neue Mails im Hintergrund zusammenfassen und sortieren" />
+                  <TextBlock Classes="hint" Text="Etwa 5–15 Sekunden pro Mail, mit halber Rechenleistung, damit der Computer flüssig bleibt. Ältere Mails fassen Sie im Leser mit „Zusammenfassen“ zusammen." />
+                </StackPanel>
+                <ToggleSwitch Grid.Column="1" IsChecked="{Binding AiBackground}" IsEnabled="{Binding AiEnabled}" />
+              </Grid>
+              <Border Classes="divider" />
+              <Grid Classes="row" ColumnDefinitions="*,Auto">
+                <StackPanel Spacing="6">
+                  <TextBlock Classes="label" Text="Modell" />
+                  <TextBlock Classes="hint" Text="{Binding AiStateText}" />
+                  <ProgressBar Minimum="0" Maximum="100" Value="{Binding ModelProgress}" Height="6" IsVisible="{Binding IsDownloadingModel}" />
+                </StackPanel>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                  <Button Classes="primary" Content="Laden" Command="{Binding DownloadModelCommand}" IsVisible="{Binding CanDownloadModel}" />
+                  <Button Content="Abbrechen" Command="{Binding CancelModelDownloadCommand}" IsVisible="{Binding IsDownloadingModel}" />
+                  <Button Content="Löschen" Command="{Binding DeleteModelCommand}" IsVisible="{Binding CanDeleteModel}" />
+                </StackPanel>
+              </Grid>
+            </StackPanel>
+          </Border>
+        </StackPanel>
+
+        <!-- ─────────── Über ─────────── -->
+        <StackPanel Classes="page" IsVisible="{Binding SectionIndex, Converter={StaticResource Is}, ConverterParameter=7}">
           <StackPanel Orientation="Horizontal" Spacing="16">
             <Image Source="/Assets/wisp.png" Width="56" Height="56" />
             <StackPanel VerticalAlignment="Center">
