@@ -2,8 +2,9 @@ using Wisp.Core.Smart;
 
 namespace Wisp.Core.Storage;
 
-/// <summary>A mail waiting to be sorted.</summary>
-public sealed record ClassifyCandidate(long Id, long AccountId, Envelope Envelope, MailSignals Signals, MessageFlags Flags, DateTimeOffset Date, ClassifiedBy By);
+/// <summary>A mail waiting to be sorted. <paramref name="AiCategory"/>: the local model's earlier verdict, if any.</summary>
+public sealed record ClassifyCandidate(long Id, long AccountId, Envelope Envelope, MailSignals Signals, MessageFlags Flags, DateTimeOffset Date, ClassifiedBy By,
+    MailCategory? AiCategory = null);
 
 /// <summary>A fresh, unread inbox mail that may contain a one-time code.</summary>
 public sealed record CodeCandidate(long Id, long AccountId, Envelope Envelope, DateTimeOffset Date, bool HasBody);
@@ -30,14 +31,20 @@ public sealed partial class MailStore
 
     /// <summary>Inbox mails that still need sorting, newest first.</summary>
     public IReadOnlyList<ClassifyCandidate> GetClassifyQueue(int limit) => Read(() => Query("""
-        SELECT m.id, f.account_id, m.envelope, m.signals, m.flags, m.date, m.classified
+        SELECT m.id, f.account_id, m.envelope, m.signals, m.flags, m.date, m.classified, m.ai_category
         FROM messages m JOIN folders f ON f.id = m.folder_id
         WHERE f.role = 1 AND m.state = 0 AND m.classified = 0 AND m.signals != 0
         ORDER BY m.date DESC LIMIT $n
-        """,
-        r => new ClassifyCandidate(r.GetInt64(0), r.GetInt64(1), _crypto.DecryptJson<Envelope>(Blob(r, 2), "message.envelope"),
-            (MailSignals)r.GetInt32(3), (MessageFlags)r.GetInt32(4), DateTimeOffset.FromUnixTimeSeconds(r.GetInt64(5)), (ClassifiedBy)r.GetInt32(6)),
-        ("$n", limit)));
+        """, ReadCandidate, ("$n", limit)));
+
+    ClassifyCandidate ReadCandidate(Microsoft.Data.Sqlite.SqliteDataReader r) => new(
+        r.GetInt64(0), r.GetInt64(1), _crypto.DecryptJson<Envelope>(Blob(r, 2), "message.envelope"),
+        (MailSignals)r.GetInt32(3), (MessageFlags)r.GetInt32(4), DateTimeOffset.FromUnixTimeSeconds(r.GetInt64(5)), (ClassifiedBy)r.GetInt32(6),
+        r.IsDBNull(7) || r.GetInt32(7) < 0 ? null : (MailCategory)r.GetInt32(7));
+
+    /// <summary>Remembers the model's verdict (null: it had none), so sorting again never needs the model again.</summary>
+    public void SetAiCategory(long messageId, MailCategory? category) => Tx(() =>
+        Exec("UPDATE messages SET ai_category = $c WHERE id = $id", ("$c", category is { } c ? (int)c : -1), ("$id", messageId)));
 
     public void SetClassification(IEnumerable<(long Id, MailCategory Category, ClassifiedBy By)> results) => Tx(() =>
     {
@@ -167,15 +174,12 @@ public sealed partial class MailStore
 
     /// <summary>New inbox mails for the AI: content is cached, not yet handled by the AI, newest first.</summary>
     public IReadOnlyList<ClassifyCandidate> GetAiQueue(DateTimeOffset since, int limit) => Read(() => Query("""
-        SELECT m.id, f.account_id, m.envelope, m.signals, m.flags, m.date, m.classified
+        SELECT m.id, f.account_id, m.envelope, m.signals, m.flags, m.date, m.classified, m.ai_category
         FROM messages m JOIN folders f ON f.id = m.folder_id
-        WHERE f.role = 1 AND m.state = 0 AND m.classified = 1 AND m.date >= $d
+        WHERE f.role = 1 AND m.state = 0 AND m.classified != 0 AND m.ai_category IS NULL AND m.date >= $d
           AND EXISTS(SELECT 1 FROM bodies b WHERE b.message_id = m.id)
         ORDER BY m.date DESC LIMIT $n
-        """,
-        r => new ClassifyCandidate(r.GetInt64(0), r.GetInt64(1), _crypto.DecryptJson<Envelope>(Blob(r, 2), "message.envelope"),
-            (MailSignals)r.GetInt32(3), (MessageFlags)r.GetInt32(4), DateTimeOffset.FromUnixTimeSeconds(r.GetInt64(5)), (ClassifiedBy)r.GetInt32(6)),
-        ("$d", since.ToUnixTimeSeconds()), ("$n", limit)));
+        """, ReadCandidate, ("$d", since.ToUnixTimeSeconds()), ("$n", limit)));
 
     public (MailSignals Signals, MailCategory Category) GetSortingInfo(long messageId) => Read(() => Query(
         "SELECT signals, category FROM messages WHERE id = $id", r => ((MailSignals)r.GetInt32(0), (MailCategory)r.GetInt32(1)), ("$id", messageId))

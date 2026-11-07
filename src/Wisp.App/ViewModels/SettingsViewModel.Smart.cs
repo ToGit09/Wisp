@@ -103,6 +103,7 @@ public sealed partial class SettingsViewModel
         {
             if (!Set(S.AiEnabled, value, v => S.AiEnabled = v)) return;
             if (!value) Ai?.CancelDownload();
+            _mail.Resort();
             RefreshAi();
         }
     }

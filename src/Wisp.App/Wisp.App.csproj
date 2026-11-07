@@ -46,4 +46,15 @@
     <ProjectReference Include="..\Wisp.Ai\Wisp.Ai.csproj" />
   </ItemGroup>
 
+  <!-- The llama.cpp package brings native libraries for every platform (~110 MB). A package for one platform
+       (dotnet publish -r win-x64) only needs its own (~20 MB). -->
+  <Target Name="WispOnlyOwnNativeRuntimes" AfterTargets="ComputeResolvedFilesToPublishList"
+          Condition="'$(WispEdition)' == 'AI' And '$(RuntimeIdentifier)' != ''">
+    <ItemGroup>
+      <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)"
+        Condition="$([System.String]::Copy('%(ResolvedFileToPublish.Identity)').Replace('\','/').Contains('/LLamaSharpRuntimes/'))
+               And !$([System.String]::Copy('%(ResolvedFileToPublish.Identity)').Replace('\','/').Contains('/LLamaSharpRuntimes/$(RuntimeIdentifier)/'))" />
+    </ItemGroup>
+  </Target>
+
 </Project>

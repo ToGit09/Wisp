@@ -320,6 +320,21 @@ public sealed class SmartStoreTests : IDisposable
         Assert.Empty(_store.GetCodeCandidates(DateTimeOffset.UtcNow.AddMinutes(-10)));
     }
 
+    [Fact]
+    public void The_models_verdict_is_kept_and_the_model_is_not_asked_twice()
+    {
+        _store.StoreServerMessages(_inbox, 1, [Mail(1, "news@shop.example", Wisp.Core.Smart.MailSignals.Checked)]);
+        var id = _store.GetClassifyQueue(10).Single().Id;
+        _store.SetClassification([(id, Wisp.Core.Smart.MailCategory.None, Wisp.Core.Smart.ClassifiedBy.Rules)]);
+        _store.SaveBody(id, Encoding.UTF8.GetBytes("Subject: x\r\n\r\nHallo"));
+        Assert.Single(_store.GetAiQueue(DateTimeOffset.UtcNow.AddDays(-2), 5));
+
+        _store.SetAiCategory(id, Wisp.Core.Smart.MailCategory.Promotion);
+        Assert.Empty(_store.GetAiQueue(DateTimeOffset.UtcNow.AddDays(-2), 5));
+        _store.ResetClassification(includeAi: true);
+        Assert.Equal(Wisp.Core.Smart.MailCategory.Promotion, _store.GetClassifyQueue(10).Single().AiCategory);
+    }
+
     public void Dispose()
     {
         _store.Dispose();

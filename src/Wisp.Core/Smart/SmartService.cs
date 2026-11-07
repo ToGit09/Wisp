@@ -59,7 +59,7 @@ public sealed class SmartService : IAsyncDisposable
     }
 
     /// <summary>Sender rules or settings changed: forget cached knowledge and sort everything again.</summary>
-    public void Resort(bool includeAi = false)
+    public void Resort()
     {
         lock (_cacheGate)
         {
@@ -67,7 +67,7 @@ public sealed class SmartService : IAsyncDisposable
             _contacts.Clear();
             _trainingStamp = -1;
         }
-        _store.ResetClassification(includeAi: includeAi);
+        _store.ResetClassification(includeAi: true); // cheap: the model's verdicts are stored, it is not asked again
         Poke();
     }
 
@@ -103,12 +103,28 @@ public sealed class SmartService : IAsyncDisposable
         {
             var queue = _store.GetClassifyQueue(500);
             if (queue.Count == 0) return;
-            var results = queue.Select(c => (c.Id, Classify(c, s).Category, ClassifiedBy.Rules)).ToList();
+            var results = queue.Select(c => Decide(c, s)).Select(d => (d.Id, d.Category, d.By)).ToList();
             _store.SetClassification(results);
             foreach (var account in queue.Select(c => c.AccountId).Distinct())
                 _raise(new WorkerChange(account, ChangeKind.Messages));
             _aiWake.Set();
         }
+    }
+
+    /// <summary>
+    /// Final tab of a mail: the user's sender rules and contacts always win; otherwise the model's verdict
+    /// (if it judged the mail and is switched on), otherwise the rules.
+    /// </summary>
+    (long Id, MailCategory Category, ClassifiedBy By) Decide(ClassifyCandidate c, SmartSettings s, MailCategory? fresh = null)
+    {
+        var rules = Classify(c, s).Category;
+        var ai = fresh ?? c.AiCategory;
+        if (ai is null || !s.AiEnabled || Ai is null) return (c.Id, rules, ClassifiedBy.Rules);
+        var hasRule = SenderRulesOf(c.AccountId).ContainsKey(_store.HashSender(c.Envelope.FromAddress));
+        var known = ContactsOf(c.AccountId).Contains(c.Envelope.FromAddress.ToLowerInvariant()) || c.Flags.HasFlag(MessageFlags.Answered);
+        if (hasRule || known) return (c.Id, rules, ClassifiedBy.Rules);
+        if (!s.SpamDetection && ai == MailCategory.SuspectedSpam) return (c.Id, rules, ClassifiedBy.Rules);
+        return (c.Id, ai.Value, ClassifiedBy.Ai);
     }
 
     Classification Classify(ClassifyCandidate c, SmartSettings s)
@@ -224,13 +240,10 @@ public sealed class SmartService : IAsyncDisposable
                 _store.SaveSummary(next.Id, result.Summary);
                 _raise(new WorkerChange(next.AccountId, ChangeKind.Summary, MessageId: next.Id));
             }
-            // The user's own sender rules and contacts always win over the model.
-            var rules = Classify(next, s);
-            var known = ContactsOf(next.AccountId).Contains(next.Envelope.FromAddress.ToLowerInvariant());
-            var hasRule = SenderRulesOf(next.AccountId).ContainsKey(_store.HashSender(next.Envelope.FromAddress));
-            var category = hasRule || known || result.Category is null ? rules.Category : result.Category.Value;
-            if (!s.SpamDetection && category == MailCategory.SuspectedSpam) category = rules.Category;
-            _store.SetClassification([(next.Id, category, ClassifiedBy.Ai)]);
+            // Kept for good: sorting again later (new rule, setting changed) never needs the model again.
+            _store.SetAiCategory(next.Id, result.Category);
+            var decision = Decide(next, s, result.Category);
+            _store.SetClassification([(decision.Id, decision.Category, decision.By)]);
             _raise(new WorkerChange(next.AccountId, ChangeKind.Messages));
         }
     }

@@ -367,7 +367,7 @@ public sealed class MailService : IAsyncDisposable
     {
         if (_store.GetMessage(messageId) is not { } item || item.Envelope.FromAddress.Length == 0) return;
         _store.SetSenderRule(item.AccountId, item.Envelope.FromAddress, category);
-        _smart.Resort(includeAi: true);
+        _smart.Resort();
     }
 
     public int CountSenderRules() => _store.CountSenderRules();
@@ -375,7 +375,7 @@ public sealed class MailService : IAsyncDisposable
     public void ClearSenderRules()
     {
         _store.ClearSenderRules();
-        _smart.Resort(includeAi: true);
+        _smart.Resort();
     }
 
     /// <summary>A sorting setting changed: sort the inbox again.</summary>

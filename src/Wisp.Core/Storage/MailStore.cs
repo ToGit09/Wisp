@@ -143,6 +143,7 @@ public sealed partial class MailStore : IDisposable
                 ALTER TABLE messages ADD COLUMN classified INTEGER NOT NULL DEFAULT 0;
                 ALTER TABLE messages ADD COLUMN code_state INTEGER NOT NULL DEFAULT 0;
                 ALTER TABLE messages ADD COLUMN summary BLOB;
+                ALTER TABLE messages ADD COLUMN ai_category INTEGER;
                 CREATE INDEX ix_messages_category ON messages(folder_id, state, category, date DESC);
                 CREATE TABLE sender_rules(
                   account_id INTEGER NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
