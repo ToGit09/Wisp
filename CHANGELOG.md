@@ -1,5 +1,9 @@
 # Änderungen
 
+## 1.0.4 – Mails schließen
+
+- Eine geöffnete Mail lässt sich schließen: Knopf „✕“ rechts oben im Lesebereich oder Esc. Danach ist keine Mail mehr ausgewählt und der Lesebereich ist leer. Esc beendet wie bisher auch den Auswahlmodus
+
 ## 1.0.3 – Weg zu Wisp 2
 
 - Unter *Einstellungen → Über Wisp* erscheint ein Knopf „Auf Wisp 2 upgraden“, sobald Wisp 2 auf GitHub veröffentlicht ist (einmaliger, dezenter Hinweis beim Start). Wisp 1 aktualisiert sich nie von selbst auf Wisp 2

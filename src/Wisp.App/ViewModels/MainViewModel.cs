@@ -460,6 +460,23 @@ public sealed partial class MainViewModel : ObservableObject
     [RelayCommand]
     void EndSelection() => IsSelectionMode = false;
 
+    /// <summary>Asks the view to deselect all mails in the list; the list then reports an empty selection.</summary>
+    public event Action? ClearListSelectionRequested;
+
+    /// <summary>
+    /// Closes the open mail (button in the reader, Esc): nothing stays selected and the reader is empty again.
+    /// Also ends the selection mode.
+    /// </summary>
+    [RelayCommand]
+    void CloseMail()
+    {
+        IsSelectionMode = false;
+        ClearListSelectionRequested?.Invoke();
+        _selection = [];
+        SelectionCount = 0;
+        ClearReader();
+    }
+
     public async void SetSelection(IReadOnlyList<long> ids)
     {
         _selection = ids;
