@@ -11,6 +11,7 @@ Zwei Editionen: **LightEdition** und **AIEdition**. Beim ersten Start wählen Si
 - AIEdition: eigenes App-Icon mit einem kleinen Funkeln, damit man die Editionen in Taskleiste und Startmenü unterscheiden kann
 - Nach dem Löschen (ebenso Archivieren, Verschieben, Spam) wird gleich die nächste Mail der Liste ausgewählt und geöffnet
 - Eine geöffnete Mail lässt sich schließen: Knopf „✕“ rechts oben im Lesebereich oder Esc. Danach ist keine Mail mehr ausgewählt und der Lesebereich ist leer. Esc beendet wie bisher auch den Auswahlmodus (wie in Wisp 1.0.4)
+- Pfeiltasten ←/→ (oder die Zurück/Vor-Tasten der Maus): im Posteingang durch die Reiter, vom ersten Reiter weiter in die Seitenleiste; in allen anderen Ordnern wird die Seitenleiste auf- und zugeklappt. In der aufgeklappten Seitenleiste wechseln ↑/↓ den Ordner
 
 ## 1.0.2 – Fehlerbehebungen
 
