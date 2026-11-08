@@ -68,6 +68,9 @@ public partial class MainWindow : Window, IDialogs
         PinnedList.SelectionChanged += (_, _) => OnSidebarListSelected(PinnedList, FolderList);
         FolderList.SelectionChanged += (_, _) => OnSidebarListSelected(FolderList, PinnedList);
         SetUpKeyboard(); // MainWindow.Keys.cs
+        SetUpMotion(); // MainWindow.Motion.cs
+        _vm.QuickReplySent += () => Dispatcher.UIThread.Post(FocusMessageList, DispatcherPriority.Loaded);
+        _vm.ShortcutsRequested += () => _ = new ShortcutsWindow().ShowDialog(this);
         ShowSidebarSelection();
         ApplySidebarMode();
         // Choosing an account (or "Konto hinzufügen") closes the account list. Only afterwards: Click comes before
@@ -96,6 +99,10 @@ public partial class MainWindow : Window, IDialogs
         switch (e.PropertyName)
         {
             case nameof(MainViewModel.CurrentMail): RenderBody(_vm.CurrentMail); break;
+            case nameof(MainViewModel.CurrentMessageId): OnCurrentMessageChanged(); break;
+            case nameof(MainViewModel.Notice) or nameof(MainViewModel.NoticeActionLabel): UpdateToast(); break;
+            case nameof(MainViewModel.IsPaletteOpen): UpdatePalette(); break;
+            case nameof(MainViewModel.ShowSummary) when _vm.ShowSummary: _ = Wisp.App.Theme.Motion.In(SummaryCard, dy: 4, ms: 200); break;
             case nameof(MainViewModel.SelectedSidebarItem): ShowSidebarSelection(); break;
             case nameof(MainViewModel.SidebarAlwaysOpen): ApplySidebarMode(); break;
             case nameof(MainViewModel.IsSelectionMode): ApplySelectionMode(); break;
@@ -256,13 +263,12 @@ public partial class MainWindow : Window, IDialogs
         if (mail is null)
         {
             ReaderBody.Content = null;
-            DateText.Text = "";
             return;
         }
-        var date = mail.Date.ToLocalTime();
-        DateText.Text = date.ToString("ddd, dd.MM.yyyy, HH:mm", German);
-        ToolTip.SetTip(DateText, date.ToString("dddd, d. MMMM yyyy, HH:mm", German));
         ReaderBody.Content = mail.Html is not null ? HtmlView(mail) : TextView(mail);
+        var newMail = _vm.CurrentMessageId != _renderedId;
+        _renderedId = _vm.CurrentMessageId;
+        RevealBody(newMail);
     }
 
     Control TextView(RenderedMail mail)
@@ -445,24 +451,10 @@ public partial class MainWindow : Window, IDialogs
     public Task<bool> ConfirmAsync(string title, string message, string confirm, bool danger = false) =>
         ConfirmDialog.ShowAsync(this, title, message, confirm, danger);
 
-    public void OpenCompose(Draft draft) => OpenCompose(draft, restored: false);
-
-    void OpenCompose(Draft draft, bool restored)
+    public void OpenCompose(Draft draft, bool restored = false, string? typed = null)
     {
-        var vm = new ComposeViewModel(_mail, draft, restored);
-        vm.Sent += (result, sent) =>
-        {
-            if (result.OutboxId is not long id || result.UndoWindow <= TimeSpan.Zero)
-            {
-                _vm.ShowNotice("Die Mail wird gesendet.");
-                return;
-            }
-            _vm.ShowNotice($"Die Mail wird in {result.UndoWindow.TotalSeconds:0} Sekunden gesendet.", "Rückgängig", () =>
-            {
-                if (_mail.TryUndoSend(id, sent)) OpenCompose(sent, restored: true);
-                else _vm.ShowNotice("Zu spät – die Mail ist bereits unterwegs.");
-            }, result.UndoWindow);
-        };
+        var vm = new ComposeViewModel(_mail, draft, restored, typed);
+        vm.Sent += _vm.NotifySent;
         new ComposeWindow(vm).Show(this);
     }
 

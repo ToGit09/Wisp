@@ -21,9 +21,14 @@ public sealed class ShortcutsWindow : Window
             ("↑ | ↓", "vorige / nächste Mail; in der Seitenleiste: Ordner wechseln"),
             ("Strg+↑ | Strg+↓", "vorige / nächste Mail, auch während man liest"),
             ("Enter", "aus der Seitenleiste in die Mail-Liste; in „Entwürfe“: weiterschreiben"),
-            ("Leertaste", "im Lesebereich weiterblättern, am Ende die nächste Mail"),
+            ("Leertaste", "im Lesebereich weiterblättern, am Ende die nächste ungelesene Mail; ohne offene Mail: die erste ungelesene"),
             ("Umschalt+Leertaste", "zurückblättern"),
             ("Esc", "Mail schließen"),
+        ]),
+        ("Befehlsfeld", [
+            ("Strg+K", "Ordner, Reiter, Konten, Aktionen und Suche in einem Feld"),
+            ("↑ | ↓ | Enter", "Eintrag wählen und ausführen"),
+            ("Esc", "schließen"),
         ]),
         ("Suchen", [
             ("Strg+F | F3", "ins Suchfeld"),
@@ -45,6 +50,15 @@ public sealed class ShortcutsWindow : Window
             ("S", "markieren (Stern)"),
             ("U | Strg+U", "gelesen / ungelesen"),
             ("Strg+A", "alle Mails der Liste auswählen"),
+            ("Strg+Z", "letzte Aktion rückgängig (Löschen, Archivieren, Verschieben, Senden …)"),
+#if WISP_AI
+            ("Z", "offene Mail mit der lokalen KI zusammenfassen"),
+#endif
+        ]),
+        ("Schnellantwort", [
+            ("Enter", "ins Antwortfeld unter der offenen Mail"),
+            ("Strg+Enter", "senden (mit „Rückgängig“)"),
+            ("Esc", "zurück zur Liste, der Text bleibt bei seiner Mail"),
         ]),
         ("Allgemein", [
             ("F5", "aktualisieren"),

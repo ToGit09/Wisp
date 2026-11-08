@@ -15,7 +15,8 @@ public sealed partial class ComposeViewModel : ObservableObject
     readonly Draft _origin;
 
     /// <param name="restored">True when reopening a mail taken back with "Rückgängig": keep it exactly as it was.</param>
-    public ComposeViewModel(MailService mail, Draft draft, bool restored = false)
+    /// <param name="typed">Text written in the quick reply: goes first, above signature and quote.</param>
+    public ComposeViewModel(MailService mail, Draft draft, bool restored = false, string? typed = null)
     {
         _mail = mail;
         _origin = draft;
@@ -29,13 +30,19 @@ public sealed partial class ComposeViewModel : ObservableObject
         ShowCc = draft.Cc.Length > 0 || draft.Bcc.Length > 0;
         Subject = draft.Subject;
         Body = !restored && compose.SignatureEnabled ? Composer.WithSignature(draft.Body, compose.Signature) : draft.Body;
+        // The untouched body is the one without the typed text: closing the window then asks before it is lost.
         _originBody = Body;
+        if (!string.IsNullOrEmpty(typed))
+        {
+            Body = typed + Body;
+            InitialCaret = typed.Length;
+        }
         IsForwardingAttachments = draft.ForwardsAttachmentsOf is not null;
         _loading = true;
         IsAdvanced = draft.HtmlSource is not null || (!restored && compose.Advanced);
         _loading = false;
         if (IsAdvanced) HtmlSource = draft.HtmlSource ?? HtmlEditing.TextToSource(Body);
-        _originSource = restored ? "" : HtmlSource;
+        _originSource = restored ? "" : string.IsNullOrEmpty(typed) ? HtmlSource : HtmlEditing.TextToSource(_originBody);
         if (restored)
             foreach (var path in draft.AttachmentPaths) AttachmentPaths.Add(path);
     }
@@ -71,6 +78,9 @@ public sealed partial class ComposeViewModel : ObservableObject
         _mail.Settings.Compose.Advanced = value;
         try { _mail.SaveSettings(); } catch (IOException) { }
     }
+
+    /// <summary>Where the caret starts in the plain-text body: after text carried over from the quick reply, else at the top.</summary>
+    public int InitialCaret { get; }
 
     public ObservableCollection<AccountChoice> Accounts { get; } = [];
     public ObservableCollection<string> AttachmentPaths { get; } = [];

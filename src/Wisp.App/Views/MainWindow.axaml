@@ -85,6 +85,32 @@
     <Style Selector="Border#Sidebar:pointerover :is(Control).narrow, Border#Sidebar.open :is(Control).narrow">
       <Setter Property="Opacity" Value="0" />
     </Style>
+
+    <!-- AIEdition: a summary as preview may take two lines -->
+    <Style Selector="TextBlock.summary">
+      <Setter Property="TextWrapping" Value="Wrap" />
+      <Setter Property="MaxLines" Value="2" />
+    </Style>
+
+    <!-- Quick reply: one calm line until clicked, then it makes room to write. -->
+    <Style Selector="TextBox#QuickReplyBox">
+      <Setter Property="MinHeight" Value="38" />
+      <Setter Property="Transitions">
+        <Transitions>
+          <DoubleTransition Property="MinHeight" Duration="0:0:0.18" Easing="CubicEaseOut" />
+        </Transitions>
+      </Setter>
+    </Style>
+    <Style Selector="TextBox#QuickReplyBox:focus-within">
+      <Setter Property="MinHeight" Value="84" />
+    </Style>
+
+    <!-- Reader header: the sender's initials, larger than in the list -->
+    <Style Selector="Border.avatar">
+      <Setter Property="Width" Value="38" />
+      <Setter Property="Height" Value="38" />
+      <Setter Property="CornerRadius" Value="19" />
+    </Style>
   </Window.Styles>
 
   <Window.KeyBindings>
@@ -101,9 +127,34 @@
 
       <!-- ─────────── Message list ─────────── -->
       <DockPanel Grid.Column="1" Background="{DynamicResource WispSurface}">
-        <StackPanel DockPanel.Dock="Top" Margin="16,16,16,8" Spacing="10">
-          <TextBlock Text="{Binding FolderTitle}" Classes="title" TextTrimming="CharacterEllipsis" />
-          <TextBox x:Name="SearchBox" Text="{Binding SearchText}" PlaceholderText="Suchen … (Strg+F)" IsVisible="{Binding !IsOutboxSelected}" />
+        <StackPanel DockPanel.Dock="Top" Margin="16,14,16,8" Spacing="10">
+          <!-- Title with the unread count under it (like Apple Mail); the command field sits quietly on the right. -->
+          <DockPanel>
+            <!-- Says its own shortcut: one look teaches Strg+K. -->
+            <Button DockPanel.Dock="Right" Classes="icon" Padding="6,5" VerticalAlignment="Top" Margin="8,2,-6,0"
+                    Command="{Binding OpenPaletteCommand}" ToolTip.Tip="Ordner, Aktionen, Suche – alles in einem Feld">
+              <Border Classes="kbd"><TextBlock Text="Strg K" /></Border>
+            </Button>
+            <StackPanel Spacing="0">
+              <TextBlock Text="{Binding FolderTitle}" Classes="title" TextTrimming="CharacterEllipsis" />
+              <TextBlock Text="{Binding ListSubtitle}" Classes="muted small" Margin="0,1,0,0" />
+            </StackPanel>
+          </DockPanel>
+          <TextBox x:Name="SearchBox" Classes="soft clearButton" Text="{Binding SearchText}" PlaceholderText="Suchen"
+                   IsVisible="{Binding !IsOutboxSelected}" ToolTip.Tip="Suchen (Strg+F)">
+            <TextBox.InnerLeftContent>
+              <t:WispIcon Data="{StaticResource IconSearch}" Width="15" Height="15" Margin="10,0,0,0" VerticalAlignment="Center" />
+            </TextBox.InnerLeftContent>
+          </TextBox>
+          <!-- AIEdition, first start: the model downloads in the background – one slim line, not a text block. -->
+          <StackPanel Spacing="5" IsVisible="{Binding IsAiDownloading}"
+                      ToolTip.Tip="Das KI-Modell wird einmalig geladen. Wisp ist währenddessen normal nutzbar.">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <t:WispIcon Data="{StaticResource IconSpark}" Width="12" Height="12" Classes="thinking" Foreground="{DynamicResource WispAccent}" />
+              <TextBlock Text="{Binding AiProgressText}" Classes="muted small" />
+            </StackPanel>
+            <ProgressBar Classes="slim" Minimum="0" Maximum="1" Value="{Binding AiProgress}" />
+          </StackPanel>
           <Border Classes="notice" IsVisible="{Binding AiNotice, Converter={x:Static v:Converters.NotNull}}">
             <DockPanel>
               <Button DockPanel.Dock="Right" Classes="link" Content="OK" Margin="12,0,0,0" Command="{Binding DismissAiNoticeCommand}" />
@@ -111,12 +162,14 @@
             </DockPanel>
           </Border>
           <!-- Wisp 2: inbox tabs (Einstellungen → Sortierung & KI) -->
-          <!-- Segmented bar: soft rounded track, the chosen tab is a raised pill with its name; the others
-               show their symbol and unread count (name as tooltip), so all five fit the list column.
-               Scrolls sideways (mouse wheel) if the column is made narrower still. -->
+          <!-- Segmented bar: soft rounded track, the chosen tab sits on a raised pill (TabPill) that glides to the
+               next tab instead of jumping; the others show their symbol and unread count (name as tooltip), so all
+               five fit the list column. Scrolls sideways (mouse wheel) if the column is made narrower still. -->
           <Border Classes="tabs" IsVisible="{Binding ShowCategoryTabs}" HorizontalAlignment="Left">
             <ScrollViewer HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled">
-              <ItemsControl ItemsSource="{Binding CategoryTabs}">
+              <Panel x:Name="TabTrack">
+              <Border x:Name="TabPill" Classes="tabpill" Width="0" />
+              <ItemsControl x:Name="TabItems" ItemsSource="{Binding CategoryTabs}">
                 <ItemsControl.ItemsPanel>
                   <ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="2" /></ItemsPanelTemplate>
                 </ItemsControl.ItemsPanel>
@@ -135,6 +188,7 @@
                   </DataTemplate>
                 </ItemsControl.ItemTemplate>
               </ItemsControl>
+              </Panel>
             </ScrollViewer>
           </Border>
           <Border Classes="notice" IsVisible="{Binding FolderWarning, Converter={x:Static v:Converters.NotNull}}">
@@ -297,15 +351,21 @@
                                 Foreground="{DynamicResource WispMuted}" ToolTip.Tip="Änderung wird übertragen, sobald eine Verbindung besteht" />
                     <t:WispIcon Data="{StaticResource IconAttach}" Width="12" Height="12" IsVisible="{Binding HasAttachments}"
                                 Foreground="{DynamicResource WispMuted}" />
-                    <t:WispIcon Data="{StaticResource IconStar}" Width="12" Height="12" IsVisible="{Binding IsFlagged}"
-                                Foreground="{DynamicResource WispAccent}" />
+                    <t:WispIcon Data="{StaticResource IconStar}" Width="12" Height="12" IsVisible="{Binding IsFlagged}" Classes="filled on" />
                     <TextBlock Text="{Binding DateText}" Classes="muted small" VerticalAlignment="Center" />
                   </StackPanel>
                   <TextBlock Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Text="{Binding Subject}"
                              FontWeight="{Binding Weight}" TextTrimming="CharacterEllipsis" Margin="0,2,0,0" />
-                  <TextBlock Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2" Text="{Binding Preview}" Classes="muted small"
-                             TextTrimming="CharacterEllipsis" Margin="0,2,0,0"
-                             IsVisible="{Binding $parent[ListBox].((vm:MainViewModel)DataContext).ShowPreview}" />
+                  <!-- Preview: the first line of text – or, in the AIEdition, the summary (marked with a spark, up to
+                       two lines), so mails can be sorted out without opening them. -->
+                  <DockPanel Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2" Margin="0,2,0,0"
+                             IsVisible="{Binding $parent[ListBox].((vm:MainViewModel)DataContext).ShowPreview}">
+                    <t:WispIcon DockPanel.Dock="Left" Data="{StaticResource IconSpark}" Width="11" Height="11" Margin="0,3,5,0"
+                                VerticalAlignment="Top" Foreground="{DynamicResource WispAccent}" IsVisible="{Binding ShowsSummary}"
+                                ToolTip.Tip="Zusammenfassung der lokalen KI" />
+                    <TextBlock Text="{Binding PreviewText}" Classes="muted small" Classes.summary="{Binding ShowsSummary}"
+                               TextTrimming="CharacterEllipsis" />
+                  </DockPanel>
                 </Grid>
                 </DockPanel>
               </DataTemplate>
@@ -343,8 +403,8 @@
       <GridSplitter Grid.Column="2" ResizeDirection="Columns" />
 
       <!-- ─────────── Reader ─────────── -->
-      <Grid Grid.Column="3" RowDefinitions="Auto,Auto,Auto,*">
-        <DockPanel Grid.Row="0" Margin="12,10" IsVisible="{Binding HasSelection}">
+      <Grid Grid.Column="3" RowDefinitions="Auto,Auto,Auto,*,Auto">
+        <DockPanel Grid.Row="0" Margin="12,10,12,6" IsVisible="{Binding HasSelection}">
           <!-- Closes the mail: deselects it and empties the reader. -->
           <Button DockPanel.Dock="Right" Classes="icon" Command="{Binding CloseMailCommand}" ToolTip.Tip="Schließen (Esc)">
             <t:WispIcon Data="{StaticResource IconClose}" />
@@ -393,43 +453,53 @@
             </Button>
             <Rectangle Width="1" Height="20" Margin="8,0" Fill="{DynamicResource WispBorder}" />
             <Button Classes="icon" Command="{Binding ToggleReadCommand}" ToolTip.Tip="Gelesen / ungelesen (U)">
-              <t:WispIcon Data="{StaticResource IconMail}" />
+              <t:WispIcon Data="{StaticResource IconMail}" Classes.on="{Binding CurrentIsUnread}" />
             </Button>
             <Button Classes="icon" Command="{Binding ToggleFlagCommand}" ToolTip.Tip="Markieren (S)">
-              <t:WispIcon Data="{StaticResource IconStar}" />
+              <t:WispIcon Data="{StaticResource IconStar}" Classes="filled" Classes.on="{Binding CurrentIsFlagged}" />
             </Button>
           </StackPanel>
         </DockPanel>
 
-        <!-- Compact header: subject, then sender with the date on the right, then recipients in one small line.
+        <!-- Header: subject, then the sender's initials, name and recipients, date on the right. Filled from the list
+             row at once (CurrentItem), so it never shows the previous mail while this one loads.
              Double-clicking an address selects all of it (see MainWindow.axaml.cs). -->
-        <StackPanel Grid.Row="1" Margin="24,0,24,6" Spacing="2" IsVisible="{Binding CurrentMail, Converter={x:Static v:Converters.NotNull}}">
-          <SelectableTextBlock Text="{Binding CurrentMail.Subject, FallbackValue=''}" FontSize="17" FontWeight="SemiBold" TextWrapping="Wrap" />
-          <DockPanel>
-            <TextBlock x:Name="DateText" DockPanel.Dock="Right" Classes="muted small" VerticalAlignment="Center" Margin="12,0,0,0" />
-            <SelectableTextBlock x:Name="FromText" Text="{Binding CurrentMail.From, FallbackValue=''}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
-          </DockPanel>
-          <SelectableTextBlock x:Name="RecipientsText" Text="{Binding Recipients}" Classes="muted small" TextWrapping="Wrap" />
+        <StackPanel x:Name="ReaderHeader" Grid.Row="1" Margin="24,2,24,12" Spacing="12"
+                    IsVisible="{Binding CurrentItem, Converter={x:Static v:Converters.NotNull}}">
+          <SelectableTextBlock Text="{Binding CurrentItem.Subject, FallbackValue=''}" FontSize="20" FontWeight="SemiBold" TextWrapping="Wrap" />
+          <Grid ColumnDefinitions="Auto,*,Auto">
+            <Border Classes="avatar" Background="{Binding CurrentItem.AvatarBackground, FallbackValue={x:Null}}" VerticalAlignment="Top">
+              <TextBlock Text="{Binding CurrentItem.Initials, FallbackValue=''}" Foreground="{Binding CurrentItem.AvatarForeground, FallbackValue={x:Null}}"
+                         FontWeight="SemiBold" FontSize="14" HorizontalAlignment="Center" VerticalAlignment="Center" />
+            </Border>
+            <StackPanel Grid.Column="1" Margin="12,0,0,0" Spacing="2" VerticalAlignment="Center">
+              <SelectableTextBlock x:Name="FromText" Text="{Binding HeaderFrom}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+              <SelectableTextBlock x:Name="RecipientsText" Text="{Binding Recipients}" Classes="muted small" TextWrapping="Wrap" />
+            </StackPanel>
+            <TextBlock Grid.Column="2" Classes="muted small" VerticalAlignment="Top" Margin="12,2,0,0"
+                       Text="{Binding CurrentItem.LongDateText, FallbackValue=''}" ToolTip.Tip="{Binding CurrentItem.FullDateText, FallbackValue=''}" />
+          </Grid>
         </StackPanel>
 
-        <StackPanel Grid.Row="2" Margin="24,0,24,8" Spacing="8">
-          <!-- Wisp 2 (AIEdition): summary by the local model -->
-          <Border Classes="summary" IsVisible="{Binding ShowSummary}">
+        <StackPanel Grid.Row="2" Margin="24,0,24,10" Spacing="8">
+          <!-- Wisp 2 (AIEdition): summary by the local model. The spark breathes while it is being written. -->
+          <Border x:Name="SummaryCard" Classes="summary" IsVisible="{Binding ShowSummary}">
             <StackPanel Spacing="4">
               <StackPanel Orientation="Horizontal" Spacing="6">
-                <t:WispIcon Data="{StaticResource IconSpark}" Width="13" Height="13" Foreground="{DynamicResource WispAccent}" />
+                <t:WispIcon Data="{StaticResource IconSpark}" Width="13" Height="13" Foreground="{DynamicResource WispAccent}"
+                            Classes.thinking="{Binding IsSummarizing}" />
                 <TextBlock Text="Zusammenfassung" Classes="small" FontWeight="SemiBold" Foreground="{DynamicResource WispAccent}" />
                 <TextBlock Text="· lokal erstellt, kann Fehler enthalten" Classes="muted small" />
               </StackPanel>
               <SelectableTextBlock Text="{Binding Summary}" TextWrapping="Wrap" />
-              <TextBlock Text="Wird zusammengefasst …" Classes="muted small" IsVisible="{Binding IsSummarizing}" />
             </StackPanel>
           </Border>
-          <Button Classes="link" HorizontalAlignment="Left" IsVisible="{Binding CanSummarize}" Command="{Binding SummarizeCommand}"
+          <Button Classes="chip ai" HorizontalAlignment="Left" IsVisible="{Binding CanSummarize}" Command="{Binding SummarizeCommand}"
                   ToolTip.Tip="Das lokale KI-Modell fasst diese Mail zusammen. Nichts verlässt Ihren Computer.">
             <StackPanel Orientation="Horizontal" Spacing="6">
               <t:WispIcon Data="{StaticResource IconSpark}" Width="13" Height="13" />
-              <TextBlock Text="Zusammenfassen" />
+              <TextBlock Text="Zusammenfassen" VerticalAlignment="Center" />
+              <Border Classes="kbd" Margin="2,0,0,0"><TextBlock Text="Z" /></Border>
             </StackPanel>
           </Button>
           <Border Classes="notice" IsVisible="{Binding ShowRemoteImageBanner}">
@@ -464,18 +534,50 @@
           </ItemsControl>
         </StackPanel>
 
-        <Border Grid.Row="3" BorderBrush="{DynamicResource WispBorder}" BorderThickness="0,1,0,0">
+        <Border Grid.Row="3" BorderBrush="{DynamicResource WispBorder}"
+                BorderThickness="{Binding CurrentItem, Converter={x:Static v:Converters.TopLineIfSet}}">
           <Grid>
+            <!-- Hidden at once when another mail is chosen, faded in when its content is there (MainWindow.axaml.cs). -->
             <ContentControl x:Name="ReaderBody" />
-            <TextBlock Text="Keine Mail ausgewählt" Classes="muted" HorizontalAlignment="Center" VerticalAlignment="Center"
-                       IsVisible="{Binding !HasSelection}" />
+            <!-- Nothing open: where things stand and the next step, instead of an empty "Keine Mail ausgewählt". -->
+            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="6" MaxWidth="340"
+                        IsVisible="{Binding ShowReaderIdle}">
+              <Border Width="52" Height="52" CornerRadius="26" Background="{DynamicResource WispField}" HorizontalAlignment="Center" Margin="0,0,0,6">
+                <Panel>
+                  <t:WispIcon Data="{StaticResource IconCheck}" Width="24" Height="24" Foreground="{DynamicResource WispOk}"
+                              HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding ReaderIdleAllRead}" />
+                  <t:WispIcon Data="{StaticResource IconMail}" Width="24" Height="24" Foreground="{DynamicResource WispMuted}"
+                              HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding !ReaderIdleAllRead}" />
+                </Panel>
+              </Border>
+              <TextBlock Text="{Binding ReaderIdleTitle}" FontWeight="SemiBold" HorizontalAlignment="Center" />
+              <TextBlock Text="{Binding ReaderIdleHint}" Classes="muted small" TextWrapping="Wrap" TextAlignment="Center" HorizontalAlignment="Center" />
+            </StackPanel>
             <TextBlock Text="Wird geladen …" Classes="muted" HorizontalAlignment="Center" VerticalAlignment="Center"
-                       IsVisible="{Binding IsLoadingMail}" />
+                       IsVisible="{Binding ShowLoading}" />
             <TextBlock Text="{Binding ReaderProblem}" Classes="muted" TextWrapping="Wrap" MaxWidth="380" TextAlignment="Center"
                        HorizontalAlignment="Center" VerticalAlignment="Center"
                        IsVisible="{Binding ReaderProblem, Converter={x:Static v:Converters.NotNull}}" />
           </Grid>
         </Border>
+
+        <!-- Quick reply: most answers are short, they should not need a window of their own.
+             Enter (in the list) jumps here, Strg+Enter sends, Esc goes back to the list and keeps the text. -->
+        <Grid Grid.Row="4" ColumnDefinitions="*,Auto" Margin="20,8,20,14" IsVisible="{Binding CanQuickReply}">
+          <TextBox x:Name="QuickReplyBox" Classes="soft" Text="{Binding QuickReplyText}" PlaceholderText="{Binding QuickReplyPlaceholder}"
+                   AcceptsReturn="True" TextWrapping="Wrap" MaxHeight="200" VerticalContentAlignment="Top">
+            <TextBox.InnerRightContent>
+              <Button Classes="icon" Padding="6" Margin="0,0,4,0" VerticalAlignment="Top" Command="{Binding ExpandQuickReplyCommand}"
+                      ToolTip.Tip="Im großen Fenster weiterschreiben (Cc, Anhänge, Formatierung)">
+                <t:WispIcon Data="{StaticResource IconExpand}" Width="13" Height="13" Foreground="{DynamicResource WispMuted}" />
+              </Button>
+            </TextBox.InnerRightContent>
+          </TextBox>
+          <Button Grid.Column="1" Classes="send" Margin="8,0,0,3" VerticalAlignment="Bottom"
+                  Command="{Binding SendQuickReplyCommand}" ToolTip.Tip="Senden (Strg+Enter)">
+            <t:WispIcon Data="{StaticResource IconArrowUp}" Width="16" Height="16" StrokeThickness="2.2" />
+          </Button>
+        </Grid>
       </Grid>
 
       <!-- ─────────── Sidebar (last child: lies on top of the list when expanded) ─────────── -->
@@ -631,15 +733,54 @@
       </StackPanel>
     </Border>
 
-    <!-- Toast -->
-    <Border Classes="card" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="20" MaxWidth="420" Padding="14,10"
-            IsVisible="{Binding Notice, Converter={x:Static v:Converters.NotNull}}">
+    <!-- Toast: a small pill that glides up from the bottom and fades away again. Shown, filled and hidden by
+         MainWindow.axaml.cs, so the text stays readable while it fades out. Stays while the mouse is on it. -->
+    <Border x:Name="Toast" Classes="toast" HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="16,0,16,24"
+            MaxWidth="560" IsVisible="False">
       <DockPanel>
-        <Button DockPanel.Dock="Right" Classes="link" Content="OK" Margin="12,0,0,0" Command="{Binding DismissNoticeCommand}" />
-        <Button DockPanel.Dock="Right" Classes="link" Content="{Binding NoticeActionLabel}" Margin="12,0,0,0" FontWeight="SemiBold"
-                Command="{Binding NoticeActionCommand}" IsVisible="{Binding NoticeActionLabel, Converter={x:Static v:Converters.NotNull}}" />
-        <TextBlock Text="{Binding Notice}" TextWrapping="Wrap" />
+        <Button DockPanel.Dock="Right" Classes="icon" Padding="7" Margin="2,0,0,0" VerticalAlignment="Center"
+                Command="{Binding DismissNoticeCommand}" ToolTip.Tip="Schließen">
+          <t:WispIcon Data="{StaticResource IconClose}" Width="12" Height="12" />
+        </Button>
+        <Button x:Name="ToastAction" DockPanel.Dock="Right" Classes="link" Margin="10,0,0,0" VerticalAlignment="Center"
+                Foreground="{DynamicResource WispToastText}" FontWeight="SemiBold" Command="{Binding NoticeActionCommand}" />
+        <TextBlock x:Name="ToastText" TextWrapping="Wrap" VerticalAlignment="Center" />
       </DockPanel>
     </Border>
+
+    <!-- Command field (Strg+K): folders, tabs, accounts, actions on the open mail, search – one field. -->
+    <Panel x:Name="PaletteLayer" IsVisible="False">
+      <Border x:Name="PaletteBackdrop" Background="{DynamicResource WispBackdrop}" />
+      <Border x:Name="PaletteCard" Classes="palette" Width="560" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="16,72,16,16">
+        <DockPanel>
+          <DockPanel DockPanel.Dock="Top" Margin="18,10,18,10">
+            <t:WispIcon DockPanel.Dock="Left" Data="{StaticResource IconSearch}" Width="18" Height="18" Margin="0,0,12,0"
+                        Foreground="{DynamicResource WispMuted}" VerticalAlignment="Center" />
+            <TextBox x:Name="PaletteBox" Classes="bare" FontSize="16" Text="{Binding PaletteQuery}" PlaceholderText="{Binding PaletteHint}" />
+          </DockPanel>
+          <Border DockPanel.Dock="Top" Height="1" Background="{DynamicResource WispBorder}" />
+          <TextBlock DockPanel.Dock="Bottom" Classes="muted small" Margin="18,4,18,10"
+                     Text="↑ ↓ wählen  ·  Enter ausführen  ·  Esc schließen" />
+          <ListBox x:Name="PaletteList" Classes="palette" ItemsSource="{Binding PaletteResults}" SelectedItem="{Binding SelectedPaletteEntry}"
+                   Margin="0,6,0,4" MaxHeight="420" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+            <ListBox.ItemTemplate>
+              <DataTemplate x:DataType="vm:PaletteEntry">
+                <Grid ColumnDefinitions="Auto,*,Auto">
+                  <t:WispIcon Data="{Binding Icon}" Width="16" Height="16" Foreground="{DynamicResource WispMuted}" VerticalAlignment="Center" />
+                  <DockPanel Grid.Column="1" Margin="12,0,10,0">
+                    <TextBlock DockPanel.Dock="Left" Text="{Binding Title}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                    <TextBlock Text="{Binding Detail}" Classes="muted small" Margin="10,0,0,0" VerticalAlignment="Center"
+                               TextTrimming="CharacterEllipsis" IsVisible="{Binding HasDetail}" />
+                  </DockPanel>
+                  <Border Grid.Column="2" Classes="kbd" IsVisible="{Binding HasKeys}">
+                    <TextBlock Text="{Binding Keys}" />
+                  </Border>
+                </Grid>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+        </DockPanel>
+      </Border>
+    </Panel>
   </Grid>
 </Window>

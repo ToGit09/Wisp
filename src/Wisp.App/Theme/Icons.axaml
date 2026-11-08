@@ -31,6 +31,13 @@
   <StreamGeometry x:Key="IconPerson">M12 4a4 4 0 1 0 0 8a4 4 0 1 0 0-8z M4.5 20.5c0.8-3.6 3.8-5.5 7.5-5.5s6.7 1.9 7.5 5.5</StreamGeometry>
   <StreamGeometry x:Key="IconReceipt">M6 3h12v18l-2.5-1.5L13 21l-2.5-1.5L8 21l-2-1.5z M9 8h6 M9 12h6 M9 16h3</StreamGeometry>
   <StreamGeometry x:Key="IconTag">M3 3h8.5L21 12.5 12.5 21 3 11.5z M7.5 7.5v0.5</StreamGeometry>
+  <!-- Wisp 2 UI: search, command field, quick reply -->
+  <StreamGeometry x:Key="IconSearch">M11 4a7 7 0 1 0 0 14a7 7 0 1 0 0-14z M16 16l4.5 4.5</StreamGeometry>
+  <StreamGeometry x:Key="IconCommand">M4 6l5 6-5 6 M12 18h8</StreamGeometry>
+  <StreamGeometry x:Key="IconArrowUp">M12 19V5 M6 11l6-6 6 6</StreamGeometry>
+  <StreamGeometry x:Key="IconExpand">M14 4h6v6 M20 4l-7 7 M10 20H4v-6 M4 20l7-7</StreamGeometry>
+  <StreamGeometry x:Key="IconUndo">M9 14L4 9l5-5 M4 9h11a5 5 0 0 1 0 10h-3</StreamGeometry>
+  <StreamGeometry x:Key="IconKeyboard">M3 6h18v12H3z M7 10h0.5 M11 10h0.5 M15 10h0.5 M7 14h10</StreamGeometry>
   <!-- Wisp 2: AI summary (a small spark) -->
   <StreamGeometry x:Key="IconSpark">M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z M19 15l0.8 2.2L22 18l-2.2 0.8L19 21l-0.8-2.2L16 18l2.2-0.8z</StreamGeometry>
 </ResourceDictionary>

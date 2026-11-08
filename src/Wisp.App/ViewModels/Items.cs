@@ -135,6 +135,30 @@ public sealed partial class MessageItem : ObservableObject
     [ObservableProperty] public partial bool IsSuspect { get; set; }
     [ObservableProperty] public partial bool HasSummary { get; set; }
 
+    /// <summary>When the mail arrived; the reader header shows it at once, before the content is loaded.</summary>
+    [ObservableProperty] public partial DateTimeOffset Date { get; set; }
+    public string LongDateText => Date.ToLocalTime().ToString("ddd, d. MMM yyyy, HH:mm", German);
+    public string FullDateText => Date.ToLocalTime().ToString("dddd, d. MMMM yyyy, HH:mm", German);
+    partial void OnDateChanged(DateTimeOffset value)
+    {
+        OnPropertyChanged(nameof(LongDateText));
+        OnPropertyChanged(nameof(FullDateText));
+    }
+
+    /// <summary>
+    /// AIEdition: the stored summary replaces the first line of text as the preview, so mails can be sorted out
+    /// from the list without opening them. Null in the LightEdition and for mails without a summary.
+    /// </summary>
+    [ObservableProperty] public partial string? Summary { get; set; }
+    public bool ShowsSummary => Summary is not null;
+    public string PreviewText => Summary ?? Preview;
+    partial void OnSummaryChanged(string? value)
+    {
+        OnPropertyChanged(nameof(ShowsSummary));
+        OnPropertyChanged(nameof(PreviewText));
+    }
+    partial void OnPreviewChanged(string value) => OnPropertyChanged(nameof(PreviewText));
+
     /// <summary>Wisp 2: tab of the mail, shown as a small badge in the corner of the sender initials.</summary>
     [ObservableProperty] public partial Wisp.Core.Smart.MailCategory Category { get; set; }
     public bool HasCategory => Category != Wisp.Core.Smart.MailCategory.None;
@@ -214,6 +238,7 @@ public sealed partial class MessageItem : ObservableObject
         Subject = string.IsNullOrWhiteSpace(m.Envelope.Subject) ? "(kein Betreff)" : m.Envelope.Subject;
         Preview = m.Envelope.Preview;
         DateText = FormatDate(m.Date);
+        Date = m.Date;
         IsUnread = !m.IsSeen;
         IsFlagged = m.IsFlagged;
         HasAttachments = m.HasAttachments;

@@ -36,6 +36,20 @@ public partial class MainWindow
         var inText = focused is TextBox or ComboBox or Slider or NumericUpDown or MenuItem;
         var mods = e.KeyModifiers;
 
+        // The command field owns the keyboard while it is open; Strg+K closes it again.
+        if (_vm.IsPaletteOpen)
+        {
+            if (e.Key == Key.K && mods == KeyModifiers.Control) _vm.ClosePalette();
+            else if (!OnPaletteKey(e.Key, mods)) return;
+            e.Handled = true;
+            return;
+        }
+        if (focused == QuickReplyBox && OnQuickReplyKey(e.Key, mods))
+        {
+            e.Handled = true;
+            return;
+        }
+
         switch (e.Key)
         {
             case Key.F1 when mods == KeyModifiers.None:
@@ -81,6 +95,10 @@ public partial class MainWindow
         switch (key)
         {
             case Key.F: return FocusSearch();
+            case Key.K when !shift:
+                _vm.OpenPalette();
+                return true;
+            case Key.Z when !shift && !inText: return _vm.Undo();
             case Key.Tab:
                 if (!_vm.CycleCategory(shift ? -1 : 1)) return false;
                 Dispatcher.UIThread.Post(FocusMessageList, DispatcherPriority.Loaded);
@@ -124,6 +142,21 @@ public partial class MainWindow
         return false;
     }
 
+    /// <summary>Quick reply field: Strg+Enter sends, Esc goes back to the list (the text stays with its mail).</summary>
+    bool OnQuickReplyKey(Key key, KeyModifiers mods)
+    {
+        switch (key)
+        {
+            case Key.Enter when mods == KeyModifiers.Control:
+                _vm.SendQuickReplyCommand.Execute(null);
+                return true;
+            case Key.Escape when mods == KeyModifiers.None:
+                FocusMessageList();
+                return true;
+        }
+        return false;
+    }
+
     bool OnPlainKey(Key key, bool inSidebar, bool onButton)
     {
         switch (key)
@@ -138,6 +171,11 @@ public partial class MainWindow
                 return true;
             case Key.Enter when !onButton && _vm.QuickDrafts && _vm.CurrentMessageId is not null:
                 _vm.EditDraftCommand.Execute(null);
+                return true;
+            // Enter answers: straight into the quick reply under the open mail.
+            case Key.Enter when !onButton && _vm.CanQuickReply && QuickReplyBox.IsEffectivelyVisible:
+                QuickReplyBox.Focus();
+                QuickReplyBox.CaretIndex = QuickReplyBox.Text?.Length ?? 0;
                 return true;
             case Key.Space when !onButton: return PageReader(up: false);
             case >= Key.D1 and <= Key.D5: return SelectTab(key - Key.D1);
@@ -155,6 +193,7 @@ public partial class MainWindow
             case Key.R: Run(_vm.ReplyCommand); return true;
             case Key.W: Run(_vm.ForwardCommand); return true;
             case Key.N: Run(_vm.ComposeCommand); return true;
+            case Key.Z when _vm.CanSummarize: Run(_vm.SummarizeCommand); return true; // AIEdition
         }
         return false;
     }
@@ -202,6 +241,12 @@ public partial class MainWindow
         var current = MessageList.SelectedIndex;
         var index = current < 0 ? (delta > 0 ? 0 : count - 1) : Math.Clamp(current + delta, 0, count - 1);
         if (index == current) return true;
+        return SelectMail(index);
+    }
+
+    /// <summary>Selects (and so opens) exactly this mail, scrolls it into view and puts the keyboard on it.</summary>
+    bool SelectMail(int index)
+    {
         MessageList.SelectedIndex = index;
         MessageList.ScrollIntoView(index);
         Dispatcher.UIThread.Post(() => MessageList.ContainerFromIndex(index)?.Focus(), DispatcherPriority.Loaded);
@@ -209,19 +254,31 @@ public partial class MainWindow
     }
 
     /// <summary>
-    /// Space reads on: one screen further down in the open mail, at its end the next mail (like Thunderbird).
-    /// Umschalt+Space goes back up.
+    /// Space reads on: one screen further down in the open mail, at its end the next unread mail (like Thunderbird);
+    /// with no mail open, the first unread one. Umschalt+Space goes back up.
     /// </summary>
     bool PageReader(bool up)
     {
         var scroll = ReaderBody.GetVisualDescendants().OfType<ScrollViewer>().FirstOrDefault(s => s.IsEffectivelyVisible);
-        if (scroll is null || ReaderBody.Content is null) return up || MoveMail(1);
+        if (scroll is null || ReaderBody.Content is null || _vm.CurrentMessageId is null) return up || NextUnread();
         var max = Math.Max(0, scroll.Extent.Height - scroll.Viewport.Height);
         var y = scroll.Offset.Y;
-        if (!up && y >= max - 1) return MoveMail(1);
+        if (!up && y >= max - 1) return NextUnread();
         var step = Math.Max(40, scroll.Viewport.Height - 60); // keep a few lines for orientation
         scroll.Offset = scroll.Offset.WithY(Math.Clamp(y + (up ? -step : step), 0, max));
         return true;
+    }
+
+    /// <summary>The next unread mail below the selected one (else from the top); without any, simply the next mail.</summary>
+    bool NextUnread()
+    {
+        var messages = _vm.Messages;
+        var current = MessageList.SelectedIndex;
+        for (var i = current + 1; i < messages.Count; i++)
+            if (messages[i].IsUnread) return SelectMail(i);
+        for (var i = 0; i < current; i++)
+            if (messages[i].IsUnread) return SelectMail(i);
+        return MoveMail(1);
     }
 
     // ───────────────────────── Left / right ─────────────────────────

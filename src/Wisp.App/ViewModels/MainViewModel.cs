@@ -17,6 +17,7 @@ public sealed partial class MainViewModel : ObservableObject
     readonly DispatcherTimer _refreshTimer;
     readonly DispatcherTimer _searchTimer;
     readonly DispatcherTimer _noticeTimer;
+    readonly DispatcherTimer _loadingTimer;
     bool _sidebarDirty, _messagesDirty, _statusDirty, _outboxDirty;
     CancellationTokenSource? _openCts;
     IReadOnlyList<long> _selection = [];
@@ -37,6 +38,12 @@ public sealed partial class MainViewModel : ObservableObject
             Notice = null;
             NoticeActionLabel = null;
             _noticeAction = null;
+        });
+        // Local mails open in a few milliseconds; a "Wird geladen …" that flashes for one frame looks like a fault.
+        _loadingTimer = new DispatcherTimer(TimeSpan.FromMilliseconds(200), DispatcherPriority.Background, (_, _) =>
+        {
+            _loadingTimer!.Stop();
+            ShowLoading = IsLoadingMail;
         });
         _mail.Changed += OnChanged;
         HookAi();
@@ -87,7 +94,21 @@ public sealed partial class MainViewModel : ObservableObject
     [ObservableProperty] public partial long? CurrentMessageId { get; set; }
     [ObservableProperty] public partial string? ReaderProblem { get; set; }
     [ObservableProperty] public partial bool IsLoadingMail { get; set; }
+    /// <summary>IsLoadingMail, but only once loading has taken longer than 200 ms (see the timer).</summary>
+    [ObservableProperty] public partial bool ShowLoading { get; set; }
     [ObservableProperty] public partial bool HasSelection { get; set; }
+    /// <summary>
+    /// The list row of the open mail. The reader header (subject, sender, date) is filled from it right away, so
+    /// it never shows the previous mail while the new one loads.
+    /// </summary>
+    [ObservableProperty] public partial MessageItem? CurrentItem { get; set; }
+
+    partial void OnIsLoadingMailChanged(bool value)
+    {
+        _loadingTimer.Stop();
+        if (value) _loadingTimer.Start();
+        else ShowLoading = false;
+    }
     [ObservableProperty] public partial bool CurrentIsUnread { get; set; }
     [ObservableProperty] public partial bool CurrentIsFlagged { get; set; }
     /// <summary>Per-mail override of the global "show HTML" setting.</summary>
@@ -119,7 +140,56 @@ public sealed partial class MainViewModel : ObservableObject
         OnPropertyChanged(nameof(Recipients));
         OnPropertyChanged(nameof(ShowRemoteImageBanner));
         OnPropertyChanged(nameof(ShowHtmlBanner));
+        OnPropertyChanged(nameof(CanQuickReply));
+        OnPropertyChanged(nameof(HeaderFrom));
     }
+
+    // ───────────────────────── List summary line & empty reader ─────────────────────────
+
+    /// <summary>Unread mails in the list shown (the chosen tab, or the folder).</summary>
+    [ObservableProperty] public partial int UnreadInList { get; set; }
+    public string ListSubtitle => IsOutboxSelected ? "" : UnreadInList switch
+    {
+        0 => IsListEmpty ? "" : "Alles gelesen",
+        1 => "1 ungelesen",
+        var n => $"{n} ungelesen",
+    };
+    partial void OnUnreadInListChanged(int value) => RaiseReaderStateChanged();
+    partial void OnIsListEmptyChanged(bool value) => RaiseReaderStateChanged();
+    partial void OnHasSelectionChanged(bool value) => RaiseReaderStateChanged();
+
+    /// <summary>Nothing open: the reader says where things stand and what the next step is, instead of just "nothing".</summary>
+    public string ReaderIdleTitle => SelectionCount > 1 ? SelectionText
+        : UnreadInList > 0 ? (UnreadInList == 1 ? "1 ungelesene Mail" : $"{UnreadInList} ungelesene Mails")
+        : "Alles gelesen";
+    public string ReaderIdleHint => SelectionCount > 1 ? "Entf löscht sie, A archiviert, U ändert gelesen / ungelesen."
+        : UnreadInList > 0 ? "Leertaste öffnet die nächste. Strg+K für alles andere."
+        : "Strg+K: Ordner, Aktionen und Suche in einem Feld.";
+    public bool ReaderIdleAllRead => SelectionCount <= 1 && UnreadInList == 0;
+    /// <summary>Not for an empty list: the list already says "Keine Mails", once is enough.</summary>
+    public bool ShowReaderIdle => CurrentItem is null && ReaderProblem is null && !IsOutboxSelected && (!IsListEmpty || SelectionCount > 1);
+
+    void RaiseReaderStateChanged()
+    {
+        OnPropertyChanged(nameof(ListSubtitle));
+        OnPropertyChanged(nameof(ReaderIdleTitle));
+        OnPropertyChanged(nameof(ReaderIdleHint));
+        OnPropertyChanged(nameof(ReaderIdleAllRead));
+        OnPropertyChanged(nameof(ShowReaderIdle));
+    }
+
+    /// <summary>Sender in the reader header: from the list right away, the full "Name &lt;address&gt;" once loaded.</summary>
+    public string HeaderFrom => CurrentMail?.From ?? CurrentItem?.From ?? "";
+
+    partial void OnCurrentItemChanged(MessageItem? value)
+    {
+        OnPropertyChanged(nameof(HeaderFrom));
+        RaiseReaderStateChanged();
+        OnPropertyChanged(nameof(CanQuickReply));
+        OnPropertyChanged(nameof(QuickReplyPlaceholder));
+    }
+
+    partial void OnReaderProblemChanged(string? value) => OnPropertyChanged(nameof(ShowReaderIdle));
 
     partial void OnSearchTextChanged(string value)
     {
@@ -146,6 +216,8 @@ public sealed partial class MainViewModel : ObservableObject
         OnPropertyChanged(nameof(QuickTrash));
         OnPropertyChanged(nameof(QuickDefault));
         OnPropertyChanged(nameof(QuickTwoButtons));
+        OnPropertyChanged(nameof(CanQuickReply));
+        OnPropertyChanged(nameof(PaletteHint));
     }
 
     // ───────────────────────── Loading ─────────────────────────
@@ -322,6 +394,7 @@ public sealed partial class MainViewModel : ObservableObject
                     retry, item.State != OutboxState.Sending));
             }
             IsListEmpty = Outbox.Count == 0;
+            UnreadInList = 0;
             return;
         }
 
@@ -329,12 +402,14 @@ public sealed partial class MainViewModel : ObservableObject
         {
             Messages.Clear();
             IsListEmpty = true;
+            UnreadInList = 0;
             return;
         }
 
         var fresh = _mail.ListMessages(folderId, SearchText, SelectedCategory);
         SyncMessages(fresh);
         IsListEmpty = Messages.Count == 0;
+        UnreadInList = Messages.Count(m => m.IsUnread);
         UpdateCategoryCounts();
 
         if (CurrentMessageId is long current && _mail.GetMessage(current) is { } m)
@@ -363,9 +438,8 @@ public sealed partial class MainViewModel : ObservableObject
             if (i < Messages.Count && Messages[i].Id == source.Id)
             {
                 Messages[i].Update(source);
-                continue;
             }
-            if (existing.Contains(source.Id))
+            else if (existing.Contains(source.Id))
             {
                 // Order changed (rare, e.g. a date correction): move this one row into place.
                 var oldIndex = IndexOf(source.Id, i);
@@ -376,6 +450,7 @@ public sealed partial class MainViewModel : ObservableObject
             {
                 Messages.Insert(i, new MessageItem(source));
             }
+            LoadListSummary(Messages[i]);
         }
         while (Messages.Count > fresh.Count) Messages.RemoveAt(Messages.Count - 1);
     }
@@ -463,7 +538,13 @@ public sealed partial class MainViewModel : ObservableObject
     [ObservableProperty] public partial bool IsSelectionMode { get; set; }
     [ObservableProperty] public partial int SelectionCount { get; set; }
     public string SelectionText => SelectionCount == 1 ? "1 Mail ausgewählt" : $"{SelectionCount} Mails ausgewählt";
-    partial void OnSelectionCountChanged(int value) => OnPropertyChanged(nameof(SelectionText));
+    partial void OnSelectionCountChanged(int value)
+    {
+        OnPropertyChanged(nameof(SelectionText));
+        RaiseReaderStateChanged();
+    }
+
+    partial void OnIsOutboxSelectedChanged(bool value) => RaiseReaderStateChanged();
 
     [RelayCommand]
     void EndSelection() => IsSelectionMode = false;
@@ -506,7 +587,15 @@ public sealed partial class MainViewModel : ObservableObject
         _openCts?.Cancel();
         var cts = _openCts = new CancellationTokenSource();
         var sameMail = CurrentMessageId == messageId;
+        if (!sameMail) StashQuickReply();
         CurrentMessageId = messageId;
+        if (!sameMail)
+        {
+            // Header first, straight from the list; the content follows.
+            CurrentItem = Messages.FirstOrDefault(m => m.Id == messageId)
+                          ?? (_mail.GetMessage(messageId) is { } listed ? new MessageItem(listed) : null);
+            RestoreQuickReply(messageId);
+        }
         ReaderProblem = null;
         IsLoadingMail = true;
         if (!sameMail) LoadSummary(messageId);
@@ -538,7 +627,9 @@ public sealed partial class MainViewModel : ObservableObject
     void ClearReader()
     {
         _openCts?.Cancel();
+        StashQuickReply();
         CurrentMail = null;
+        CurrentItem = null;
         CurrentMessageId = null;
         LoadSummary(null);
         ReaderProblem = null;
@@ -621,16 +712,17 @@ public sealed partial class MainViewModel : ObservableObject
 
     async Task StartReplyAsync(bool all)
     {
-        if (CurrentMessageId is not long id || _mail.GetMessage(id) is not { } item) return;
         // The quick-action button can be pressed while the mail is still loading: wait for it instead of doing nothing.
-        var mail = CurrentMail ?? (await _mail.OpenAsync(id, showHtml: false, allowRemoteImages: false, CancellationToken.None)).Mail;
-        if (mail is null)
+        if (CurrentMessageId is not long id) return;
+        // Something already typed in the quick reply goes along into the window.
+        var typed = QuickReplyText.TrimEnd();
+        if (await ReplyDraftAsync(id, all) is not { } draft) return;
+        if (typed.Length > 0)
         {
-            ShowNotice("Die Mail ist noch nicht geladen. Bitte gleich noch einmal versuchen.");
-            return;
+            _quickDrafts.Remove(id);
+            if (CurrentMessageId == id) QuickReplyText = "";
         }
-        var own = _mail.GetAccounts().First(a => a.Id == item.AccountId).Config.Email;
-        _dialogs.OpenCompose(Composer.Reply(mail, item.AccountId, own, all, id, quote: _mail.Settings.Compose.QuoteOnReply));
+        _dialogs.OpenCompose(draft, typed: typed.Length > 0 ? typed : null);
     }
 
     /// <summary>Spam folder: the mail is wanted after all → back to the inbox (with a way back).</summary>
@@ -735,11 +827,7 @@ public sealed partial class MainViewModel : ObservableObject
         {
             // Visible confirmation plus a way back, until the next action replaces the toast.
             var what = ids.Count == 1 ? "Mail" : $"{ids.Count} Mails";
-            ShowNotice($"{what} in den Papierkorb verschoben.", "Rückgängig", () =>
-            {
-                _mail.Move(ids, folderId);
-                ReloadMessages();
-            }, TimeSpan.FromSeconds(10));
+            OfferUndo($"{what} in den Papierkorb verschoben.", ids, folderId);
         }
     }
 
@@ -747,8 +835,11 @@ public sealed partial class MainViewModel : ObservableObject
     void Archive()
     {
         var ids = Targets.ToList();
+        var from = SelectedSidebarItem?.FolderId;
         var next = NeighbourOf(ids);
-        if (ids.Count > 0 && _mail.Archive(ids)) ReloadAndSelect(next);
+        if (ids.Count == 0 || !_mail.Archive(ids)) return;
+        ReloadAndSelect(next);
+        OfferUndo(ids.Count == 1 ? "Archiviert." : $"{ids.Count} Mails archiviert.", ids, from);
     }
 
     [RelayCommand]
@@ -756,9 +847,65 @@ public sealed partial class MainViewModel : ObservableObject
     {
         var ids = Targets.ToList();
         if (target?.FolderId is not long folderId || ids.Count == 0) return;
+        var from = SelectedSidebarItem?.FolderId;
         var next = NeighbourOf(ids);
         _mail.Move(ids, folderId);
         ReloadAndSelect(next);
+        OfferUndo(ids.Count == 1 ? $"Nach „{target.Name}“ verschoben." : $"{ids.Count} Mails nach „{target.Name}“ verschoben.", ids, from);
+    }
+
+    /// <summary>Toast with "Rückgängig" that puts the mails back into <paramref name="from"/> (also Strg+Z).</summary>
+    void OfferUndo(string text, List<long> ids, long? from)
+    {
+        if (from is not long folderId)
+        {
+            ShowNotice(text);
+            return;
+        }
+        ShowNotice(text, UndoLabel, () =>
+        {
+            _mail.Move(ids, folderId);
+            ReloadMessages();
+        }, TimeSpan.FromSeconds(10));
+    }
+
+    const string UndoLabel = "Rückgängig";
+
+    /// <summary>Strg+Z: the "Rückgängig" of the toast currently shown, if there is one.</summary>
+    public bool CanUndo => Notice is not null && NoticeActionLabel == UndoLabel;
+
+    public bool Undo()
+    {
+        if (!CanUndo) return false;
+        NoticeAction();
+        return true;
+    }
+
+    /// <summary>The mouse is on the toast: it stays until the mouse leaves, so "Rückgängig" can always be reached.</summary>
+    public void HoldNotice(bool hold)
+    {
+        if (Notice is null) return;
+        if (hold) _noticeTimer.Stop();
+        else
+        {
+            _noticeTimer.Interval = TimeSpan.FromSeconds(3);
+            _noticeTimer.Start();
+        }
+    }
+
+    /// <summary>After sending (composer or quick reply): "wird gesendet" with a way back while it waits in the outbox.</summary>
+    public void NotifySent(SendResult result, Draft sent)
+    {
+        if (result.OutboxId is not long id || result.UndoWindow <= TimeSpan.Zero)
+        {
+            ShowNotice("Die Mail wird gesendet.");
+            return;
+        }
+        ShowNotice($"Die Mail wird in {result.UndoWindow.TotalSeconds:0} Sekunden gesendet.", UndoLabel, () =>
+        {
+            if (_mail.TryUndoSend(id, sent)) _dialogs.OpenCompose(sent, restored: true);
+            else ShowNotice("Zu spät – die Mail ist bereits unterwegs.");
+        }, result.UndoWindow);
     }
 
     [RelayCommand]

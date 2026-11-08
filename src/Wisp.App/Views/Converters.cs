@@ -25,6 +25,10 @@ public static class Converters
 
     public static readonly IValueConverter IsNull = new FuncValueConverter<object?, bool>(value => value is null);
 
+    /// <summary>A hairline above the reader body only while a mail is open; the empty reader stays one calm surface.</summary>
+    public static readonly IValueConverter TopLineIfSet = new FuncValueConverter<object?, Thickness>(value =>
+        value is null ? default : new Thickness(0, 1, 0, 0));
+
     static IBrush? Resource(string key) =>
         Application.Current?.TryGetResource(key, Application.Current.ActualThemeVariant, out var value) == true ? value as IBrush : null;
 }

@@ -7,51 +7,87 @@
         x:DataType="vm:ComposeViewModel"
         Title="{Binding WindowTitle}"
         Icon="/Assets/wisp.ico"
+        Background="{DynamicResource WispSurface}"
         Width="720" Height="620" MinWidth="480" MinHeight="380">
 
+  <!-- Like Apple Mail: the header fields are quiet rows divided by hairlines instead of boxes, sending sits top
+       right where the eye ends after the subject, and the text fills the rest of the window. -->
+  <Window.Styles>
+    <Style Selector="TextBlock.label">
+      <Setter Property="Foreground" Value="{DynamicResource WispMuted}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="Width" Value="64" />
+    </Style>
+    <Style Selector="Border.row">
+      <Setter Property="BorderBrush" Value="{DynamicResource WispBorder}" />
+      <Setter Property="BorderThickness" Value="0,0,0,1" />
+      <Setter Property="Padding" Value="0,4" />
+    </Style>
+    <Style Selector="ComboBox.bare">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Padding" Value="0,4" />
+    </Style>
+  </Window.Styles>
 
-  <DockPanel Margin="20">
-    <Grid DockPanel.Dock="Top" ColumnDefinitions="70,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto" Margin="0,0,0,12">
-      <Grid.Styles>
-        <Style Selector="TextBlock.label">
-          <Setter Property="Foreground" Value="{DynamicResource WispMuted}" />
-          <Setter Property="VerticalAlignment" Value="Center" />
-        </Style>
-        <Style Selector="TextBox, ComboBox">
-          <Setter Property="Margin" Value="0,0,0,8" />
-        </Style>
-      </Grid.Styles>
+  <DockPanel>
+    <!-- Header rows -->
+    <StackPanel DockPanel.Dock="Top" Margin="24,14,20,0">
+      <Border Classes="row" IsVisible="{Binding HasMultipleAccounts}">
+        <DockPanel>
+          <TextBlock Classes="label" Text="Von" />
+          <ComboBox Classes="bare" ItemsSource="{Binding Accounts}" SelectedItem="{Binding From}" HorizontalAlignment="Stretch">
+            <ComboBox.ItemTemplate>
+              <DataTemplate x:DataType="vm:AccountChoice">
+                <TextBlock Text="{Binding Label}" />
+              </DataTemplate>
+            </ComboBox.ItemTemplate>
+          </ComboBox>
+        </DockPanel>
+      </Border>
 
-      <TextBlock Grid.Row="0" Classes="label" Text="Von" IsVisible="{Binding HasMultipleAccounts}" Margin="0,0,0,8" />
-      <ComboBox Grid.Row="0" Grid.Column="1" ItemsSource="{Binding Accounts}" SelectedItem="{Binding From}"
-                HorizontalAlignment="Stretch" IsVisible="{Binding HasMultipleAccounts}">
-        <ComboBox.ItemTemplate>
-          <DataTemplate x:DataType="vm:AccountChoice">
-            <TextBlock Text="{Binding Label}" />
-          </DataTemplate>
-        </ComboBox.ItemTemplate>
-      </ComboBox>
+      <Border Classes="row">
+        <DockPanel>
+          <TextBlock Classes="label" Text="An" />
+          <Button DockPanel.Dock="Right" Classes="link" Content="Cc/Bcc" Margin="10,0,0,0" Command="{Binding ToggleCcCommand}"
+                  Foreground="{DynamicResource WispMuted}" IsVisible="{Binding !ShowCc}" />
+          <TextBox x:Name="ToBox" Classes="bare" Text="{Binding To}" PlaceholderText="name@beispiel.de, …" />
+        </DockPanel>
+      </Border>
+      <Border Classes="row" IsVisible="{Binding ShowCc}">
+        <DockPanel>
+          <TextBlock Classes="label" Text="Cc" />
+          <TextBox Classes="bare" Text="{Binding Cc}" />
+        </DockPanel>
+      </Border>
+      <Border Classes="row" IsVisible="{Binding ShowCc}">
+        <DockPanel>
+          <TextBlock Classes="label" Text="Bcc" />
+          <TextBox Classes="bare" Text="{Binding Bcc}" />
+        </DockPanel>
+      </Border>
 
-      <TextBlock Grid.Row="1" Classes="label" Text="An" Margin="0,0,0,8" />
-      <DockPanel Grid.Row="1" Grid.Column="1">
-        <Button DockPanel.Dock="Right" Classes="link" Content="Cc/Bcc" Margin="10,0,0,8" Command="{Binding ToggleCcCommand}" />
-        <TextBox Text="{Binding To}" PlaceholderText="name@beispiel.de, …" />
-      </DockPanel>
+      <Border Classes="row">
+        <DockPanel>
+          <TextBlock Classes="label" Text="Betreff" />
+          <Button DockPanel.Dock="Right" Classes="send wide" Margin="10,2,0,2" Height="30" CornerRadius="15"
+                  Command="{Binding SendCommand}" ToolTip.Tip="Senden (Strg+Enter)">
+            <StackPanel Orientation="Horizontal" Spacing="7">
+              <t:WispIcon Data="{StaticResource IconSent}" Width="14" Height="14" />
+              <TextBlock Text="Senden" FontWeight="SemiBold" VerticalAlignment="Center" />
+            </StackPanel>
+          </Button>
+          <TextBox Classes="bare" Text="{Binding Subject}" FontWeight="SemiBold" VerticalAlignment="Center" />
+        </DockPanel>
+      </Border>
+    </StackPanel>
 
-      <TextBlock Grid.Row="2" Classes="label" Text="Cc" IsVisible="{Binding ShowCc}" Margin="0,0,0,8" />
-      <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding Cc}" IsVisible="{Binding ShowCc}" />
-      <TextBlock Grid.Row="3" Classes="label" Text="Bcc" IsVisible="{Binding ShowCc}" Margin="0,0,0,8" />
-      <TextBox Grid.Row="3" Grid.Column="1" Text="{Binding Bcc}" IsVisible="{Binding ShowCc}" />
-
-      <TextBlock Grid.Row="4" Classes="label" Text="Betreff" Margin="0,0,0,8" />
-      <TextBox Grid.Row="4" Grid.Column="1" Text="{Binding Subject}" />
-    </Grid>
-
-    <StackPanel DockPanel.Dock="Bottom" Spacing="10" Margin="0,12,0,0">
-      <TextBlock Text="{Binding Error}" Foreground="{DynamicResource WispDanger}" TextWrapping="Wrap"
+    <!-- Footer: error, attachments, then quiet tools on the left and the editor mode on the right -->
+    <StackPanel DockPanel.Dock="Bottom" Spacing="8" Margin="18,6,18,12">
+      <TextBlock Text="{Binding Error}" Foreground="{DynamicResource WispDanger}" TextWrapping="Wrap" Margin="6,0"
                  IsVisible="{Binding Error, Converter={x:Static v:Converters.NotNull}}" />
-      <TextBlock Classes="hint" Text="Die Anhänge der ursprünglichen Mail werden mitgesendet." IsVisible="{Binding IsForwardingAttachments}" />
-      <ItemsControl ItemsSource="{Binding AttachmentPaths}">
+      <TextBlock Classes="hint" Margin="6,0" Text="Die Anhänge der ursprünglichen Mail werden mitgesendet." IsVisible="{Binding IsForwardingAttachments}" />
+      <ItemsControl ItemsSource="{Binding AttachmentPaths}" Margin="6,0">
         <ItemsControl.ItemsPanel>
           <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
         </ItemsControl.ItemsPanel>
@@ -69,69 +105,60 @@
         </ItemsControl.ItemTemplate>
       </ItemsControl>
       <DockPanel>
-        <Button DockPanel.Dock="Right" Classes="primary" Command="{Binding SendCommand}" ToolTip.Tip="Senden (Strg+Enter)">
-          <StackPanel Orientation="Horizontal" Spacing="8">
-            <t:WispIcon Data="{StaticResource IconSent}" />
-            <TextBlock Text="Senden" />
-          </StackPanel>
-        </Button>
-        <StackPanel Orientation="Horizontal" Spacing="4">
-          <Button x:Name="AttachButton" Classes="icon" ToolTip.Tip="Datei anhängen">
+        <ToggleSwitch DockPanel.Dock="Right" IsChecked="{Binding IsAdvanced}" OffContent="Light" OnContent="Advanced"
+                      ToolTip.Tip="Light: einfacher Text. Advanced: HTML mit Formatierung und Vorschau. Beim Wechsel zurück zu Light wird die Formatierung entfernt." />
+        <StackPanel Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
+          <Button x:Name="AttachButton" Classes="icon" ToolTip.Tip="Datei anhängen (oder einfach ins Fenster ziehen)">
             <StackPanel Orientation="Horizontal" Spacing="6">
-              <t:WispIcon Data="{StaticResource IconAttach}" />
-              <TextBlock Text="Anhängen" />
+              <t:WispIcon Data="{StaticResource IconAttach}" Foreground="{DynamicResource WispMuted}" />
+              <TextBlock Text="Anhängen" Foreground="{DynamicResource WispMuted}" />
             </StackPanel>
           </Button>
           <Button x:Name="DiscardButton" Classes="icon" ToolTip.Tip="Verwerfen">
-            <StackPanel Orientation="Horizontal" Spacing="6">
-              <t:WispIcon Data="{StaticResource IconTrash}" />
-              <TextBlock Text="Verwerfen" />
-            </StackPanel>
+            <t:WispIcon Data="{StaticResource IconTrash}" Foreground="{DynamicResource WispMuted}" />
           </Button>
         </StackPanel>
       </DockPanel>
     </StackPanel>
 
-    <!-- Editor mode + formatting tools -->
-    <DockPanel DockPanel.Dock="Top" Margin="0,0,0,8">
-      <ToggleSwitch DockPanel.Dock="Right" IsChecked="{Binding IsAdvanced}" OffContent="Light" OnContent="Advanced"
-                    ToolTip.Tip="Light: einfacher Text. Advanced: HTML mit Formatierung und Vorschau. Beim Wechsel zurück zu Light wird die Formatierung entfernt." />
-      <StackPanel x:Name="FormatBar" Orientation="Horizontal" Spacing="2" IsVisible="{Binding IsAdvanced}" VerticalAlignment="Center">
-        <StackPanel.Styles>
-          <Style Selector="Button.icon">
-            <Setter Property="MinWidth" Value="32" />
-            <Setter Property="Padding" Value="8,4" />
-          </Style>
-        </StackPanel.Styles>
-        <Button Classes="icon" Tag="bold" ToolTip.Tip="Fett (Strg+B)"><TextBlock Text="B" FontWeight="Bold" /></Button>
-        <Button Classes="icon" Tag="italic" ToolTip.Tip="Kursiv (Strg+I)"><TextBlock Text="I" FontStyle="Italic" /></Button>
-        <Button Classes="icon" Tag="underline" ToolTip.Tip="Unterstrichen (Strg+U)"><TextBlock Text="U" TextDecorations="Underline" /></Button>
-        <Button Classes="icon" Tag="color" ToolTip.Tip="Textfarbe">
-          <StackPanel Spacing="1">
-            <TextBlock Text="A" FontWeight="SemiBold" HorizontalAlignment="Center" />
-            <Border Height="3" Width="14" CornerRadius="1" Background="#D64545" />
-          </StackPanel>
-          <Button.Flyout>
-            <Flyout Placement="BottomEdgeAlignedLeft">
-              <WrapPanel x:Name="ColorPanel" MaxWidth="180" />
-            </Flyout>
-          </Button.Flyout>
-        </Button>
-        <Rectangle Width="1" Height="18" Margin="6,0" Fill="{DynamicResource WispBorder}" />
-        <Button Classes="icon" Tag="heading" ToolTip.Tip="Überschrift"><TextBlock Text="Ü" FontWeight="Bold" FontSize="15" /></Button>
-        <Button Classes="icon" Tag="list" ToolTip.Tip="Aufzählung"><TextBlock Text="•≡" /></Button>
-        <Button Classes="icon" Tag="numbered" ToolTip.Tip="Nummerierte Liste"><TextBlock Text="1." /></Button>
-        <Button Classes="icon" Tag="quote" ToolTip.Tip="Zitat"><TextBlock Text="❝" /></Button>
-        <Button Classes="icon" Tag="link" ToolTip.Tip="Link einfügen (Strg+K)"><TextBlock Text="Link" /></Button>
-        <Button Classes="icon" Tag="rule" ToolTip.Tip="Trennlinie"><TextBlock Text="―" /></Button>
-      </StackPanel>
-    </DockPanel>
+    <!-- Formatting tools (Advanced) -->
+    <StackPanel x:Name="FormatBar" DockPanel.Dock="Top" Orientation="Horizontal" Spacing="2" Margin="18,8,18,0"
+                IsVisible="{Binding IsAdvanced}" VerticalAlignment="Center">
+      <StackPanel.Styles>
+        <Style Selector="Button.icon">
+          <Setter Property="MinWidth" Value="32" />
+          <Setter Property="Padding" Value="8,4" />
+        </Style>
+      </StackPanel.Styles>
+      <Button Classes="icon" Tag="bold" ToolTip.Tip="Fett (Strg+B)"><TextBlock Text="B" FontWeight="Bold" /></Button>
+      <Button Classes="icon" Tag="italic" ToolTip.Tip="Kursiv (Strg+I)"><TextBlock Text="I" FontStyle="Italic" /></Button>
+      <Button Classes="icon" Tag="underline" ToolTip.Tip="Unterstrichen (Strg+U)"><TextBlock Text="U" TextDecorations="Underline" /></Button>
+      <Button Classes="icon" Tag="color" ToolTip.Tip="Textfarbe">
+        <StackPanel Spacing="1">
+          <TextBlock Text="A" FontWeight="SemiBold" HorizontalAlignment="Center" />
+          <Border Height="3" Width="14" CornerRadius="1" Background="#D64545" />
+        </StackPanel>
+        <Button.Flyout>
+          <Flyout Placement="BottomEdgeAlignedLeft">
+            <WrapPanel x:Name="ColorPanel" MaxWidth="180" />
+          </Flyout>
+        </Button.Flyout>
+      </Button>
+      <Rectangle Width="1" Height="18" Margin="6,0" Fill="{DynamicResource WispBorder}" />
+      <Button Classes="icon" Tag="heading" ToolTip.Tip="Überschrift"><TextBlock Text="Ü" FontWeight="Bold" FontSize="15" /></Button>
+      <Button Classes="icon" Tag="list" ToolTip.Tip="Aufzählung"><TextBlock Text="•≡" /></Button>
+      <Button Classes="icon" Tag="numbered" ToolTip.Tip="Nummerierte Liste"><TextBlock Text="1." /></Button>
+      <Button Classes="icon" Tag="quote" ToolTip.Tip="Zitat"><TextBlock Text="❝" /></Button>
+      <Button Classes="icon" Tag="link" ToolTip.Tip="Link einfügen (Strg+K)"><TextBlock Text="Link" /></Button>
+      <Button Classes="icon" Tag="rule" ToolTip.Tip="Trennlinie"><TextBlock Text="―" /></Button>
+    </StackPanel>
 
-    <Panel>
+    <Panel Margin="24,10,20,0">
+      <!-- Light: the text simply fills the window, no box around it -->
       <TextBox Text="{Binding Body}" AcceptsReturn="True" TextWrapping="Wrap" x:Name="BodyBox" IsVisible="{Binding !IsAdvanced}"
-               VerticalContentAlignment="Top" PlaceholderText="Ihre Nachricht …" />
+               Classes="bare" VerticalContentAlignment="Top" PlaceholderText="Ihre Nachricht …" />
 
-      <Grid ColumnDefinitions="*,6,*" IsVisible="{Binding IsAdvanced}">
+      <Grid ColumnDefinitions="*,6,*" IsVisible="{Binding IsAdvanced}" Margin="-6,0,0,0">
         <TextBox x:Name="SourceBox" Text="{Binding HtmlSource}" AcceptsReturn="True" TextWrapping="Wrap"
                  VerticalContentAlignment="Top" FontFamily="Cascadia Mono, Consolas, DejaVu Sans Mono, monospace"
                  PlaceholderText="Text schreiben, markieren und oben formatieren. Zeilenumbrüche bleiben erhalten." />

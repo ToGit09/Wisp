@@ -6,7 +6,9 @@ namespace Wisp.App.ViewModels;
 public interface IDialogs
 {
     Task<bool> ConfirmAsync(string title, string message, string confirm, bool danger = false);
-    void OpenCompose(Draft draft);
+    /// <param name="restored">True for a mail taken back with "Rückgängig": reopen it exactly as it was.</param>
+    /// <param name="typed">Text already written (quick reply): goes above signature and quote, the caret after it.</param>
+    void OpenCompose(Draft draft, bool restored = false, string? typed = null);
     Task OpenSettingsAsync();
     Task OpenAccountSetupAsync();
     Task<Stream?> SaveFileAsync(string suggestedName);

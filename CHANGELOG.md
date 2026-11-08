@@ -13,6 +13,15 @@ Zwei Editionen: **LightEdition** und **AIEdition**. Beim ersten Start wählen Si
 - Eine geöffnete Mail lässt sich schließen: Knopf „✕“ rechts oben im Lesebereich oder Esc. Danach ist keine Mail mehr ausgewählt und der Lesebereich ist leer. Esc beendet wie bisher auch den Auswahlmodus (wie in Wisp 1.0.4)
 - Pfeiltasten ←/→ (oder die Zurück/Vor-Tasten der Maus): im Posteingang durch die Reiter, vom ersten Reiter weiter in die Seitenleiste; in allen anderen Ordnern wird die Seitenleiste auf- und zugeklappt. In der aufgeklappten Seitenleiste wechseln ↑/↓ den Ordner
 - Viele Tastenkürzel, Übersicht mit F1: Strg+F/F3 Suche (Esc leert sie, ↓ springt in die Ergebnisse), 1–5 und Strg+Tab für die Reiter, Strg+1…9 für die Ordner, Strg+↑/↓ nächste Mail auch beim Lesen, Leertaste blättert weiter und öffnet am Ende die nächste Mail, Enter setzt Entwürfe fort, A/J/S/U/R/W/N/Entf für Archivieren, Spam, Markieren, Gelesen, Antworten, Weiterleiten, Neue Mail und Löschen, Strg+, Einstellungen. Esc schließt außerdem die Einstellungen und ein noch leeres Fenster „Neue Mail“
+- Überarbeitete Oberfläche (Begründung und Bewertung der Ideen in [docs/UI-V2.md](docs/UI-V2.md)):
+  - **Schnellantwort** unter jeder Mail: Enter springt hinein, Strg+Enter sendet (mit „Rückgängig“), ein Klick übernimmt den Text ins große Fenster. Was man tippt, bleibt bei seiner Mail, auch wenn man zwischendurch eine andere öffnet
+  - **Befehlsfeld Strg+K**: Ordner, Reiter, Konten, Aktionen für die offene Mail, „Verschieben nach …“ und Suche in einem Feld – mit dem passenden Tastenkürzel daneben
+  - „Rückgängig“ jetzt auch nach Archivieren und Verschieben, und **Strg+Z** für das jeweils letzte „Rückgängig“. Der Hinweis bleibt stehen, solange die Maus darauf ist
+  - Lesebereich: Betreff, Absender (mit Initialen) und Datum erscheinen sofort, der Inhalt blendet weich ein; „Wird geladen …“ erst, wenn es wirklich dauert. Stern und Gelesen-Knopf zeigen ihren Zustand
+  - Leerer Lesebereich zeigt, wie viele Mails ungelesen sind; die Leertaste öffnet die nächste ungelesene (auch am Ende einer Mail). Unter dem Ordnertitel steht die Zahl der ungelesenen Mails
+  - Die Auswahl der Reiter gleitet zum neuen Reiter, Knöpfe geben beim Klicken leicht nach, Hinweise gleiten von unten herein
+  - „Neue Mail“ im Stil von Apple Mail: ruhige Zeilen statt Kästen, Senden oben rechts
+  - AIEdition: die Zusammenfassung erscheint in der Liste anstelle der ersten Textzeile; Taste Z fasst die offene Mail zusammen, ein Funke pulsiert während des Schreibens; der Modell-Download ist ein schmaler Fortschrittsbalken
 
 ## 1.0.2 – Fehlerbehebungen
 

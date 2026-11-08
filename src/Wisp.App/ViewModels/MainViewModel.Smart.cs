@@ -145,6 +145,7 @@ public sealed partial class MainViewModel
                 Summary += piece;
             }
             if (string.IsNullOrWhiteSpace(Summary)) Summary = null;
+            else if (Messages.FirstOrDefault(m => m.Id == id) is { } row) row.Summary = ShortSummary(Summary);
         }
         catch (OperationCanceledException) { }
         catch (Exception ex)
@@ -160,22 +161,26 @@ public sealed partial class MainViewModel
         }
     }
 
-    /// <summary>"KI-Modell wird geladen …" above the list while the model downloads (AIEdition, first start).</summary>
+    /// <summary>A problem with the model (AIEdition), shown above the list until dismissed.</summary>
     [ObservableProperty] public partial string? AiNotice { get; set; }
+    /// <summary>First start of the AIEdition: the model downloads; a slim progress line above the list.</summary>
+    [ObservableProperty] public partial bool IsAiDownloading { get; set; }
+    [ObservableProperty] public partial double AiProgress { get; set; }
+    public string AiProgressText => $"KI-Modell wird geladen · {AiProgress * 100:0} %";
+    partial void OnAiProgressChanged(double value) => OnPropertyChanged(nameof(AiProgressText));
 
     void HookAi()
     {
         if (_mail.Ai is not { } ai) return;
-        ai.StateChanged += () => Dispatcher.UIThread.Post(() =>
+        void Update()
         {
-            AiNotice = ai.State switch
-            {
-                AiState.Downloading => $"KI-Modell wird geladen ({ai.Progress * 100:0} %). Wisp ist währenddessen normal nutzbar.",
-                AiState.Error => ai.StatusText,
-                _ => null,
-            };
+            IsAiDownloading = ai.State == AiState.Downloading;
+            AiProgress = Math.Clamp(ai.Progress, 0, 1);
+            AiNotice = ai.State == AiState.Error ? ai.StatusText : null;
             if (ai.State == AiState.Ready) CanSummarize = CurrentMessageId is not null && Summary is null && AiReady;
-        });
+        }
+        ai.StateChanged += () => Dispatcher.UIThread.Post(Update);
+        Update();
     }
 
     [RelayCommand]
@@ -188,9 +193,23 @@ public sealed partial class MainViewModel
             case ChangeKind.Code when change.Text is { } code:
                 OnCodeFound(code);
                 break;
-            case ChangeKind.Summary when change.MessageId == CurrentMessageId && !IsSummarizing:
-                LoadSummary(CurrentMessageId);
+            case ChangeKind.Summary:
+                // A summary written in the background shows up in the list at once, not with the next refresh.
+                if (change.MessageId is long id && Messages.FirstOrDefault(m => m.Id == id) is { } row && _mail.Ai is not null)
+                    row.Summary = ShortSummary(_mail.GetSummary(id));
+                if (change.MessageId == CurrentMessageId && !IsSummarizing) LoadSummary(CurrentMessageId);
                 break;
         }
     }
+
+    /// <summary>AIEdition: the summary as preview line of a list row; fetched once per row.</summary>
+    void LoadListSummary(MessageItem row)
+    {
+        if (_mail.Ai is null || !row.HasSummary || row.Summary is not null) return;
+        row.Summary = ShortSummary(_mail.GetSummary(row.Id));
+    }
+
+    /// <summary>One line for the list: whitespace folded, so a summary with line breaks does not stretch the row.</summary>
+    static string? ShortSummary(string? summary) =>
+        string.IsNullOrWhiteSpace(summary) ? null : string.Join(' ', summary.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
 }

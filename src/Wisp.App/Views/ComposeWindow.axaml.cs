@@ -87,10 +87,16 @@ public partial class ComposeWindow : Window
         Opened += (_, _) =>
         {
             if (vm.IsAdvanced) EnsureWideEnough();
-            if (string.IsNullOrEmpty(vm.To)) return;
+            // A new mail starts in "An"; a reply (address known) right in the text, above the quote – or after
+            // what was already typed in the quick reply.
+            if (string.IsNullOrEmpty(vm.To))
+            {
+                ToBox.Focus();
+                return;
+            }
             var box = vm.IsAdvanced ? SourceBox : BodyBox;
             box.Focus();
-            box.CaretIndex = 0; // replies: start typing above the quote
+            box.CaretIndex = vm.IsAdvanced ? 0 : Math.Min(vm.InitialCaret, box.Text?.Length ?? 0);
         };
     }
 

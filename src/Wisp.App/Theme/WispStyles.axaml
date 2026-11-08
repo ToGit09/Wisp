@@ -29,6 +29,22 @@
     <Setter Property="TextWrapping" Value="Wrap" />
   </Style>
 
+  <!-- Every button gives a little under the finger: a short, shallow press, released just as quickly. -->
+  <Style Selector="Button">
+    <Setter Property="RenderTransformOrigin" Value="50%,50%" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.09" Easing="CubicEaseOut" />
+      </Transitions>
+    </Setter>
+  </Style>
+  <Style Selector="Button:pressed">
+    <Setter Property="RenderTransform" Value="scale(0.95)" />
+  </Style>
+  <Style Selector="Button.link:pressed, Button.tab:pressed">
+    <Setter Property="RenderTransform" Value="scale(0.97)" />
+  </Style>
+
   <!-- Quiet icon buttons for toolbars -->
   <Style Selector="Button.icon">
     <Setter Property="Background" Value="Transparent" />
@@ -37,11 +53,145 @@
     <Setter Property="CornerRadius" Value="6" />
     <Setter Property="Foreground" Value="{DynamicResource WispText}" />
   </Style>
+  <Style Selector="Button.icon /template/ ContentPresenter">
+    <Setter Property="Transitions">
+      <Transitions>
+        <BrushTransition Property="Background" Duration="0:0:0.12" />
+      </Transitions>
+    </Setter>
+  </Style>
   <Style Selector="Button.icon:pointerover /template/ ContentPresenter">
     <Setter Property="Background" Value="{DynamicResource WispHover}" />
   </Style>
   <Style Selector="Button.icon:disabled">
     <Setter Property="Opacity" Value="0.4" />
+  </Style>
+  <!-- State icons in the reader toolbar: a filled, coloured star while flagged; an accent envelope while unread. -->
+  <Style Selector="t|WispIcon.on">
+    <Setter Property="Foreground" Value="{DynamicResource WispAccent}" />
+  </Style>
+  <Style Selector="t|WispIcon.filled.on">
+    <Setter Property="Fill" Value="{DynamicResource WispAccent}" />
+  </Style>
+
+  <!-- Round send button (composer, quick reply) -->
+  <Style Selector="Button.send">
+    <Setter Property="Background" Value="{DynamicResource WispAccent}" />
+    <Setter Property="Foreground" Value="{DynamicResource WispOnAccent}" />
+    <Setter Property="Width" Value="32" />
+    <Setter Property="Height" Value="32" />
+    <Setter Property="CornerRadius" Value="16" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+  </Style>
+  <Style Selector="Button.send:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource WispAccent}" />
+    <Setter Property="Foreground" Value="{DynamicResource WispOnAccent}" />
+    <Setter Property="Opacity" Value="0.9" />
+  </Style>
+  <Style Selector="Button.send:disabled /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource WispBorder}" />
+    <Setter Property="Foreground" Value="{DynamicResource WispMuted}" />
+  </Style>
+  <Style Selector="Button.send.wide">
+    <Setter Property="Width" Value="NaN" />
+    <Setter Property="Padding" Value="14,0" />
+  </Style>
+
+  <!-- Text fields without a box: compose header rows, the composer body. Fluent's hover/focus frames are switched
+       off as well, so nothing flashes when the mouse passes. -->
+  <Style Selector="TextBox.bare">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Padding" Value="0,6" />
+    <Setter Property="MinHeight" Value="0" />
+  </Style>
+  <Style Selector="TextBox.bare /template/ Border#PART_BorderElement, TextBox.bare:pointerover /template/ Border#PART_BorderElement, TextBox.bare:focus /template/ Border#PART_BorderElement">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+  </Style>
+
+  <!-- Soft filled fields: search, quick reply, command field. Focus shows as a thin accent ring, no jump in size. -->
+  <Style Selector="TextBox.soft">
+    <Setter Property="Background" Value="{DynamicResource WispField}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="CornerRadius" Value="9" />
+    <Setter Property="MinHeight" Value="34" />
+    <Setter Property="Padding" Value="10,7" />
+  </Style>
+  <Style Selector="TextBox.soft /template/ Border#PART_BorderElement">
+    <Setter Property="Transitions">
+      <Transitions>
+        <BrushTransition Property="BorderBrush" Duration="0:0:0.15" />
+      </Transitions>
+    </Setter>
+  </Style>
+  <Style Selector="TextBox.soft:pointerover /template/ Border#PART_BorderElement">
+    <Setter Property="Background" Value="{DynamicResource WispField}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource WispBorder}" />
+  </Style>
+  <Style Selector="TextBox.soft:focus /template/ Border#PART_BorderElement">
+    <Setter Property="Background" Value="{DynamicResource WispSurface}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource WispAccent}" />
+    <Setter Property="BorderThickness" Value="1" />
+  </Style>
+  <Style Selector="TextBox.soft t|WispIcon">
+    <Setter Property="Foreground" Value="{DynamicResource WispMuted}" />
+  </Style>
+
+  <!-- A key cap ("Strg+K") in hints and in the command field -->
+  <Style Selector="Border.kbd">
+    <Setter Property="Background" Value="{DynamicResource WispHover}" />
+    <Setter Property="CornerRadius" Value="4" />
+    <Setter Property="Padding" Value="5,1" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+  <Style Selector="Border.kbd TextBlock">
+    <Setter Property="FontSize" Value="11" />
+    <Setter Property="Foreground" Value="{DynamicResource WispMuted}" />
+  </Style>
+
+  <!-- Toast: a small inverted pill that floats above everything -->
+  <Style Selector="Border.toast">
+    <Setter Property="Background" Value="{DynamicResource WispToastBg}" />
+    <Setter Property="CornerRadius" Value="12" />
+    <Setter Property="Padding" Value="16,10,8,10" />
+    <Setter Property="BoxShadow" Value="{DynamicResource WispFloatShadow}" />
+  </Style>
+  <Style Selector="Border.toast TextBlock">
+    <Setter Property="Foreground" Value="{DynamicResource WispToastText}" />
+  </Style>
+  <Style Selector="Border.toast Button.link">
+    <Setter Property="Foreground" Value="{DynamicResource WispToastText}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Padding" Value="8,4" />
+    <Setter Property="CornerRadius" Value="6" />
+  </Style>
+  <Style Selector="Border.toast Button.link:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="#22808080" />
+  </Style>
+  <Style Selector="Border.toast t|WispIcon">
+    <Setter Property="Foreground" Value="{DynamicResource WispToastMuted}" />
+  </Style>
+
+  <!-- Command field (Strg+K) -->
+  <Style Selector="Border.palette">
+    <Setter Property="Background" Value="{DynamicResource WispSurface}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource WispBorder}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="14" />
+    <Setter Property="BoxShadow" Value="{DynamicResource WispFloatShadow}" />
+  </Style>
+  <Style Selector="ListBox.palette > ListBoxItem">
+    <Setter Property="Padding" Value="10,7" />
+    <Setter Property="Margin" Value="6,1" />
+    <Setter Property="CornerRadius" Value="8" />
+    <Setter Property="MinHeight" Value="0" />
+  </Style>
+  <Style Selector="ListBox.palette > ListBoxItem:selected t|WispIcon">
+    <Setter Property="Foreground" Value="{DynamicResource WispAccent}" />
   </Style>
 
   <Style Selector="Button.link">
@@ -145,6 +295,8 @@
     <Setter Property="MinHeight" Value="0" />
     <Setter Property="Foreground" Value="{DynamicResource WispMuted}" />
     <Setter Property="Cursor" Value="Hand" />
+  </Style>
+  <Style Selector="Button.tab /template/ ContentPresenter">
     <Setter Property="Transitions">
       <Transitions>
         <BrushTransition Property="Background" Duration="0:0:0.12" />
@@ -155,15 +307,28 @@
     <Setter Property="Background" Value="{DynamicResource WispHover}" />
     <Setter Property="Foreground" Value="{DynamicResource WispText}" />
   </Style>
+  <!-- The raised pill of the chosen tab is one shared indicator behind the buttons (Border.tabpill), which glides
+       from tab to tab; the button itself stays transparent. -->
   <Style Selector="Button.tab.selected">
-    <Setter Property="Background" Value="{DynamicResource WispSurface}" />
     <Setter Property="Foreground" Value="{DynamicResource WispText}" />
   </Style>
-  <Style Selector="Button.tab.selected /template/ ContentPresenter">
-    <Setter Property="BoxShadow" Value="0 1 3 0 #26000000" />
-  </Style>
   <Style Selector="Button.tab.selected:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="Transparent" />
+  </Style>
+  <Style Selector="Border.tabpill">
     <Setter Property="Background" Value="{DynamicResource WispSurface}" />
+    <Setter Property="CornerRadius" Value="8" />
+    <Setter Property="BoxShadow" Value="0 1 3 0 #26000000" />
+    <Setter Property="HorizontalAlignment" Value="Left" />
+    <Setter Property="IsHitTestVisible" Value="False" />
+  </Style>
+  <Style Selector="Border.tabpill.animated">
+    <Setter Property="Transitions">
+      <Transitions>
+        <ThicknessTransition Property="Margin" Duration="0:0:0.22" Easing="CubicEaseOut" />
+        <DoubleTransition Property="Width" Duration="0:0:0.22" Easing="CubicEaseOut" />
+      </Transitions>
+    </Setter>
   </Style>
   <Style Selector="Button.tab.selected TextBlock">
     <Setter Property="FontWeight" Value="SemiBold" />
@@ -209,9 +374,48 @@
     <Setter Property="BorderBrush" Value="{DynamicResource WispDanger}" />
     <Setter Property="VerticalAlignment" Value="Center" />
   </Style>
+  <!-- AIEdition: the summary sits as a quiet note above the mail, marked by a thin accent line. -->
   <Style Selector="Border.summary">
+    <Setter Property="Background" Value="{DynamicResource WispField}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource WispAccent}" />
+    <Setter Property="BorderThickness" Value="2,0,0,0" />
+    <Setter Property="CornerRadius" Value="2,8,8,2" />
+    <Setter Property="Padding" Value="12,9" />
+  </Style>
+  <!-- The spark breathes while the model is writing. -->
+  <Style Selector="t|WispIcon.thinking">
+    <Style.Animations>
+      <Animation Duration="0:0:1.2" IterationCount="INFINITE" PlaybackDirection="Alternate" Easing="SineEaseInOut">
+        <KeyFrame Cue="0%"><Setter Property="Opacity" Value="1" /></KeyFrame>
+        <KeyFrame Cue="100%"><Setter Property="Opacity" Value="0.25" /></KeyFrame>
+      </Animation>
+    </Style.Animations>
+  </Style>
+  <Style Selector="Button.chip.ai">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="{DynamicResource WispAccent}" />
+    <Setter Property="Padding" Value="9,3" />
+  </Style>
+  <Style Selector="Button.chip.ai:pointerover /template/ ContentPresenter">
     <Setter Property="Background" Value="{DynamicResource WispAccentSoft}" />
-    <Setter Property="CornerRadius" Value="8" />
-    <Setter Property="Padding" Value="12,8" />
+    <Setter Property="Foreground" Value="{DynamicResource WispAccent}" />
+  </Style>
+  <!-- Slim progress line (AI model download) -->
+  <Style Selector="ProgressBar.slim">
+    <Setter Property="MinHeight" Value="3" />
+    <Setter Property="Height" Value="3" />
+    <Setter Property="CornerRadius" Value="2" />
+    <Setter Property="Foreground" Value="{DynamicResource WispAccent}" />
+    <Setter Property="Background" Value="{DynamicResource WispBorder}" />
+  </Style>
+
+  <!-- Sidebar and command field: hover and selection blend over instead of switching hard. Not in the mail list:
+       its rows are recycled while scrolling, and a recycled row would visibly fade from its old state. -->
+  <Style Selector="ListBox.sidebar > ListBoxItem /template/ ContentPresenter, ListBox.palette > ListBoxItem /template/ ContentPresenter">
+    <Setter Property="Transitions">
+      <Transitions>
+        <BrushTransition Property="Background" Duration="0:0:0.1" />
+      </Transitions>
+    </Setter>
   </Style>
 </Styles>

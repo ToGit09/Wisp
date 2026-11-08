@@ -14,12 +14,16 @@ public sealed class WispIcon : Control
     public static readonly StyledProperty<IBrush?> ForegroundProperty =
         TextElement.ForegroundProperty.AddOwner<WispIcon>();
 
+    /// <summary>Optional fill (e.g. a filled star while a mail is flagged). Null: outline only.</summary>
+    public static readonly StyledProperty<IBrush?> FillProperty =
+        AvaloniaProperty.Register<WispIcon, IBrush?>(nameof(Fill));
+
     public static readonly StyledProperty<double> StrokeThicknessProperty =
         AvaloniaProperty.Register<WispIcon, double>(nameof(StrokeThickness), 1.8);
 
     static WispIcon()
     {
-        AffectsRender<WispIcon>(DataProperty, ForegroundProperty, StrokeThicknessProperty);
+        AffectsRender<WispIcon>(DataProperty, ForegroundProperty, FillProperty, StrokeThicknessProperty);
         WidthProperty.OverrideDefaultValue<WispIcon>(16);
         HeightProperty.OverrideDefaultValue<WispIcon>(16);
     }
@@ -36,6 +40,12 @@ public sealed class WispIcon : Control
         set => SetValue(ForegroundProperty, value);
     }
 
+    public IBrush? Fill
+    {
+        get => GetValue(FillProperty);
+        set => SetValue(FillProperty, value);
+    }
+
     public double StrokeThickness
     {
         get => GetValue(StrokeThicknessProperty);
@@ -49,6 +59,6 @@ public sealed class WispIcon : Control
         // StrokeThickness is meant for a 16 px icon; in grid units that is ×1.5, and it scales with the icon.
         var pen = new Pen(Foreground, StrokeThickness * 1.5, lineCap: PenLineCap.Round, lineJoin: PenLineJoin.Round);
         using (context.PushTransform(Matrix.CreateScale(scale, scale)))
-            context.DrawGeometry(null, pen, Data);
+            context.DrawGeometry(Fill, pen, Data);
     }
 }
