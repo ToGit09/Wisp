@@ -382,15 +382,20 @@ public sealed partial class MainViewModel : ObservableObject
             Outbox.Clear();
             foreach (var item in _mail.GetOutbox())
             {
+                // "Später senden": planned for later; "Jetzt senden" sends it right away.
+                var planned = item.State == OutboxState.Queued && item.Attempts == 0 && item.NextAttempt - DateTimeOffset.UtcNow > TimeSpan.FromMinutes(2);
                 var (state, retry) = item.State switch
                 {
+                    OutboxState.Queued when planned => ($"Geplant: {SendTime.WhenText(item.NextAttempt)}", true),
                     OutboxState.Queued => (item.Attempts > 0 ? "Wartet auf Verbindung" : "Wird gesendet …", false),
+                    OutboxState.Draft => ("Entwurf – wird im Ordner „Entwürfe“ gespeichert …", false),
                     OutboxState.Sending => ("Wird gesendet …", false),
                     OutboxState.Accepted => ("Gesendet", false),
                     OutboxState.Failed => ("Nicht gesendet", true),
                     _ => ("Unklar, ob gesendet", true),
                 };
-                Outbox.Add(new OutboxEntry(item.Id, item.Summary.To, item.Summary.Subject, state, item.LastError,
+                var note = planned ? "Wisp muss dann geöffnet sein – sonst geht sie beim nächsten Start hinaus." : item.LastError;
+                Outbox.Add(new OutboxEntry(item.Id, item.Summary.To, item.Summary.Subject, state, note,
                     retry, item.State != OutboxState.Sending));
             }
             IsListEmpty = Outbox.Count == 0;

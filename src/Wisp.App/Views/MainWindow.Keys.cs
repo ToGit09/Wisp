@@ -44,6 +44,13 @@ public partial class MainWindow
             e.Handled = true;
             return;
         }
+        // Send options above the send button: Esc folds them back in.
+        if (_vm.IsSendMenuOpen && e.Key == Key.Escape)
+        {
+            _vm.CloseSendMenu();
+            e.Handled = true;
+            return;
+        }
         if (focused == QuickReplyBox && OnQuickReplyKey(e.Key, mods))
         {
             e.Handled = true;

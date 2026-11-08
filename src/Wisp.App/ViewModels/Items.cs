@@ -150,9 +150,16 @@ public sealed partial class MessageItem : ObservableObject
     /// from the list without opening them. Null in the LightEdition and for mails without a summary.
     /// </summary>
     [ObservableProperty] public partial string? Summary { get; set; }
-    public bool ShowsSummary => Summary is not null;
-    public string PreviewText => Summary ?? Preview;
+    /// <summary>The model is writing this mail's summary right now – also while another mail is open.</summary>
+    [ObservableProperty] public partial bool IsSummarizing { get; set; }
+    public bool ShowsSummary => Summary is not null || IsSummarizing;
+    public string PreviewText => Summary ?? (IsSummarizing ? "Wird zusammengefasst …" : Preview);
     partial void OnSummaryChanged(string? value)
+    {
+        OnPropertyChanged(nameof(ShowsSummary));
+        OnPropertyChanged(nameof(PreviewText));
+    }
+    partial void OnIsSummarizingChanged(bool value)
     {
         OnPropertyChanged(nameof(ShowsSummary));
         OnPropertyChanged(nameof(PreviewText));
@@ -265,3 +272,46 @@ public sealed record OutboxEntry(long Id, string To, string Subject, string Stat
 public sealed record AttachmentItem(int Index, string Name, string SizeText);
 
 public sealed record LinkItem(string Number, string Url, bool Suspicious);
+
+/// <summary>"Später senden": a suggested time, shown as a capsule ("Morgen früh · Di, 8:00").</summary>
+public sealed record SendTime(string Label, string Detail, DateTimeOffset At)
+{
+    static readonly CultureInfo German = CultureInfo.GetCultureInfo("de-DE");
+
+    /// <summary>In an hour, this evening (if still ahead), tomorrow morning, and Monday morning before a weekend.</summary>
+    public static IReadOnlyList<SendTime> Suggestions(DateTimeOffset now)
+    {
+        var local = now.LocalDateTime;
+        var list = new List<SendTime>();
+
+        var hour = local.AddHours(1);
+        hour = hour.Date.AddHours(hour.Hour).AddMinutes(Math.Ceiling(hour.Minute / 5.0) * 5); // a round time
+        list.Add(new("In einer Stunde", hour.ToString("H:mm", German), new DateTimeOffset(hour)));
+
+        if (local.Hour < 17) list.Add(new("Heute Abend", "18:00", new DateTimeOffset(local.Date.AddHours(18))));
+
+        var tomorrow = local.Date.AddDays(1).AddHours(8);
+        list.Add(new("Morgen früh", tomorrow.ToString("ddd, H:mm", German), new DateTimeOffset(tomorrow)));
+
+        if (local.DayOfWeek is DayOfWeek.Friday or DayOfWeek.Saturday)
+        {
+            var monday = local.Date.AddDays(((int)DayOfWeek.Monday - (int)local.DayOfWeek + 7) % 7).AddHours(8);
+            list.Add(new("Montag früh", monday.ToString("d. MMM, H:mm", German), new DateTimeOffset(monday)));
+        }
+        return list;
+    }
+
+    /// <summary>"heute um 18:00", "morgen um 8:00", "am Montag um 8:00".</summary>
+    public static string WhenText(DateTimeOffset at)
+    {
+        var local = at.LocalDateTime;
+        var time = local.ToString("H:mm", German);
+        return (local.Date - DateTime.Today).Days switch
+        {
+            0 => $"heute um {time}",
+            1 => $"morgen um {time}",
+            < 7 => $"am {local.ToString("dddd", German)} um {time}",
+            _ => $"am {local.ToString("d. MMMM", German)} um {time}",
+        };
+    }
+}

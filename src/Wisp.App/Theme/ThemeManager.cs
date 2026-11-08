@@ -49,6 +49,21 @@ public static class ThemeManager
         r["SystemAccentColorDark2"] = Mix(accent, Colors.Black, 0.30);
         r["SystemAccentColorDark3"] = Mix(accent, Colors.Black, 0.45);
 
+        // Menus: the row under the mouse lights up in the accent colour (like on the Mac), text and icon turn white.
+        var onAccent = (IBrush)r["WispOnAccent"]!;
+        r["MenuFlyoutItemBackgroundPointerOver"] = r["WispAccent"];
+        r["MenuFlyoutItemBackgroundPressed"] = new SolidColorBrush(Mix(accent, Colors.Black, 0.12));
+        r["MenuFlyoutItemForegroundPointerOver"] = onAccent;
+        r["MenuFlyoutItemForegroundPressed"] = onAccent;
+        r["MenuFlyoutItemKeyboardAcceleratorTextForegroundPointerOver"] = onAccent;
+        r["MenuFlyoutItemKeyboardAcceleratorTextForegroundPressed"] = onAccent;
+        r["MenuFlyoutSubItemChevronPointerOver"] = onAccent;
+        r["MenuFlyoutSubItemChevronSubMenuOpened"] = onAccent;
+        r["MenuFlyoutSubItemBackgroundPointerOver"] = r["WispAccent"];
+        r["MenuFlyoutSubItemBackgroundSubMenuOpened"] = r["WispAccent"];
+        r["MenuFlyoutSubItemForegroundPointerOver"] = onAccent;
+        r["MenuFlyoutSubItemForegroundSubMenuOpened"] = onAccent;
+
         r["WispFont"] = settings.Font switch
         {
             "System" => FontFamily.Default,

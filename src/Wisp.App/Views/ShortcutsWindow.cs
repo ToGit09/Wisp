@@ -59,6 +59,7 @@ public sealed class ShortcutsWindow : Window
             ("Enter", "ins Antwortfeld unter der offenen Mail"),
             ("Strg+Enter", "senden (mit „Rückgängig“)"),
             ("Esc", "zurück zur Liste, der Text bleibt bei seiner Mail"),
+            ("Rechtsklick auf Senden", "als Entwurf speichern oder später senden"),
         ]),
         ("Allgemein", [
             ("F5", "aktualisieren"),

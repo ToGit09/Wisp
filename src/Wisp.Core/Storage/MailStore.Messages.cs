@@ -410,10 +410,12 @@ public sealed partial class MailStore
     // ───────────────────────── Outbox ─────────────────────────
 
     /// <param name="sendAfter">Earliest send time; until then the user can still take the mail back.</param>
-    public long AddToOutbox(long accountId, byte[] raw, OutboxSummary summary, DateTimeOffset? sendAfter = null) => Tx(() =>
-        Convert.ToInt64(Scalar("INSERT INTO outbox(account_id, raw, summary, created, next_attempt) VALUES($a, $r, $s, $c, $n) RETURNING id",
+    /// <param name="state"><see cref="OutboxState.Queued"/> to send it, <see cref="OutboxState.Draft"/> to file it as a draft.</param>
+    public long AddToOutbox(long accountId, byte[] raw, OutboxSummary summary, DateTimeOffset? sendAfter = null,
+        OutboxState state = OutboxState.Queued) => Tx(() =>
+        Convert.ToInt64(Scalar("INSERT INTO outbox(account_id, raw, summary, state, created, next_attempt) VALUES($a, $r, $s, $st, $c, $n) RETURNING id",
             ("$a", accountId), ("$r", _crypto.Encrypt(raw, "outbox.raw")),
-            ("$s", _crypto.EncryptJson(summary, "outbox.summary")), ("$c", Now()),
+            ("$s", _crypto.EncryptJson(summary, "outbox.summary")), ("$st", (int)state), ("$c", Now()),
             ("$n", sendAfter?.ToUnixTimeSeconds() ?? 0))));
 
     /// <summary>

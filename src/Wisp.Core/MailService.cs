@@ -272,26 +272,16 @@ public sealed class MailService : IAsyncDisposable
     /// Puts the message into the encrypted outbox. With a send delay (settings) it waits there, so
     /// <see cref="TryUndoSend"/> can still take it back. Returns an error text, or the outbox id.
     /// </summary>
-    public SendResult Send(Draft draft)
+    /// <param name="at">Wisp 2, "Später senden": the time to send it. Until then it waits in the outbox and can be taken back.</param>
+    public SendResult Send(Draft draft, DateTimeOffset? at = null)
     {
         if (Composer.Validate(draft) is { } problem) return new SendResult(problem, null, TimeSpan.Zero);
-        var account = _store.GetAccount(draft.AccountId) ?? throw new InvalidOperationException("Unbekanntes Konto.");
+        if (Build(draft, out var error) is not { } built) return new SendResult(error, null, TimeSpan.Zero);
 
-        MimeKit.MimeMessage? forwardSource = null;
-        if (draft.ForwardsAttachmentsOf is long source)
-        {
-            var raw = _store.GetBody(source);
-            if (raw is null) return new SendResult("Die weitergeleitete Mail ist nicht offline verfügbar; ihre Anhänge können nicht mitgeschickt werden.", null, TimeSpan.Zero);
-            forwardSource = MailRenderer.Parse(raw);
-        }
-
-        var message = Composer.Build(draft, account.Config, forwardSource);
-        using var buffer = new MemoryStream();
-        message.WriteTo(buffer);
-        var delay = TimeSpan.FromSeconds(Math.Clamp(Settings.Compose.SendDelaySeconds, 0, 60));
-        var id = _store.AddToOutbox(draft.AccountId, buffer.ToArray(),
-            new OutboxSummary(string.Join(", ", message.To.Mailboxes.Select(m => m.Address)), message.Subject ?? "", message.MessageId!),
-            delay > TimeSpan.Zero ? DateTimeOffset.UtcNow + delay : null);
+        var delay = at is { } time
+            ? time - DateTimeOffset.UtcNow
+            : TimeSpan.FromSeconds(Math.Clamp(Settings.Compose.SendDelaySeconds, 0, 60));
+        var id = _store.AddToOutbox(draft.AccountId, built.Raw, built.Summary, delay > TimeSpan.Zero ? DateTimeOffset.UtcNow + delay : null);
         if (draft.RepliesTo is long replied) _store.SetFlagLocally([replied], MessageFlags.Answered, true);
         // The draft it was written from is done – to the trash, not deleted, so nothing is lost.
         if (draft.ReplacesDraft is long old && _store.FindFolderByRole(draft.AccountId, FolderRole.Trash) is { } trash)
@@ -300,6 +290,45 @@ public sealed class MailService : IAsyncDisposable
         Changed?.Invoke(new WorkerChange(draft.AccountId, ChangeKind.Outbox));
         Worker(draft.AccountId)?.Wake(); // re-plans its wait so the mail goes out right after the delay
         return new SendResult(null, id, delay);
+    }
+
+    /// <summary>
+    /// Wisp 2: keeps the mail as a draft. It goes through the encrypted outbox like a mail being sent, but the
+    /// sync files it into the server's Drafts folder instead of sending it – so it also works offline.
+    /// Returns an error text or null.
+    /// </summary>
+    public string? SaveDraft(Draft draft)
+    {
+        if (_store.FindFolderByRole(draft.AccountId, FolderRole.Drafts) is null)
+            return "Dieses Konto hat keinen Entwürfe-Ordner.";
+        if (Build(draft, out var error) is not { } built) return error;
+        _store.AddToOutbox(draft.AccountId, built.Raw, built.Summary, state: OutboxState.Draft);
+        Changed?.Invoke(new WorkerChange(draft.AccountId, ChangeKind.Outbox));
+        Worker(draft.AccountId)?.Wake();
+        return null;
+    }
+
+    (byte[] Raw, OutboxSummary Summary)? Build(Draft draft, out string? error)
+    {
+        error = null;
+        var account = _store.GetAccount(draft.AccountId) ?? throw new InvalidOperationException("Unbekanntes Konto.");
+        MimeKit.MimeMessage? forwardSource = null;
+        if (draft.ForwardsAttachmentsOf is long source)
+        {
+            var raw = _store.GetBody(source);
+            if (raw is null)
+            {
+                error = "Die weitergeleitete Mail ist nicht offline verfügbar; ihre Anhänge können nicht mitgeschickt werden.";
+                return null;
+            }
+            forwardSource = MailRenderer.Parse(raw);
+        }
+
+        var message = Composer.Build(draft, account.Config, forwardSource);
+        using var buffer = new MemoryStream();
+        message.WriteTo(buffer);
+        return (buffer.ToArray(),
+            new OutboxSummary(string.Join(", ", message.To.Mailboxes.Select(m => m.Address)), message.Subject ?? "", message.MessageId!));
     }
 
     /// <summary>"Rückgängig": takes a mail back that has not started sending yet.</summary>
@@ -326,7 +355,7 @@ public sealed class MailService : IAsyncDisposable
     public void RetrySend(long outboxId)
     {
         var item = _store.GetOutbox().FirstOrDefault(o => o.Id == outboxId);
-        if (item is null) return;
+        if (item is null || item.State == OutboxState.Draft) return; // a draft is never sent by this
         _store.UpdateOutbox(outboxId, OutboxState.Queued, 0, DateTimeOffset.UtcNow, null);
         Changed?.Invoke(new WorkerChange(item.AccountId, ChangeKind.Outbox));
         Worker(item.AccountId)?.Wake();

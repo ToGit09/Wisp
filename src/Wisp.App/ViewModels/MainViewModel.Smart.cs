@@ -109,56 +109,116 @@ public sealed partial class MainViewModel
 
     // ───────────────────────── AI summaries ─────────────────────────
 
+    /// <summary>
+    /// A summary being written. It belongs to its mail, not to the reader: opening another mail lets it run on in
+    /// the background, and when it is done it is stored (encrypted, like all mail content). Coming back shows the
+    /// text written so far. The model writes one at a time; a second request waits for its turn.
+    /// </summary>
+    sealed class SummaryJob(long id)
+    {
+        public long Id { get; } = id;
+        public System.Text.StringBuilder Text { get; } = new();
+    }
+
+    readonly Dictionary<long, SummaryJob> _summaryJobs = [];
+
+    /// <summary>The open mail's summary: stored, or written so far. Null while nothing is there yet.</summary>
     [ObservableProperty] public partial string? Summary { get; set; }
     [ObservableProperty] public partial bool IsSummarizing { get; set; }
     [ObservableProperty] public partial bool CanSummarize { get; set; }
-    CancellationTokenSource? _summaryCts;
 
-    public bool ShowSummary => Summary is not null || IsSummarizing;
-    partial void OnSummaryChanged(string? value) => OnPropertyChanged(nameof(ShowSummary));
-    partial void OnIsSummarizingChanged(bool value) => OnPropertyChanged(nameof(ShowSummary));
+    /// <summary>
+    /// Changes only when the card really appears or goes – not with every word the model writes (the view fades
+    /// the card in on this; firing it per word made the card flicker while it filled).
+    /// </summary>
+    public bool ShowSummary
+    {
+        get;
+        private set => SetProperty(ref field, value);
+    }
+
+    /// <summary>Before the first word: what the card says instead of an empty line.</summary>
+    public string? SummaryWaitText { get; private set; }
+
+    partial void OnSummaryChanged(string? value) => UpdateSummaryCard();
+    partial void OnIsSummarizingChanged(bool value) => UpdateSummaryCard();
+
+    void UpdateSummaryCard()
+    {
+        ShowSummary = Summary is not null || IsSummarizing;
+        var waiting = IsSummarizing && Summary is null;
+        var queued = waiting && CurrentMessageId is long id && _summaryJobs.Keys.Any(other => other != id);
+        var wait = !waiting ? null : queued ? "Wartet, bis die andere Zusammenfassung fertig ist …" : "Wird geschrieben …";
+        if (wait == SummaryWaitText) return;
+        SummaryWaitText = wait;
+        OnPropertyChanged(nameof(SummaryWaitText));
+    }
 
     bool AiReady => _mail.Ai is { State: AiState.Ready } && _mail.Settings.Smart.AiEnabled;
 
     void LoadSummary(long? messageId)
     {
-        _summaryCts?.Cancel();
-        IsSummarizing = false;
-        Summary = messageId is long id && _mail.Ai is not null ? _mail.GetSummary(id) : null;
-        CanSummarize = messageId is not null && Summary is null && AiReady;
+        if (messageId is long id && _summaryJobs.TryGetValue(id, out var job))
+        {
+            IsSummarizing = true;
+            Summary = Tidy(job.Text);
+        }
+        else
+        {
+            IsSummarizing = false;
+            Summary = messageId is long m && _mail.Ai is not null ? _mail.GetSummary(m) : null;
+        }
+        UpdateSummaryCard();
+        CanSummarize = messageId is not null && Summary is null && !IsSummarizing && AiReady;
     }
 
     [RelayCommand]
-    async Task Summarize()
+    void Summarize()
     {
-        if (CurrentMessageId is not long id || !AiReady) return;
-        _summaryCts?.Cancel();
-        var cts = _summaryCts = new CancellationTokenSource();
-        CanSummarize = false;
-        IsSummarizing = true;
-        Summary = "";
+        if (CurrentMessageId is not long id || !AiReady || _summaryJobs.ContainsKey(id)) return;
+        var job = new SummaryJob(id);
+        _summaryJobs[id] = job;
+        if (Messages.FirstOrDefault(m => m.Id == id) is { } row) row.IsSummarizing = true;
+        LoadSummary(id);
+        _ = WriteSummaryAsync(job);
+    }
+
+    /// <summary>Runs until the summary is complete, whichever mail is open meanwhile.</summary>
+    async Task WriteSummaryAsync(SummaryJob job)
+    {
+        var failed = false;
         try
         {
-            await foreach (var piece in _mail.SummarizeAsync(id, cts.Token).WithCancellation(cts.Token))
+            // Not cancelled when another mail is opened: SmartService stores the summary once it is complete.
+            await foreach (var piece in _mail.SummarizeAsync(job.Id, CancellationToken.None))
             {
-                if (cts.IsCancellationRequested || CurrentMessageId != id) return;
-                Summary += piece;
+                job.Text.Append(piece);
+                if (CurrentMessageId == job.Id) Summary = Tidy(job.Text);
             }
-            if (string.IsNullOrWhiteSpace(Summary)) Summary = null;
-            else if (Messages.FirstOrDefault(m => m.Id == id) is { } row) row.Summary = ShortSummary(Summary);
         }
-        catch (OperationCanceledException) { }
         catch (Exception ex)
         {
             CrashLog.Write(ex);
-            Summary = null;
-            ShowNotice("Die Zusammenfassung ist fehlgeschlagen. Das KI-Modell konnte nicht gestartet werden.");
+            failed = true;
         }
-        finally
+        _summaryJobs.Remove(job.Id);
+
+        var stored = _mail.GetSummary(job.Id);
+        if (Messages.FirstOrDefault(m => m.Id == job.Id) is { } row)
         {
-            if (_summaryCts == cts) IsSummarizing = false;
-            CanSummarize = CurrentMessageId == id && Summary is null && AiReady;
+            row.IsSummarizing = false;
+            row.Summary = ShortSummary(stored);
         }
+        if (CurrentMessageId == job.Id) LoadSummary(job.Id);
+        else if (IsSummarizing) UpdateSummaryCard(); // a summary waiting for this one may start now
+        if (failed) ShowNotice("Die Zusammenfassung ist fehlgeschlagen. Das KI-Modell konnte nicht gestartet werden.");
+    }
+
+    /// <summary>The model sometimes starts with a line break; nothing written yet is null.</summary>
+    static string? Tidy(System.Text.StringBuilder text)
+    {
+        var s = text.ToString().Trim();
+        return s.Length == 0 ? null : s;
     }
 
     /// <summary>A problem with the model (AIEdition), shown above the list until dismissed.</summary>
@@ -177,7 +237,7 @@ public sealed partial class MainViewModel
             IsAiDownloading = ai.State == AiState.Downloading;
             AiProgress = Math.Clamp(ai.Progress, 0, 1);
             AiNotice = ai.State == AiState.Error ? ai.StatusText : null;
-            if (ai.State == AiState.Ready) CanSummarize = CurrentMessageId is not null && Summary is null && AiReady;
+            if (ai.State == AiState.Ready) CanSummarize = CurrentMessageId is not null && Summary is null && !IsSummarizing && AiReady;
         }
         ai.StateChanged += () => Dispatcher.UIThread.Post(Update);
         Update();
@@ -197,7 +257,7 @@ public sealed partial class MainViewModel
                 // A summary written in the background shows up in the list at once, not with the next refresh.
                 if (change.MessageId is long id && Messages.FirstOrDefault(m => m.Id == id) is { } row && _mail.Ai is not null)
                     row.Summary = ShortSummary(_mail.GetSummary(id));
-                if (change.MessageId == CurrentMessageId && !IsSummarizing) LoadSummary(CurrentMessageId);
+                if (change.MessageId is long done && done == CurrentMessageId && !_summaryJobs.ContainsKey(done)) LoadSummary(done);
                 break;
         }
     }
@@ -205,6 +265,7 @@ public sealed partial class MainViewModel
     /// <summary>AIEdition: the summary as preview line of a list row; fetched once per row.</summary>
     void LoadListSummary(MessageItem row)
     {
+        row.IsSummarizing = _summaryJobs.ContainsKey(row.Id); // rows are new after a folder switch
         if (_mail.Ai is null || !row.HasSummary || row.Summary is not null) return;
         row.Summary = ShortSummary(_mail.GetSummary(row.Id));
     }

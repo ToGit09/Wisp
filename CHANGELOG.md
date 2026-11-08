@@ -15,6 +15,8 @@ Zwei Editionen: **LightEdition** und **AIEdition**. Beim ersten Start wählen Si
 - Viele Tastenkürzel, Übersicht mit F1: Strg+F/F3 Suche (Esc leert sie, ↓ springt in die Ergebnisse), 1–5 und Strg+Tab für die Reiter, Strg+1…9 für die Ordner, Strg+↑/↓ nächste Mail auch beim Lesen, Leertaste blättert weiter und öffnet am Ende die nächste Mail, Enter setzt Entwürfe fort, A/J/S/U/R/W/N/Entf für Archivieren, Spam, Markieren, Gelesen, Antworten, Weiterleiten, Neue Mail und Löschen, Strg+, Einstellungen. Esc schließt außerdem die Einstellungen und ein noch leeres Fenster „Neue Mail“
 - Überarbeitete Oberfläche (Begründung und Bewertung der Ideen in [docs/UI-V2.md](docs/UI-V2.md)):
   - **Schnellantwort** unter jeder Mail: Enter springt hinein, Strg+Enter sendet (mit „Rückgängig“), ein Klick übernimmt den Text ins große Fenster. Was man tippt, bleibt bei seiner Mail, auch wenn man zwischendurch eine andere öffnet
+  - Rechtsklick auf den Senden-Knopf: Kapseln fahren heraus – **Speichern** (als Entwurf in den Ordner „Entwürfe“, auch offline) und **Später senden** (in einer Stunde, heute Abend, morgen früh, vor dem Wochenende: Montag früh). Geplante Mails warten verschlüsselt im Postausgang, „Jetzt senden“ und „Verwerfen“ gehen bis zuletzt; „Rückgängig“ legt den Text zurück ins Antwortfeld
+  - Rechtsklick-Menü neu: eine ruhige Karte mit runden Ecken, die Zeile unter der Maus leuchtet in der Akzentfarbe (Löschen in Rot), rechts stehen die echten Tastenkürzel (R, ⇧ R, W, U, S, A, J, Entf). Was hier nicht geht, fehlt, statt ausgegraut zu sein. Untermenüs und die kleinen Menüs an Knöpfen sehen gleich aus
   - **Befehlsfeld Strg+K**: Ordner, Reiter, Konten, Aktionen für die offene Mail, „Verschieben nach …“ und Suche in einem Feld – mit dem passenden Tastenkürzel daneben
   - „Rückgängig“ jetzt auch nach Archivieren und Verschieben, und **Strg+Z** für das jeweils letzte „Rückgängig“. Der Hinweis bleibt stehen, solange die Maus darauf ist
   - Lesebereich: Betreff, Absender (mit Initialen) und Datum erscheinen sofort, der Inhalt blendet weich ein; „Wird geladen …“ erst, wenn es wirklich dauert. Stern und Gelesen-Knopf zeigen ihren Zustand
@@ -22,6 +24,7 @@ Zwei Editionen: **LightEdition** und **AIEdition**. Beim ersten Start wählen Si
   - Die Auswahl der Reiter gleitet zum neuen Reiter, Knöpfe geben beim Klicken leicht nach, Hinweise gleiten von unten herein
   - „Neue Mail“ im Stil von Apple Mail: ruhige Zeilen statt Kästen, Senden oben rechts
   - AIEdition: die Zusammenfassung erscheint in der Liste anstelle der ersten Textzeile; Taste Z fasst die offene Mail zusammen, ein Funke pulsiert während des Schreibens; der Modell-Download ist ein schmaler Fortschrittsbalken
+  - AIEdition: eine Zusammenfassung läuft weiter, wenn man inzwischen eine andere Mail öffnet, und wird danach wie alle Zusammenfassungen verschlüsselt gespeichert (vorher wurde sie abgebrochen und war verloren). In der Liste pulsiert der Funke, bis sie fertig ist; eine zweite wartet, bis die erste fertig ist. Die Karte flackert beim Schreiben nicht mehr
 
 ## 1.0.2 – Fehlerbehebungen
 

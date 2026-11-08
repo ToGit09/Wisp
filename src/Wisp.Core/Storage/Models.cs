@@ -51,6 +51,8 @@ public enum OutboxState
     Failed = 3,
     /// <summary>Interrupted while sending: the server may or may not have it. Never resent automatically.</summary>
     Uncertain = 4,
+    /// <summary>Wisp 2: not to be sent – a draft waiting to be filed into the Drafts folder on the server.</summary>
+    Draft = 5,
 }
 
 /// <summary>Decrypted summary of a message as shown in the list. Stored encrypted.</summary>

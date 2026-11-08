@@ -102,6 +102,7 @@ public partial class MainWindow : Window, IDialogs
             case nameof(MainViewModel.CurrentMessageId): OnCurrentMessageChanged(); break;
             case nameof(MainViewModel.Notice) or nameof(MainViewModel.NoticeActionLabel): UpdateToast(); break;
             case nameof(MainViewModel.IsPaletteOpen): UpdatePalette(); break;
+            case nameof(MainViewModel.IsSendMenuOpen) or nameof(MainViewModel.IsSendLaterOpen): UpdateSendMenu(); break;
             case nameof(MainViewModel.ShowSummary) when _vm.ShowSummary: _ = Wisp.App.Theme.Motion.In(SummaryCard, dy: 4, ms: 200); break;
             case nameof(MainViewModel.SelectedSidebarItem): ShowSidebarSelection(); break;
             case nameof(MainViewModel.SidebarAlwaysOpen): ApplySidebarMode(); break;
@@ -129,28 +130,30 @@ public partial class MainWindow : Window, IDialogs
         if (MessageList.SelectedItems?.Contains(clicked) != true) MessageList.SelectedItem = clicked;
 
         var single = MessageList.SelectedItems?.Count == 1;
-        var menu = new ContextMenu
+        // Grouped by what one does with a mail: answer – mark – put away. Hidden instead of greyed out where an
+        // entry makes no sense here; the letters on the right are the real shortcuts of the list.
+        var items = new List<Control>
         {
-            ItemsSource = new Control[]
-            {
-                MenuEntry("Antworten", "IconReply", _vm.ReplyCommand, gesture: "Ctrl+R", enabled: single),
-                MenuEntry("Allen antworten", "IconReplyAll", _vm.ReplyAllCommand, gesture: "Ctrl+Shift+R", enabled: single),
-                MenuEntry("Weiterleiten", "IconForward", _vm.ForwardCommand, gesture: "Ctrl+L", enabled: single),
-                new Separator(),
-                MenuEntry(clicked.IsUnread ? "Als gelesen markieren" : "Als ungelesen markieren", "IconMail", _vm.ToggleReadCommand, gesture: "Ctrl+U"),
-                MenuEntry(clicked.IsFlagged ? "Markierung entfernen" : "Markieren", "IconStar", _vm.ToggleFlagCommand),
-                new Separator(),
-                MoveMenu(),
-                _vm.QuickJunk
-                    ? MenuEntry("Kein Spam", "IconInbox", _vm.NotSpamCommand)
-                    : MenuEntry("Als Spam markieren", "IconJunk", _vm.MarkSpamCommand, enabled: _vm.CanMarkSpam),
-                MenuEntry("Archivieren", "IconArchive", _vm.ArchiveCommand, enabled: _vm.CanArchive),
-                MenuEntry("Löschen", "IconTrash", _vm.DeleteCommand, gesture: "Delete"),
-                new Separator { IsVisible = _vm.ShowSortMenu },
-                SortMenu(enabled: single),
-            },
+            MenuEntry("Antworten", "IconReply", _vm.ReplyCommand, keys: "R", enabled: single),
+            MenuEntry("Allen antworten", "IconReplyAll", _vm.ReplyAllCommand, keys: "⇧ R", enabled: single),
+            MenuEntry("Weiterleiten", "IconForward", _vm.ForwardCommand, keys: "W", enabled: single),
+            new Separator(),
+            MenuEntry(clicked.IsUnread ? "Als gelesen markieren" : "Als ungelesen markieren", "IconMail", _vm.ToggleReadCommand, keys: "U"),
+            MenuEntry(clicked.IsFlagged ? "Markierung entfernen" : "Markieren", "IconStar", _vm.ToggleFlagCommand, keys: "S"),
         };
-        menu.Open(MessageList);
+        if (_vm.CanSummarize && single) items.Add(MenuEntry("Zusammenfassen", "IconSpark", _vm.SummarizeCommand, keys: "Z"));
+        items.Add(new Separator());
+        items.Add(MoveMenu());
+        if (_vm.CanArchive) items.Add(MenuEntry("Archivieren", "IconArchive", _vm.ArchiveCommand, keys: "A"));
+        if (_vm.QuickJunk) items.Add(MenuEntry("Kein Spam", "IconInbox", _vm.NotSpamCommand, keys: "J"));
+        else if (_vm.CanMarkSpam) items.Add(MenuEntry("Als Spam markieren", "IconJunk", _vm.MarkSpamCommand, keys: "J"));
+        items.Add(MenuEntry("Löschen", "IconTrash", _vm.DeleteCommand, keys: "Entf", danger: true));
+        if (_vm.ShowSortMenu)
+        {
+            items.Add(new Separator());
+            items.Add(SortMenu(enabled: single));
+        }
+        new ContextMenu { ItemsSource = items }.Open(MessageList);
     }
 
     /// <summary>Wisp 2: "Absender immer einordnen als …" – a rule for every mail of this sender.</summary>
@@ -195,14 +198,21 @@ public partial class MainWindow : Window, IDialogs
         return item;
     }
 
-    MenuItem MenuEntry(string header, string icon, System.Windows.Input.ICommand command, string? gesture = null, bool enabled = true) => new()
+    /// <param name="keys">Shortcut shown on the right, in German ("Entf", "⇧ R").</param>
+    /// <param name="danger">Deleting: the row lights up red instead of in the accent colour.</param>
+    MenuItem MenuEntry(string header, string icon, System.Windows.Input.ICommand command, string? keys = null, bool enabled = true, bool danger = false)
     {
-        Header = header,
-        Icon = MenuIcon(icon),
-        Command = command,
-        InputGesture = gesture is null ? null : KeyGesture.Parse(gesture),
-        IsEnabled = enabled,
-    };
+        object content = header;
+        if (keys is not null)
+        {
+            var hint = new TextBlock { Text = keys, Classes = { "menukey" }, Margin = new Thickness(24, 0, 0, 0) };
+            DockPanel.SetDock(hint, Dock.Right);
+            content = new DockPanel { Children = { hint, new TextBlock { Text = header } } };
+        }
+        var item = new MenuItem { Header = content, Icon = MenuIcon(icon), Command = command, IsEnabled = enabled };
+        if (danger) item.Classes.Add("danger");
+        return item;
+    }
 
     Theme.WispIcon MenuIcon(string key) => new() { Data = this.FindResource(key) as Geometry };
 

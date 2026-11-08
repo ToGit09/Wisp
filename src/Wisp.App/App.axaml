@@ -29,6 +29,11 @@
           <SolidColorBrush x:Key="WispToastMuted" Color="#A5A9B4" />
           <SolidColorBrush x:Key="WispBackdrop" Color="#1F000000" />
           <BoxShadows x:Key="WispFloatShadow">0 8 28 0 #26000000, 0 1 3 0 #14000000</BoxShadows>
+          <!-- Fluent menus (submenus, drop-down menus) on the same card as the right-click menu -->
+          <SolidColorBrush x:Key="MenuFlyoutPresenterBackground" Color="#FFFFFF" />
+          <SolidColorBrush x:Key="MenuFlyoutPresenterBorderBrush" Color="#E4E6EB" />
+          <SolidColorBrush x:Key="FlyoutPresenterBackground" Color="#FFFFFF" />
+          <SolidColorBrush x:Key="FlyoutBorderThemeBrush" Color="#E4E6EB" />
         </ResourceDictionary>
         <ResourceDictionary x:Key="Dark">
           <SolidColorBrush x:Key="WispWindow" Color="#17181C" />
@@ -48,6 +53,10 @@
           <SolidColorBrush x:Key="WispToastMuted" Color="#5F6370" />
           <SolidColorBrush x:Key="WispBackdrop" Color="#59000000" />
           <BoxShadows x:Key="WispFloatShadow">0 10 32 0 #66000000, 0 1 3 0 #33000000</BoxShadows>
+          <SolidColorBrush x:Key="MenuFlyoutPresenterBackground" Color="#1B1C21" />
+          <SolidColorBrush x:Key="MenuFlyoutPresenterBorderBrush" Color="#2C2E35" />
+          <SolidColorBrush x:Key="FlyoutPresenterBackground" Color="#1B1C21" />
+          <SolidColorBrush x:Key="FlyoutBorderThemeBrush" Color="#2C2E35" />
         </ResourceDictionary>
       </ResourceDictionary.ThemeDictionaries>
 

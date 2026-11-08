@@ -18,6 +18,12 @@ public static class Motion
 
     public static double EaseOut(double t) => 1 - Math.Pow(1 - t, 3);
     public static double EaseIn(double t) => t * t * t;
+    /// <summary>Ease-out with a slight overshoot (≈ 4 %): for things that spring out of something, like the send capsules.</summary>
+    public static double EaseOutBack(double t)
+    {
+        const double c1 = 1.2, c3 = c1 + 1;
+        return 1 + c3 * Math.Pow(t - 1, 3) + c1 * Math.Pow(t - 1, 2);
+    }
 
     /// <summary>Appears: opacity 0 → 1 while moving <paramref name="dy"/> px into place.</summary>
     public static Task In(Visual visual, double dy = 6, int ms = 180) =>

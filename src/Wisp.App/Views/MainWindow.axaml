@@ -362,7 +362,7 @@
                              IsVisible="{Binding $parent[ListBox].((vm:MainViewModel)DataContext).ShowPreview}">
                     <t:WispIcon DockPanel.Dock="Left" Data="{StaticResource IconSpark}" Width="11" Height="11" Margin="0,3,5,0"
                                 VerticalAlignment="Top" Foreground="{DynamicResource WispAccent}" IsVisible="{Binding ShowsSummary}"
-                                ToolTip.Tip="Zusammenfassung der lokalen KI" />
+                                Classes.thinking="{Binding IsSummarizing}" ToolTip.Tip="Zusammenfassung der lokalen KI" />
                     <TextBlock Text="{Binding PreviewText}" Classes="muted small" Classes.summary="{Binding ShowsSummary}"
                                TextTrimming="CharacterEllipsis" />
                   </DockPanel>
@@ -491,7 +491,10 @@
                 <TextBlock Text="Zusammenfassung" Classes="small" FontWeight="SemiBold" Foreground="{DynamicResource WispAccent}" />
                 <TextBlock Text="· lokal erstellt, kann Fehler enthalten" Classes="muted small" />
               </StackPanel>
-              <SelectableTextBlock Text="{Binding Summary}" TextWrapping="Wrap" />
+              <SelectableTextBlock Text="{Binding Summary}" TextWrapping="Wrap"
+                                   IsVisible="{Binding Summary, Converter={x:Static v:Converters.NotNull}}" />
+              <TextBlock Text="{Binding SummaryWaitText}" Classes="muted" TextWrapping="Wrap"
+                         IsVisible="{Binding SummaryWaitText, Converter={x:Static v:Converters.NotNull}}" />
             </StackPanel>
           </Border>
           <Button Classes="chip ai" HorizontalAlignment="Left" IsVisible="{Binding CanSummarize}" Command="{Binding SummarizeCommand}"
@@ -573,10 +576,48 @@
               </Button>
             </TextBox.InnerRightContent>
           </TextBox>
-          <Button Grid.Column="1" Classes="send" Margin="8,0,0,3" VerticalAlignment="Bottom"
-                  Command="{Binding SendQuickReplyCommand}" ToolTip.Tip="Senden (Strg+Enter)">
-            <t:WispIcon Data="{StaticResource IconArrowUp}" Width="16" Height="16" StrokeThickness="2.2" />
-          </Button>
+          <!-- Right-click (or holding) the send button: capsules slide up out of it – "Speichern" and "Später senden",
+               which turns into the times. The capsules float above the mail (Canvas: they take no room). -->
+          <Panel x:Name="QuickSendHost" Grid.Column="1" Margin="8,0,0,3" VerticalAlignment="Bottom" Background="Transparent">
+            <Button x:Name="QuickSendButton" Classes="send" Command="{Binding SendQuickReplyCommand}"
+                    ToolTip.Tip="Senden (Strg+Enter) · Rechtsklick: speichern oder später senden">
+              <t:WispIcon Data="{StaticResource IconArrowUp}" Width="16" Height="16" StrokeThickness="2.2" />
+            </Button>
+            <Canvas>
+              <StackPanel x:Name="SendMenu" Canvas.Right="0" Canvas.Bottom="42" Spacing="8" IsVisible="False">
+                <Border Classes="capsulehost"><Button Classes="capsule" Command="{Binding SaveQuickReplyCommand}"
+                        ToolTip.Tip="Im Ordner „Entwürfe“ ablegen und später weiterschreiben – auch auf anderen Geräten">
+                  <StackPanel Orientation="Horizontal" Spacing="8">
+                    <t:WispIcon Data="{StaticResource IconDraft}" Width="15" Height="15" />
+                    <TextBlock Text="Speichern" />
+                  </StackPanel>
+                </Button></Border>
+                <Border Classes="capsulehost"><Button Classes="capsule" Command="{Binding ShowSendLaterCommand}">
+                  <StackPanel Orientation="Horizontal" Spacing="8">
+                    <t:WispIcon Data="{StaticResource IconClock}" Width="15" Height="15" />
+                    <TextBlock Text="Später senden" />
+                  </StackPanel>
+                </Button></Border>
+              </StackPanel>
+              <ItemsControl x:Name="SendTimesMenu" Canvas.Right="0" Canvas.Bottom="42" IsVisible="False" ItemsSource="{Binding SendTimes}">
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate><StackPanel Spacing="8" /></ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:SendTime">
+                    <Border Classes="capsulehost"><Button Classes="capsule" CommandParameter="{Binding}"
+                            Command="{Binding $parent[Window].((vm:MainViewModel)DataContext).SendQuickReplyAtCommand}">
+                      <StackPanel Orientation="Horizontal" Spacing="8">
+                        <t:WispIcon Data="{StaticResource IconClock}" Width="15" Height="15" />
+                        <TextBlock Text="{Binding Label}" />
+                        <TextBlock Text="{Binding Detail}" Classes="muted" />
+                      </StackPanel>
+                    </Button></Border>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </Canvas>
+          </Panel>
         </Grid>
       </Grid>
 

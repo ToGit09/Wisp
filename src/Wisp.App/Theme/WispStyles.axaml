@@ -99,6 +99,124 @@
     <Setter Property="Padding" Value="14,0" />
   </Style>
 
+  <!-- Capsules that slide out of the send button ("Speichern", "Später senden"): floating pills, accent icon -->
+  <Style Selector="Button.capsule">
+    <Setter Property="Background" Value="{DynamicResource WispSurface}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource WispBorder}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="18" />
+    <Setter Property="Height" Value="36" />
+    <Setter Property="Padding" Value="14,0,16,0" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="Foreground" Value="{DynamicResource WispText}" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{TemplateBinding CornerRadius}"
+                BoxShadow="0 3 12 0 #26000000">
+          <ContentPresenter Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}"
+                            Padding="{TemplateBinding Padding}" Foreground="{TemplateBinding Foreground}"
+                            VerticalAlignment="Center" />
+        </Border>
+      </ControlTemplate>
+    </Setter>
+    <Setter Property="Transitions">
+      <Transitions>
+        <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.09" Easing="CubicEaseOut" />
+        <BrushTransition Property="Background" Duration="0:0:0.12" />
+      </Transitions>
+    </Setter>
+  </Style>
+  <!-- Room for the shadow: while a capsule fades, it is drawn as one layer the size of this wrapper. The padding
+       and the equal negative margin cancel out, so the layout does not change. -->
+  <Style Selector="Border.capsulehost">
+    <Setter Property="Padding" Value="14" />
+    <Setter Property="Margin" Value="-14" />
+    <Setter Property="HorizontalAlignment" Value="Right" />
+  </Style>
+  <Style Selector="Button.capsule:pointerover">
+    <Setter Property="Background" Value="{DynamicResource WispField}" />
+  </Style>
+  <Style Selector="Button.capsule t|WispIcon">
+    <Setter Property="Foreground" Value="{DynamicResource WispAccent}" />
+  </Style>
+  <Style Selector="Button.capsule:disabled">
+    <Setter Property="Opacity" Value="0.5" />
+  </Style>
+
+  <!-- Right-click menus (and the menus of menu items): a light card with rounded corners, airy rows that light
+       up in the accent colour, quiet shortcut hints, hairline separators. It fades in as it opens. -->
+  <Style Selector="ContextMenu">
+    <Setter Property="Background" Value="{DynamicResource WispSurface}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource WispBorder}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="12" />
+    <Setter Property="Padding" Value="5" />
+    <Setter Property="MinWidth" Value="230" />
+    <Setter Property="FontSize" Value="{DynamicResource WispFontSize}" />
+    <Style.Animations>
+      <Animation Duration="0:0:0.13" Easing="CubicEaseOut" FillMode="Forward">
+        <KeyFrame Cue="0%"><Setter Property="Opacity" Value="0" /></KeyFrame>
+        <KeyFrame Cue="100%"><Setter Property="Opacity" Value="1" /></KeyFrame>
+      </Animation>
+    </Style.Animations>
+  </Style>
+  <Style Selector="ContextMenu MenuItem, MenuFlyoutPresenter MenuItem">
+    <Setter Property="Padding" Value="10,7" />
+    <Setter Property="CornerRadius" Value="7" />
+    <Setter Property="Margin" Value="0" />
+  </Style>
+  <Style Selector="MenuItem t|WispIcon">
+    <Setter Property="Foreground" Value="{DynamicResource WispMuted}" />
+  </Style>
+  <Style Selector="MenuItem:selected > t|WispIcon, MenuItem:pointerover > t|WispIcon">
+    <Setter Property="Foreground" Value="{DynamicResource WispOnAccent}" />
+  </Style>
+  <Style Selector="MenuItem:disabled">
+    <Setter Property="Opacity" Value="0.45" />
+  </Style>
+  <Style Selector="TextBlock.menukey">
+    <Setter Property="Foreground" Value="{DynamicResource WispMuted}" />
+    <Setter Property="FontSize" Value="{DynamicResource WispSmallFontSize}" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+  <Style Selector="MenuItem:selected TextBlock.menukey, MenuItem:pointerover TextBlock.menukey">
+    <Setter Property="Foreground" Value="{DynamicResource WispOnAccent}" />
+    <Setter Property="Opacity" Value="0.75" />
+  </Style>
+  <Style Selector="MenuItem.danger:selected /template/ Border#PART_LayoutRoot, MenuItem.danger:pointerover /template/ Border#PART_LayoutRoot">
+    <Setter Property="Background" Value="{DynamicResource WispDanger}" />
+  </Style>
+  <Style Selector="MenuItem.danger:selected, MenuItem.danger:pointerover">
+    <Setter Property="Foreground" Value="White" />
+  </Style>
+  <Style Selector="MenuItem.danger:selected > t|WispIcon, MenuItem.danger:pointerover > t|WispIcon">
+    <Setter Property="Foreground" Value="White" />
+  </Style>
+  <Style Selector="MenuItem.danger:selected TextBlock.menukey, MenuItem.danger:pointerover TextBlock.menukey">
+    <Setter Property="Foreground" Value="White" />
+  </Style>
+  <Style Selector="ContextMenu Separator, MenuFlyoutPresenter Separator">
+    <Setter Property="Margin" Value="10,4" />
+    <Setter Property="Height" Value="1" />
+    <Setter Property="Background" Value="{DynamicResource WispBorder}" />
+  </Style>
+  <!-- Submenus ("Verschieben", "Absender immer einordnen als") use the same card -->
+  <Style Selector="MenuItem /template/ Popup > Border">
+    <Setter Property="Background" Value="{DynamicResource WispSurface}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource WispBorder}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="12" />
+    <Setter Property="Padding" Value="5" />
+  </Style>
+  <!-- Small menus that drop down from a button (Verschieben, Konto, Textfarbe): same card -->
+  <Style Selector="FlyoutPresenter">
+    <Setter Property="Background" Value="{DynamicResource WispSurface}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource WispBorder}" />
+    <Setter Property="CornerRadius" Value="12" />
+    <Setter Property="Padding" Value="6" />
+  </Style>
+
   <!-- Text fields without a box: compose header rows, the composer body. Fluent's hover/focus frames are switched
        off as well, so nothing flashes when the mouse passes. -->
   <Style Selector="TextBox.bare">

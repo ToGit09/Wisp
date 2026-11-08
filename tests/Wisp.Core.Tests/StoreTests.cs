@@ -215,6 +215,17 @@ public sealed class StoreTests : IDisposable
     }
 
     [Fact]
+    public void A_saved_draft_waits_in_the_outbox_but_can_never_be_sent()
+    {
+        var id = _store.AddToOutbox(_account, [1], new OutboxSummary("bob@example.org", "Hallo", "1@example.org"), state: OutboxState.Draft);
+
+        Assert.Equal(OutboxState.Draft, _store.GetOutbox().Single(o => o.Id == id).State);
+        Assert.False(_store.TryBeginSending(id, 1)); // the sender only ever claims queued mail
+        Assert.False(_store.TryCancelQueued(id));
+        Assert.Equal(new byte[] { 1 }, _store.GetOutboxRaw(id));
+    }
+
+    [Fact]
     public void Tampered_ciphertext_is_rejected()
     {
         using var crypto = new Crypto(RandomNumberGenerator.GetBytes(32));

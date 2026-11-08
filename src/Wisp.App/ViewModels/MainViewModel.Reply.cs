@@ -22,6 +22,8 @@ public sealed partial class MainViewModel
     {
         OnPropertyChanged(nameof(HasQuickReplyText));
         SendQuickReplyCommand.NotifyCanExecuteChanged();
+        ShowSendLaterCommand.NotifyCanExecuteChanged();
+        SaveQuickReplyCommand.NotifyCanExecuteChanged();
     }
 
     /// <summary>Not in drafts, sent mail, spam or the trash – a reply there is almost always a slip.</summary>
@@ -34,28 +36,102 @@ public sealed partial class MainViewModel
     public event Action? QuickReplySent;
 
     [RelayCommand(CanExecute = nameof(HasQuickReplyText))]
-    async Task SendQuickReply()
-    {
-        if (CurrentMessageId is not long id) return;
-        var text = QuickReplyText.Trim();
-        if (text.Length == 0 || await ReplyDraftAsync(id, all: false) is not { } draft) return;
+    Task SendQuickReply() => SendQuickReplyAt(null);
 
-        var compose = _mail.Settings.Compose;
-        var sent = draft with
-        {
-            Body = text + (compose.SignatureEnabled ? Composer.WithSignature(draft.Body, compose.Signature) : draft.Body),
-        };
-        var result = _mail.Send(sent);
+    /// <summary>Sends now (<paramref name="time"/> null) or at the chosen time ("Später senden").</summary>
+    [RelayCommand]
+    async Task SendQuickReplyAt(SendTime? time)
+    {
+        CloseSendMenu();
+        if (await QuickReplyDraftAsync() is not { } reply) return;
+        var (id, text, draft) = reply;
+        var result = _mail.Send(draft, time?.At);
         if (result.Error is not null)
         {
             ShowNotice(result.Error);
             return;
         }
+        QuickReplyDone(id);
+        if (time is null && result.UndoWindow <= TimeSpan.Zero)
+        {
+            ShowNotice("Die Mail wird gesendet.");
+            return;
+        }
+        // "Rückgängig" puts the text back into the field it came from, not into a window of its own.
+        var notice = time is null ? $"Die Mail wird in {result.UndoWindow.TotalSeconds:0} Sekunden gesendet." : $"Die Mail wird {SendTime.WhenText(time.At)} gesendet.";
+        ShowNotice(notice, UndoLabel, () =>
+        {
+            if (result.OutboxId is not long outboxId || !_mail.TryUndoSend(outboxId, draft))
+            {
+                ShowNotice("Zu spät – die Mail ist bereits unterwegs.");
+                return;
+            }
+            _quickDrafts[id] = text;
+            if (CurrentMessageId == id) QuickReplyText = text;
+        }, time is null ? result.UndoWindow : TimeSpan.FromSeconds(8));
+    }
+
+    /// <summary>Keeps the answer as a draft in the Drafts folder, to finish later (on any device).</summary>
+    [RelayCommand(CanExecute = nameof(HasQuickReplyText))]
+    async Task SaveQuickReply()
+    {
+        CloseSendMenu();
+        if (await QuickReplyDraftAsync() is not { } reply) return;
+        var (id, _, draft) = reply;
+        if (_mail.SaveDraft(draft) is { } error)
+        {
+            ShowNotice(error);
+            return;
+        }
+        QuickReplyDone(id);
+        ShowNotice("Als Entwurf gespeichert.");
+    }
+
+    /// <summary>The typed answer as a complete reply (signature, quote), or null when there is nothing to send.</summary>
+    async Task<(long Id, string Text, Draft Draft)?> QuickReplyDraftAsync()
+    {
+        if (CurrentMessageId is not long id) return null;
+        var text = QuickReplyText.Trim();
+        if (text.Length == 0 || await ReplyDraftAsync(id, all: false) is not { } draft) return null;
+        var compose = _mail.Settings.Compose;
+        return (id, text, draft with
+        {
+            Body = text + (compose.SignatureEnabled ? Composer.WithSignature(draft.Body, compose.Signature) : draft.Body),
+        });
+    }
+
+    void QuickReplyDone(long id)
+    {
         _quickDrafts.Remove(id);
         if (CurrentMessageId == id) QuickReplyText = "";
-        NotifySent(result, sent);
         QuickReplySent?.Invoke();
     }
+
+    // ───────────────────────── Send options (right-click on the send button) ─────────────────────────
+
+    /// <summary>Capsules above the send button: "Speichern" and "Später senden".</summary>
+    [ObservableProperty] public partial bool IsSendMenuOpen { get; set; }
+    /// <summary>Second step of the capsules: the times for "Später senden".</summary>
+    [ObservableProperty] public partial bool IsSendLaterOpen { get; set; }
+    [ObservableProperty] public partial IReadOnlyList<SendTime> SendTimes { get; set; } = [];
+
+    public void OpenSendMenu()
+    {
+        if (!CanQuickReply) return;
+        SendTimes = SendTime.Suggestions(DateTimeOffset.Now);
+        IsSendLaterOpen = false;
+        IsSendMenuOpen = true;
+    }
+
+    [RelayCommand]
+    public void CloseSendMenu()
+    {
+        IsSendLaterOpen = false;
+        IsSendMenuOpen = false;
+    }
+
+    [RelayCommand(CanExecute = nameof(HasQuickReplyText))]
+    void ShowSendLater() => IsSendLaterOpen = true;
 
     /// <summary>Continue in the full composer (Cc, attachments, formatting) with what is already typed.</summary>
     [RelayCommand]
@@ -87,6 +163,7 @@ public sealed partial class MainViewModel
 
     void StashQuickReply()
     {
+        CloseSendMenu();
         if (CurrentMessageId is long id)
         {
             if (HasQuickReplyText) _quickDrafts[id] = QuickReplyText;

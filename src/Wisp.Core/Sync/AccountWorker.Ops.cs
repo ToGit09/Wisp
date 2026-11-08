@@ -197,6 +197,9 @@ public sealed partial class AccountWorker
                 case OutboxState.Accepted:
                     await FileIntoSentAsync(imap, item, ct);
                     break;
+                case OutboxState.Draft:
+                    await FileIntoDraftsAsync(imap, item, ct);
+                    break;
                 case OutboxState.Uncertain when item.Attempts == 0:
                     // Check once whether the interrupted send actually went through.
                     if (await IsInSentAsync(imap, item.Summary.MessageId, ct)) _store.DeleteFromOutbox(item.Id);
@@ -269,6 +272,31 @@ public sealed partial class AccountWorker
         }
         _store.DeleteFromOutbox(item.Id);
         if (sent is not null) RequestFolder(sent.Id);
+        Raise(ChangeKind.Outbox);
+    }
+
+    /// <summary>Wisp 2: a saved draft goes into the Drafts folder (marked as draft) and leaves the outbox.</summary>
+    async Task FileIntoDraftsAsync(ImapClient imap, OutboxItem item, CancellationToken ct)
+    {
+        if (_store.FindFolderByRole(_accountId, FolderRole.Drafts) is not { } drafts)
+        {
+            if (item.Attempts == 0)
+            {
+                _store.UpdateOutbox(item.Id, OutboxState.Draft, 1, DateTimeOffset.UtcNow, "Dieses Konto hat keinen Entwürfe-Ordner.");
+                Raise(ChangeKind.Outbox);
+            }
+            return;
+        }
+        var folder = await imap.GetFolderAsync(drafts.Path, ct);
+        await folder.OpenAsync(FolderAccess.ReadWrite, ct);
+        // Filed once only: after an interruption it may already be there.
+        if (await LocateByMessageIdAsync(folder, item.Summary.MessageId, ct) is null)
+        {
+            var message = MimeMessage.Load(new MemoryStream(_store.GetOutboxRaw(item.Id)));
+            await folder.AppendAsync(new AppendRequest(message, KitFlags.Seen | KitFlags.Draft), ct);
+        }
+        _store.DeleteFromOutbox(item.Id);
+        RequestFolder(drafts.Id);
         Raise(ChangeKind.Outbox);
     }
 
