@@ -101,7 +101,7 @@ public sealed partial class AccountItem : ObservableObject
 /// <summary>A stable colour per name (folder initials, sender avatars).</summary>
 static class BadgeColors
 {
-    static readonly Color[] Palette = new[] { "#4F6BED", "#7C5CFA", "#0F9D9A", "#2E9D57", "#E07A1F", "#D64545", "#D6458F", "#5B6170" }
+    static readonly Color[] Palette = new[] { "#6B4EE6", "#4F6BED", "#0E8F8A", "#2F9A5B", "#D9771F", "#D64550", "#D2468C", "#5E6272" }
         .Select(Color.Parse).ToArray();
 
     public static Color For(string text)
@@ -204,10 +204,10 @@ public sealed partial class MessageItem : ObservableObject
 
     static class CategoryBrushes
     {
-        public static readonly IBrush Personal = new SolidColorBrush(Color.Parse("#4F6BED"));
-        public static readonly IBrush Invoice = new SolidColorBrush(Color.Parse("#0F9D9A"));
-        public static readonly IBrush Promotion = new SolidColorBrush(Color.Parse("#E07A1F"));
-        public static readonly IBrush Spam = new SolidColorBrush(Color.Parse("#D64545"));
+        public static readonly IBrush Personal = new SolidColorBrush(Color.Parse("#6B4EE6"));
+        public static readonly IBrush Invoice = new SolidColorBrush(Color.Parse("#0E8F8A"));
+        public static readonly IBrush Promotion = new SolidColorBrush(Color.Parse("#D9771F"));
+        public static readonly IBrush Spam = new SolidColorBrush(Color.Parse("#D64550"));
     }
 
     public FontWeight Weight => IsUnread ? FontWeight.SemiBold : FontWeight.Normal;

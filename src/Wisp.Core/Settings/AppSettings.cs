@@ -11,7 +11,26 @@ public enum LinkConfirmation { SuspiciousOnly, Always }
 public sealed class AppearanceSettings
 {
     public ThemeMode Theme { get; set; } = ThemeMode.System;
-    public string Accent { get; set; } = "#4F6BED";
+    /// <summary>Wisp 2: violet, like the app icon.</summary>
+    public const string DefaultAccent = "#6B4EE6";
+    /// <summary>The blue of Wisp 1; still offered as a preset.</summary>
+    public const string Wisp1Accent = "#4F6BED";
+
+    public string Accent { get; set; } = DefaultAccent;
+    /// <summary>
+    /// Colour scheme the settings were last saved with (2 = Wisp 2). Older files have none: on the first start
+    /// with the new scheme, an accent still on the old default moves to the new one; a colour the user chose stays.
+    /// </summary>
+    public int Palette { get; set; }
+
+    /// <summary>Brings settings written by Wisp 1 to the Wisp 2 colour scheme. True if something changed.</summary>
+    public bool Upgrade()
+    {
+        if (Palette >= 2) return false;
+        if (string.Equals(Accent?.Trim(), Wisp1Accent, StringComparison.OrdinalIgnoreCase)) Accent = DefaultAccent;
+        Palette = 2;
+        return true;
+    }
     public string Font { get; set; } = "Inter";
     public double FontSize { get; set; } = 14;
     public Density Density { get; set; } = Density.Normal;

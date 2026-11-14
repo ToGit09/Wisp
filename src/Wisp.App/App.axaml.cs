@@ -21,6 +21,10 @@ public partial class App : Application
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             var settings = AppSettings.Load(AppPaths.SettingsFile);
+            if (settings.Appearance.Upgrade())
+            {
+                try { settings.Save(AppPaths.SettingsFile); } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
+            }
             ThemeManager.Apply(settings.Appearance);
             CrashLog.Enabled = settings.Privacy.WriteCrashLog;
             desktop.ShutdownMode = ShutdownMode.OnExplicitShutdown;

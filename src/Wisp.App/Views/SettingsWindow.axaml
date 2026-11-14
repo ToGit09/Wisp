@@ -128,7 +128,7 @@
                 </ItemsControl>
                 <StackPanel Orientation="Horizontal" Spacing="10">
                   <TextBlock Text="Eigene Farbe" VerticalAlignment="Center" Classes="muted" />
-                  <TextBox Text="{Binding AccentHex}" Width="110" PlaceholderText="#4F6BED" />
+                  <TextBox Text="{Binding AccentHex}" Width="110" PlaceholderText="#6B4EE6" />
                   <Border Width="26" Height="26" CornerRadius="13" Background="{Binding AccentHex, Converter={x:Static v:Converters.HexToBrush}}" />
                 </StackPanel>
               </StackPanel>

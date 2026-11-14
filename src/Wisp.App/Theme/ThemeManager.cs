@@ -1,4 +1,5 @@
 using Avalonia;
+using Avalonia.Controls;
 using Avalonia.Media;
 using Avalonia.Styling;
 using Wisp.Core.Settings;
@@ -8,10 +9,13 @@ namespace Wisp.App.Theme;
 /// <summary>Applies the appearance settings live — no restart, no code, no files to edit.</summary>
 public static class ThemeManager
 {
+    /// <summary>Wisp 2: violet, like the app icon (Wisp 1 was blue, still among the presets).</summary>
+    public const string DefaultAccent = AppearanceSettings.DefaultAccent;
+
     public static readonly (string Name, string Hex)[] AccentPresets =
     [
-        ("Blau", "#4F6BED"), ("Violett", "#7C5CFA"), ("Türkis", "#0F9D9A"), ("Grün", "#2E9D57"),
-        ("Orange", "#E07A1F"), ("Rot", "#D64545"), ("Rosa", "#D6458F"), ("Graphit", "#5B6170"),
+        ("Violett", DefaultAccent), ("Blau", "#4F6BED"), ("Türkis", "#0E8F8A"), ("Grün", "#2F9A5B"),
+        ("Orange", "#D9771F"), ("Rot", "#D64550"), ("Rosa", "#D2468C"), ("Graphit", "#5E6272"),
     ];
 
     public static readonly (string Name, string Value)[] Fonts =
@@ -34,35 +38,43 @@ public static class ThemeManager
             _ => ThemeVariant.Default,
         };
 
+        // The accent lives in the light and the dark dictionary: on dark surfaces the same colour is lifted a
+        // little, so accent-coloured text (links, counters, icons) stays readable there.
         var accent = TryParse(settings.Accent) ?? Color.Parse(AccentPresets[0].Hex);
         var r = app.Resources;
-        r["WispAccent"] = new SolidColorBrush(accent);
-        r["WispAccentSoft"] = new SolidColorBrush(Color.FromArgb(0x29, accent.R, accent.G, accent.B));
-        r["WispOnAccent"] = new SolidColorBrush(Luminance(accent) > 0.55 ? Color.Parse("#1D1F24") : Colors.White);
+        foreach (var (variant, dark) in new[] { (ThemeVariant.Light, false), (ThemeVariant.Dark, true) })
+        {
+            if (!r.ThemeDictionaries.TryGetValue(variant, out var provider) || provider is not ResourceDictionary d) continue;
+            var shown = dark && Luminance(accent) < 0.6 ? Mix(accent, Colors.White, 0.22) : accent;
+            var brush = new SolidColorBrush(shown);
+            var onAccent = new SolidColorBrush(Luminance(shown) > 0.6 ? Color.Parse("#1C1A24") : Colors.White);
+            d["WispAccent"] = brush;
+            d["WispAccentSoft"] = new SolidColorBrush(Color.FromArgb(dark ? (byte)0x38 : (byte)0x26, shown.R, shown.G, shown.B));
+            d["WispOnAccent"] = onAccent;
 
-        // Fluent controls (checkboxes, sliders, focus rings) follow the accent as well.
-        r["SystemAccentColor"] = accent;
-        r["SystemAccentColorLight1"] = Mix(accent, Colors.White, 0.15);
-        r["SystemAccentColorLight2"] = Mix(accent, Colors.White, 0.30);
-        r["SystemAccentColorLight3"] = Mix(accent, Colors.White, 0.45);
-        r["SystemAccentColorDark1"] = Mix(accent, Colors.Black, 0.15);
-        r["SystemAccentColorDark2"] = Mix(accent, Colors.Black, 0.30);
-        r["SystemAccentColorDark3"] = Mix(accent, Colors.Black, 0.45);
+            // Fluent controls (checkboxes, sliders, focus rings) follow the accent as well.
+            d["SystemAccentColor"] = shown;
+            d["SystemAccentColorLight1"] = Mix(shown, Colors.White, 0.15);
+            d["SystemAccentColorLight2"] = Mix(shown, Colors.White, 0.30);
+            d["SystemAccentColorLight3"] = Mix(shown, Colors.White, 0.45);
+            d["SystemAccentColorDark1"] = Mix(shown, Colors.Black, 0.15);
+            d["SystemAccentColorDark2"] = Mix(shown, Colors.Black, 0.30);
+            d["SystemAccentColorDark3"] = Mix(shown, Colors.Black, 0.45);
 
-        // Menus: the row under the mouse lights up in the accent colour (like on the Mac), text and icon turn white.
-        var onAccent = (IBrush)r["WispOnAccent"]!;
-        r["MenuFlyoutItemBackgroundPointerOver"] = r["WispAccent"];
-        r["MenuFlyoutItemBackgroundPressed"] = new SolidColorBrush(Mix(accent, Colors.Black, 0.12));
-        r["MenuFlyoutItemForegroundPointerOver"] = onAccent;
-        r["MenuFlyoutItemForegroundPressed"] = onAccent;
-        r["MenuFlyoutItemKeyboardAcceleratorTextForegroundPointerOver"] = onAccent;
-        r["MenuFlyoutItemKeyboardAcceleratorTextForegroundPressed"] = onAccent;
-        r["MenuFlyoutSubItemChevronPointerOver"] = onAccent;
-        r["MenuFlyoutSubItemChevronSubMenuOpened"] = onAccent;
-        r["MenuFlyoutSubItemBackgroundPointerOver"] = r["WispAccent"];
-        r["MenuFlyoutSubItemBackgroundSubMenuOpened"] = r["WispAccent"];
-        r["MenuFlyoutSubItemForegroundPointerOver"] = onAccent;
-        r["MenuFlyoutSubItemForegroundSubMenuOpened"] = onAccent;
+            // Menus: the row under the mouse lights up in the accent colour (like on the Mac), text and icon turn white.
+            d["MenuFlyoutItemBackgroundPointerOver"] = brush;
+            d["MenuFlyoutItemBackgroundPressed"] = new SolidColorBrush(Mix(shown, Colors.Black, 0.12));
+            d["MenuFlyoutItemForegroundPointerOver"] = onAccent;
+            d["MenuFlyoutItemForegroundPressed"] = onAccent;
+            d["MenuFlyoutItemKeyboardAcceleratorTextForegroundPointerOver"] = onAccent;
+            d["MenuFlyoutItemKeyboardAcceleratorTextForegroundPressed"] = onAccent;
+            d["MenuFlyoutSubItemChevronPointerOver"] = onAccent;
+            d["MenuFlyoutSubItemChevronSubMenuOpened"] = onAccent;
+            d["MenuFlyoutSubItemBackgroundPointerOver"] = brush;
+            d["MenuFlyoutSubItemBackgroundSubMenuOpened"] = brush;
+            d["MenuFlyoutSubItemForegroundPointerOver"] = onAccent;
+            d["MenuFlyoutSubItemForegroundSubMenuOpened"] = onAccent;
+        }
 
         r["WispFont"] = settings.Font switch
         {
