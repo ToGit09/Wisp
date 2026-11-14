@@ -180,7 +180,7 @@ public sealed class MailService : IAsyncDisposable
         var item = _store.GetMessage(messageId);
         if (item is null) return new OpenResult(null, "Diese Mail existiert nicht mehr.");
 
-        var raw = _store.GetBody(messageId) ?? await (Worker(item.AccountId)?.FetchBodyAsync(messageId, ct) ?? Task.FromResult<byte[]?>(null));
+        var raw = await GetRawAsync(messageId, ct);
         if (raw is null)
         {
             var offline = Worker(item.AccountId)?.State is not (ConnectionState.Online or ConnectionState.Degraded);
@@ -192,6 +192,26 @@ public sealed class MailService : IAsyncDisposable
         if (!item.IsSeen && Settings.Reading.MarkReadOnOpen) SetSeen([messageId], true);
         var options = new RenderOptions(showHtml ?? Settings.Privacy.ShowHtml, allowRemoteImages ?? Settings.Privacy.LoadRemoteImages);
         return new OpenResult(await Task.Run(() => MailRenderer.Render(raw, options), ct), null);
+    }
+
+    /// <summary>The original message as received (or sent): from the local store, otherwise fetched now. Null if neither works.</summary>
+    public async Task<byte[]?> GetRawAsync(long messageId, CancellationToken ct)
+    {
+        if (_store.GetBody(messageId) is { } local) return local;
+        if (_store.GetMessage(messageId) is not { } item || Worker(item.AccountId) is not { } worker) return null;
+        return await worker.FetchBodyAsync(messageId, ct);
+    }
+
+    /// <summary>
+    /// Writes a mail to <paramref name="target"/> (a file the user chose). False if its content is not available
+    /// offline and could not be fetched. Images from the internet stay in an HTML export only if the user loads
+    /// them anyway (settings).
+    /// </summary>
+    public async Task<bool> ExportAsync(long messageId, ExportFormat format, Stream target, CancellationToken ct)
+    {
+        if (await GetRawAsync(messageId, ct) is not { } raw) return false;
+        await MailExporter.WriteAsync(raw, format, target, Settings.Privacy.LoadRemoteImages, ct);
+        return true;
     }
 
     public void SetSeen(IEnumerable<long> ids, bool seen) => Apply(_store.SetFlagLocally(ids, MessageFlags.Seen, seen));

@@ -458,6 +458,9 @@
             <Button Classes="icon" Command="{Binding ToggleFlagCommand}" ToolTip.Tip="Markieren (S)">
               <t:WispIcon Data="{StaticResource IconStar}" Classes="filled" Classes.on="{Binding CurrentIsFlagged}" />
             </Button>
+            <Button Classes="icon" Command="{Binding ExportCommand}" ToolTip.Tip="Als Datei exportieren (Strg+S)">
+              <t:WispIcon Data="{StaticResource IconExport}" />
+            </Button>
           </StackPanel>
         </DockPanel>
 

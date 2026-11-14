@@ -137,6 +137,8 @@ public sealed partial class MainViewModel
                 () => ToggleFlagCommand.Execute(null));
             if (QuickJunk) yield return new("Kein Spam", "zurück in den Posteingang", "J", Icon("IconInbox"), () => NotSpamCommand.Execute(null));
             else if (CanMarkSpam) yield return new("Als Spam markieren", null, "J", Icon("IconJunk"), () => MarkSpamCommand.Execute(null));
+            yield return new(Targets.Count > 1 ? $"{Targets.Count} Mails exportieren" : "Mail exportieren", "als Datei speichern (.eml, .html, .txt)", "Strg+S",
+                Icon("IconExport"), () => ExportCommand.Execute(null));
             if (CanSummarize) yield return new("Zusammenfassen", "lokal, mit der KI", "Z", Icon("IconSpark"), () => SummarizeCommand.Execute(null), true);
             foreach (var target in MoveTargets.ToList())
                 yield return new($"Verschieben nach {target.Name}", null, null, target.Icon ?? Icon("IconMove"), () => MoveToCommand.Execute(target));

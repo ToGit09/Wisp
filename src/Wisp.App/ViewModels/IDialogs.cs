@@ -12,6 +12,13 @@ public interface IDialogs
     Task OpenSettingsAsync();
     Task OpenAccountSetupAsync();
     Task<Stream?> SaveFileAsync(string suggestedName);
+    /// <summary>
+    /// "Speichern unter" for one mail, with the file type to choose (.eml, .html, .txt). The name the user ended
+    /// up with decides the format. Null if cancelled.
+    /// </summary>
+    Task<(Stream Stream, string Name)?> SaveExportAsync(string suggestedName);
+    /// <summary>Asks for a folder (several mails are exported into one). Null if cancelled or not a local folder.</summary>
+    Task<string?> PickFolderAsync(string title);
     Task OpenLinkAsync(string url, bool suspicious);
     /// <summary>Puts a one-time code on the clipboard (kept out of clipboard history where possible).</summary>
     Task CopySecretAsync(string text);

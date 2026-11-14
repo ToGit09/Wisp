@@ -953,6 +953,68 @@ public sealed partial class MainViewModel : ObservableObject
         ShowNotice($"„{attachment.Name}“ wurde gespeichert.");
     }
 
+    /// <summary>
+    /// Saves the open mail as a file – the original (.eml), a page for the browser (.html) or text (.txt).
+    /// With several mails selected they all go into one folder, as originals.
+    /// </summary>
+    [RelayCommand]
+    async Task Export()
+    {
+        var ids = Targets.ToList();
+        if (ids.Count == 0) return;
+        try
+        {
+            if (ids.Count == 1) await ExportOneAsync(ids[0]);
+            else await ExportManyAsync(ids);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or NotSupportedException)
+        {
+            ShowNotice("Speichern fehlgeschlagen: " + ex.Message);
+        }
+    }
+
+    const string NotLoadedText = "Diese Mail ist noch nicht offline verfügbar und kann erst mit Verbindung exportiert werden.";
+
+    async Task ExportOneAsync(long id)
+    {
+        if (_mail.GetMessage(id) is not { } item) return;
+        // Content first: no "Speichern unter" for a mail that cannot be saved.
+        if (await _mail.GetRawAsync(id, CancellationToken.None) is not { } raw)
+        {
+            ShowNotice(NotLoadedText);
+            return;
+        }
+        if (await _dialogs.SaveExportAsync(MailExporter.FileName(item.Date, item.Envelope.Subject, ExportFormat.Eml)) is not { } file) return;
+        await using (file.Stream)
+            await MailExporter.WriteAsync(raw, MailExporter.FormatOf(file.Name), file.Stream, _mail.Settings.Privacy.LoadRemoteImages, CancellationToken.None);
+        ShowNotice($"„{file.Name}“ wurde gespeichert.");
+    }
+
+    async Task ExportManyAsync(List<long> ids)
+    {
+        if (await _dialogs.PickFolderAsync($"{ids.Count} Mails exportieren nach …") is not { } folder) return;
+        var (saved, missing) = await Task.Run(async () =>
+        {
+            // Never overwrite: names already in the folder are taken too.
+            var taken = new HashSet<string>(Directory.EnumerateFiles(folder).Select(Path.GetFileName)!, StringComparer.OrdinalIgnoreCase);
+            int done = 0, skipped = 0;
+            foreach (var id in ids)
+            {
+                if (_mail.GetMessage(id) is not { } item || await _mail.GetRawAsync(id, CancellationToken.None) is not { } raw)
+                {
+                    skipped++;
+                    continue;
+                }
+                var name = MailExporter.Unique(MailExporter.FileName(item.Date, item.Envelope.Subject, ExportFormat.Eml), taken);
+                await File.WriteAllBytesAsync(Path.Combine(folder, name), raw);
+                done++;
+            }
+            return (done, skipped);
+        });
+        var text = saved == 1 ? "1 Mail exportiert." : $"{saved} Mails exportiert.";
+        ShowNotice(missing == 0 ? text : $"{text} {missing} {(missing == 1 ? "ist" : "sind")} noch nicht offline verfügbar und {(missing == 1 ? "fehlt" : "fehlen")}.");
+    }
+
     [RelayCommand]
     Task OpenLink(LinkItem? link) => link is null ? Task.CompletedTask : _dialogs.OpenLinkAsync(link.Url, link.Suspicious);
 

@@ -147,6 +147,7 @@ public partial class MainWindow : Window, IDialogs
         if (_vm.CanArchive) items.Add(MenuEntry("Archivieren", "IconArchive", _vm.ArchiveCommand, keys: "A"));
         if (_vm.QuickJunk) items.Add(MenuEntry("Kein Spam", "IconInbox", _vm.NotSpamCommand, keys: "J"));
         else if (_vm.CanMarkSpam) items.Add(MenuEntry("Als Spam markieren", "IconJunk", _vm.MarkSpamCommand, keys: "J"));
+        items.Add(MenuEntry(single ? "Exportieren …" : "Alle exportieren …", "IconExport", _vm.ExportCommand, keys: "Strg S"));
         items.Add(MenuEntry("Löschen", "IconTrash", _vm.DeleteCommand, keys: "Entf", danger: true));
         if (_vm.ShowSortMenu)
         {
@@ -346,6 +347,8 @@ public partial class MainWindow : Window, IDialogs
             if (!isMail) items.Add(MenuEntry("Link öffnen", "IconExternal", new RelayCommand(() => _ = _vm.OpenLinkUrl(link, _vm.CurrentMail?.Links.FirstOrDefault(l => l.Url == link)?.Suspicious ?? false))));
             items.Add(MenuEntry(isMail ? "E-Mail-Adresse kopieren" : "Link-Adresse kopieren", "IconLink", new RelayCommand(() => _ = CopyTextAsync(address))));
         }
+        items.Add(new Separator());
+        items.Add(MenuEntry("Mail exportieren …", "IconExport", _vm.ExportCommand, keys: "Strg S"));
         new ContextMenu { ItemsSource = items }.Open(ReaderBody);
     }
 
@@ -388,6 +391,30 @@ public partial class MainWindow : Window, IDialogs
             SuggestedFileName = suggestedName,
         });
         return file is null ? null : await file.OpenWriteAsync();
+    }
+
+    public async Task<(Stream Stream, string Name)?> SaveExportAsync(string suggestedName)
+    {
+        var file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+        {
+            Title = "Mail exportieren",
+            SuggestedFileName = Path.GetFileNameWithoutExtension(suggestedName),
+            DefaultExtension = "eml",
+            ShowOverwritePrompt = true,
+            FileTypeChoices =
+            [
+                new FilePickerFileType("E-Mail im Original (.eml)") { Patterns = ["*.eml"], MimeTypes = ["message/rfc822"] },
+                new FilePickerFileType("Webseite zum Ansehen und Drucken (.html)") { Patterns = ["*.html"], MimeTypes = ["text/html"] },
+                new FilePickerFileType("Nur Text (.txt)") { Patterns = ["*.txt"], MimeTypes = ["text/plain"] },
+            ],
+        });
+        return file is null ? null : (await file.OpenWriteAsync(), file.Name);
+    }
+
+    public async Task<string?> PickFolderAsync(string title)
+    {
+        var folders = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions { Title = title, AllowMultiple = false });
+        return folders.Count == 0 ? null : folders[0].TryGetLocalPath();
     }
 
     public async Task OpenLinkAsync(string url, bool suspicious)

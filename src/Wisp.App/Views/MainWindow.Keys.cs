@@ -106,6 +106,9 @@ public partial class MainWindow
                 _vm.OpenPalette();
                 return true;
             case Key.Z when !shift && !inText: return _vm.Undo();
+            case Key.S when !shift && !inText:
+                _vm.ExportCommand.Execute(null);
+                return true;
             // Text selected in the open mail. A selection in the header (subject, addresses) copies itself.
             case Key.C when !shift && !inText && FocusManager?.GetFocusedElement() is not SelectableTextBlock { SelectedText.Length: > 0 }:
                 return CopySelection();
