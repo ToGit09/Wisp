@@ -28,13 +28,89 @@ public class RenderingTests
     }
 
     [Fact]
-    public void Sanitizer_detects_tracking_pixels_and_css_images()
+    public void Sanitizer_detects_remote_and_css_images()
     {
-        Assert.True(HtmlSanitizer.Sanitize("<img src=\"https://track.example/p.gif\" width=1 height=1>").HasRemoteImages);
+        Assert.True(HtmlSanitizer.Sanitize("<img src=\"https://x.example/photo.jpg\" width=300>").HasRemoteImages);
         Assert.True(HtmlSanitizer.Sanitize("<div style=\"background:url('https://x.example/a.png')\">x</div>").HasRemoteImages);
         Assert.False(HtmlSanitizer.Sanitize("<img src=\"cid:logo\">").HasRemoteImages);
     }
 
+
+    [Fact]
+    public void Tracking_pixels_are_removed_and_never_count_as_images_to_load()
+    {
+        var result = HtmlSanitizer.Sanitize("<p>Hallo</p><img src=\"https://track.example/p.gif\" width=\"1\" height=\"1\"><img src=\"https://t.example/q\" style=\"width:0;height:0\">");
+
+        Assert.DoesNotContain("<img", result.Html);
+        Assert.False(result.HasRemoteImages);
+        // A spacer (1 px wide, but 20 px high) is layout and stays.
+        Assert.Contains("<img", HtmlSanitizer.Sanitize("<img src=\"cid:s\" width=\"1\" height=\"20\">").Html);
+    }
+
+    [Theory]
+    [InlineData("display:none")]
+    [InlineData("display: none !important; font-size: 1px")]
+    [InlineData("max-height:0;overflow:hidden")]
+    [InlineData("opacity:0")]
+    [InlineData("mso-hide:all")]
+    public void Hidden_preview_text_is_removed(string style)
+    {
+        var raw = $"<html><body><div style=\"{style}\">Vorschau</div><p>Sichtbar</p></body></html>";
+
+        var html = HtmlSanitizer.Sanitize(raw).Html;
+        Assert.DoesNotContain("Vorschau", html);
+        Assert.Contains("Sichtbar", html);
+
+        // The text view (used when HTML display is off) leaves it out as well.
+        var text = MailRenderer.ToPlainText(MailRenderer.FromHtml(raw, new LinkCollector()));
+        Assert.Equal("Sichtbar", text);
+    }
+
+    [Fact]
+    public void Font_size_zero_hides_only_text_that_inherits_it()
+    {
+        var html = HtmlSanitizer.Sanitize("<div style=\"font-size:0\">weg<span style=\"font-size:14px\">bleibt</span></div><p style=\"opacity:0.5\">halb</p>").Html;
+
+        Assert.DoesNotContain("weg", html);
+        Assert.Contains("bleibt", html);
+        Assert.Contains("halb", html);
+    }
+
+    [Theory]
+    [InlineData("background:#1a73e8", "background-color: #1a73e8")]
+    [InlineData("background: url(https://x.example/a.png) no-repeat #f0f0f0", "background-color: #f0f0f0")]
+    [InlineData("background: linear-gradient(#e66465, #9198e5)", "background-color: #e66465")]
+    [InlineData("background: white !important", "background-color: white !important")]
+    [InlineData("background: url(data:image/png;base64,AAAA) red", "background-color: red")]
+    [InlineData("background-color: #fff", "background-color: #fff")]
+    [InlineData("background: url(a.png) no-repeat", "")]
+    [InlineData("border-radius: 6px", "border-radius: 6px; corner-radius: 6px")]
+    [InlineData("border-radius: 4px 4px 0 0", "border-radius: 4px 4px 0 0; corner-radius: 4px")]
+    [InlineData("border-radius: 50%", "border-radius: 50%")]
+    [InlineData(".background:hover { color: red }", ".background:hover { color: red }")]
+    public void Css_the_renderer_does_not_know_is_translated(string css, string expected)
+    {
+        Assert.Equal(expected, CssCompat.Rewrite(css));
+    }
+
+    [Fact]
+    public void Body_styles_move_to_a_wrapper_and_its_background_to_the_sheet()
+    {
+        var result = HtmlSanitizer.Sanitize("<html><body bgcolor=\"f4f4f7\" style=\"margin:0;height:100%;font-family:Arial;color:#333\"><p>x</p></body></html>");
+
+        Assert.Equal("#f4f4f7", result.Background);
+        Assert.StartsWith("<div style=\"font-family:Arial;color:#333\"><p>x</p></div>", result.Html);
+        Assert.Null(HtmlSanitizer.Sanitize("<p>x</p>").Background);
+        Assert.Equal("#101010", HtmlSanitizer.Sanitize("<body style=\"background:#101010\">x</body>").Background);
+    }
+
+    [Fact]
+    public void Fixed_width_block_with_auto_margins_is_centred()
+    {
+        var html = HtmlSanitizer.Sanitize("<div style=\"width:300px;margin:0 auto\">x</div>").Html;
+
+        Assert.Matches("<td></td><td width=\"300\"><div style=\"width:300px;margin:0 auto\">x</div></td><td></td>", html);
+    }
     [Fact]
     public void Sanitizer_strips_css_imports()
     {

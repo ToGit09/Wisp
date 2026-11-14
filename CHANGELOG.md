@@ -25,6 +25,14 @@ Zwei Editionen: **LightEdition** und **AIEdition**. Beim ersten Start wählen Si
   - „Neue Mail“ im Stil von Apple Mail: ruhige Zeilen statt Kästen, Senden oben rechts
   - AIEdition: die Zusammenfassung erscheint in der Liste anstelle der ersten Textzeile; Taste Z fasst die offene Mail zusammen, ein Funke pulsiert während des Schreibens; der Modell-Download ist ein schmaler Fortschrittsbalken
   - AIEdition: eine Zusammenfassung läuft weiter, wenn man inzwischen eine andere Mail öffnet, und wird danach wie alle Zusammenfassungen verschlüsselt gespeichert (vorher wurde sie abgebrochen und war verloren). In der Liste pulsiert der Funke, bis sie fertig ist; eine zweite wartet, bis die erste fertig ist. Die Karte flackert beim Schreiben nicht mehr
+- **Mailtext markieren und kopieren**: in empfangenen und gesendeten Mails lässt sich Text mit der Maus markieren – über mehrere Absätze hinweg, Doppelklick nimmt ein Wort, Dreifachklick einen Absatz, Umschalt+Klick erweitert. Strg+C kopiert, Strg+A markiert nach einem Klick in die Mail ihren ganzen Text; per Rechtsklick gibt es „Kopieren“, „Alles markieren“ und auf Links „Link-Adresse kopieren“. Links im Text der Textansicht lassen sich jetzt direkt anklicken
+- HTML-Mails sehen deutlich mehr so aus wie gedacht:
+  - Knöpfe und farbige Flächen, die ihre Farbe über `background:` setzen, waren unsichtbar (weiße Schrift auf Weiß) – jetzt mit Farbe, auch bei Farbverläufen; runde Ecken werden gezeichnet
+  - Der versteckte Vorschautext am Anfang von Newslettern („Preheader“) erscheint nicht mehr als erste Zeile – auch nicht in der Textansicht
+  - Schrift, Textfarbe und Hintergrundfarbe, die eine Mail für die ganze Seite festlegt, gingen verloren; der Hintergrund färbt jetzt das ganze Blatt
+  - Fotos ohne Größenangabe machten die Mail tausende Pixel breit und damit winzig – sie werden auf Blattbreite eingepasst
+  - Zitate bekommen eine ruhige Linie am Rand, Code eine Festbreitenschrift mit erhaltenen Zeilenumbrüchen; Inhalte mit `margin: auto` stehen mittig
+  - Zählpixel (1×1-Bilder zur Lesebestätigung) werden entfernt und nie geladen, auch nicht mit „Bilder laden“
 
 ## 1.0.2 – Fehlerbehebungen
 

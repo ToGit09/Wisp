@@ -17,6 +17,9 @@ public static partial class LayoutFixes
         foreach (var node in tables.Concat(doc.DocumentNode.Descendants("td")).ToList()) DropPercentHeight(node);
         foreach (var table in tables) FillRowHeight(table);
         foreach (var table in tables) CenterIfFixed(table);
+        // A block with a fixed width and margin: auto (the usual way to centre a mail's content column).
+        foreach (var div in doc.DocumentNode.Descendants("div").Where(d => AutoMargins().IsMatch(d.GetAttributeValue("style", ""))).ToList())
+            CenterIfFixed(div);
     }
 
     // ───────────────────────── Centring ─────────────────────────
@@ -28,15 +31,14 @@ public static partial class LayoutFixes
     static void CenterIfFixed(HtmlNode table)
     {
         if (PxWidth(table) is not { } width || table.ParentNode is not { } parent) return;
-        var centered = table.GetAttributeValue("align", "").Equals("center", StringComparison.OrdinalIgnoreCase)
-            || AutoMargins().IsMatch(table.GetAttributeValue("style", ""))
-            || IsCentering(parent);
+        var centered = AutoMargins().IsMatch(table.GetAttributeValue("style", ""))
+            || table.Name == "table" && (table.GetAttributeValue("align", "").Equals("center", StringComparison.OrdinalIgnoreCase) || IsCentering(parent));
         if (!centered) return;
 
         var wrapper = HtmlNode.CreateNode(string.Create(CultureInfo.InvariantCulture,
             $"""<table width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td></td><td width="{width}"></td><td></td></tr></table>"""));
         parent.ReplaceChild(wrapper, table);
-        wrapper.SelectSingleNode(".//td[2]").AppendChild(table);
+        wrapper.SelectSingleNode(".//td[2]")!.AppendChild(table);
     }
 
     static bool IsCentering(HtmlNode node) =>

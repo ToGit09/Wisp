@@ -49,7 +49,8 @@ public sealed class ShortcutsWindow : Window
             ("J", "als Spam markieren (im Spam-Ordner: kein Spam)"),
             ("S", "markieren (Stern)"),
             ("U | Strg+U", "gelesen / ungelesen"),
-            ("Strg+A", "alle Mails der Liste auswählen"),
+            ("Strg+A", "alle Mails der Liste auswählen; nach einem Klick in die Mail: ihren ganzen Text markieren"),
+            ("Strg+C", "markierten Text der offenen Mail kopieren (auch per Rechtsklick)"),
             ("Strg+Z", "letzte Aktion rückgängig (Löschen, Archivieren, Verschieben, Senden …)"),
 #if WISP_AI
             ("Z", "offene Mail mit der lokalen KI zusammenfassen"),

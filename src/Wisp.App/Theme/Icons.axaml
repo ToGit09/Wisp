@@ -1,6 +1,11 @@
 <ResourceDictionary xmlns="https://github.com/avaloniaui"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
   <!-- Stroke icons on a 24×24 grid, drawn by WispIcon. -->
+  <StreamGeometry x:Key="IconCopy">M9 9h11v11H9z M5 15H4V4h11v1</StreamGeometry>
+  <StreamGeometry x:Key="IconSelectAll">M4 7V4h3 M17 4h3v3 M20 17v3h-3 M7 20H4v-3 M8 9h8 M8 12h8 M8 15h5</StreamGeometry>
+  <StreamGeometry x:Key="IconLink">M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1 M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1</StreamGeometry>
+  <StreamGeometry x:Key="IconExternal">M14 4h6v6 M20 4l-9 9 M18 14v6H4V6h6</StreamGeometry>
+  <StreamGeometry x:Key="IconExport">M12 15V3 M8 7l4-4 4 4 M5 12v8h14v-8</StreamGeometry>
   <StreamGeometry x:Key="IconCompose">M4 20h4L19 9l-4-4L4 16z M14 6l4 4</StreamGeometry>
   <StreamGeometry x:Key="IconReply">M9 14L4 9l5-5 M4 9h10a6 6 0 0 1 6 6v4</StreamGeometry>
   <StreamGeometry x:Key="IconReplyAll">M7 14L2 9l5-5 M12 14L7 9l5-5 M7 9h7a6 6 0 0 1 6 6v4</StreamGeometry>

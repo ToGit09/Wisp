@@ -33,6 +33,9 @@ public sealed record RenderedMail
     /// <summary>Sanitized HTML (no scripts, forms, frames or event handlers). Only set when HTML display is on.</summary>
     public string? Html { get; init; }
 
+    /// <summary>Page colour the HTML mail asks for (CSS colour), null for the usual white.</summary>
+    public string? HtmlBackground { get; init; }
+
     /// <summary>Images embedded in the mail itself (cid:), safe to show — loading them contacts nobody.</summary>
     public IReadOnlyDictionary<string, byte[]> InlineImages { get; init; } = new Dictionary<string, byte[]>();
 

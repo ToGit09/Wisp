@@ -3,15 +3,28 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Media;
+using Avalonia.Media.Imaging;
+using Avalonia.Threading;
 using TheArtOfDev.HtmlRenderer.Avalonia;
+using Wisp.Core.Rendering;
 
 namespace Wisp.App.Views;
+
+/// <summary>What the reader shows of a mail, as far as selecting and copying goes (HTML or text view).</summary>
+public interface IMailBody
+{
+    string SelectedText { get; }
+    void SelectAll();
+    /// <summary>Address of the link at this point of the body (in its own coordinates), if there is one.</summary>
+    string? LinkAt(Point point);
+}
 
 /// <summary>
 /// Shows an HTML mail scaled to the reader: mails designed for a fixed width (newsletters are
 /// often 600–700 px) are shrunk until they fit, and the user can zoom on top of that.
+/// Text can be selected with the mouse (double-click: a word) and copied.
 /// </summary>
-public sealed class HtmlMailView : Grid
+public sealed class HtmlMailView : Grid, IMailBody
 {
     public const double MinZoom = 0.5;
     public const double MaxZoom = 2.0;
@@ -24,51 +37,76 @@ public sealed class HtmlMailView : Grid
     /// <summary>Content this much wider than the space it was given counts as fixed-width and gets shrunk.</summary>
     const double OverflowTolerance = 8;
 
+    /// <summary>
+    /// What a mail looks like where it says nothing itself: readable type, quotes with a quiet line on the left
+    /// (the renderer only indents them), code in a fixed-width font, no frames around linked images.
+    /// </summary>
+    const string BaseStylesheet = """
+        body { font-family: Segoe UI, Ubuntu, Cantarell, sans-serif; font-size: 10.5pt; color: #1d1f24; }
+        a { color: #2f5fd0; }
+        a img, img { border: 0; }
+        blockquote { margin: 8px 0 8px 2px; padding: 0 0 0 12px; border-left: 2px solid #cfd4de; color: #4b5160; }
+        pre, code, tt { font-family: Cascadia Mono, Consolas, DejaVu Sans Mono, monospace; font-size: 9.5pt; }
+        pre { background-color: #f3f4f7; padding: 8px 10px; corner-radius: 6px; white-space: pre; }
+        hr { border: 0; border-top: 1px solid #dfe2e8; height: 1px; }
+        h1 { font-size: 17pt; } h2 { font-size: 14.5pt; } h3 { font-size: 12.5pt; }
+        """;
+
+    static readonly TheArtOfDev.HtmlRenderer.Core.CssData Css = HtmlRender.ParseStyleSheet(BaseStylesheet, true);
+
     readonly ScrollViewer _scroll;
     readonly LayoutTransformControl _transform;
     readonly Border _paper;
     readonly TextBlock _zoomText;
+    readonly RenderedMail _mail;
     readonly string _html;
-    readonly TheArtOfDev.HtmlRenderer.Core.CssData _css;
     double _zoom;
     double _available;
     bool _refitQueued;
 
-    /// <summary>The renderer itself; the window hooks image loading and link clicks onto it.</summary>
+    /// <summary>The renderer itself.</summary>
     public HtmlLabel Html { get; }
 
     /// <summary>Raised when the user changes the zoom, so it can be remembered.</summary>
     public event Action<double>? ZoomChanged;
 
-    public HtmlMailView(string html, string baseStylesheet, double zoom)
+    /// <summary>A link in the mail was clicked.</summary>
+    public event Action<string>? LinkClicked;
+
+    public HtmlMailView(RenderedMail mail, double zoom)
     {
         _zoom = Math.Clamp(zoom, MinZoom, MaxZoom);
-        _html = html;
-        _css = HtmlRender.ParseStyleSheet(baseStylesheet, true);
+        _mail = mail;
+        _html = mail.Html ?? "";
+        Focusable = true; // so Strg+A / Strg+C after a click into the mail mean the mail, not the list
+
+        // HTML mails are designed for a light background; show them on a sheet of "paper" in the colour the
+        // mail asks for (white unless it says otherwise), centred in the reader, in dark mode too.
+        var sheet = Color.TryParse(mail.HtmlBackground, out var asked) && asked.A == 255 ? asked : Colors.White;
+        var sheetBrush = new SolidColorBrush(sheet);
 
         // No Padding on the renderer itself: HtmlLabel lays its content out at (0,0) but only applies the
         // padding offset when painting, so the first frame can come out shifted and clipped at the top left.
         // The margin lives on the surrounding "paper" instead.
         Html = new HtmlLabel
         {
-            Text = html,
-            BaseStylesheet = baseStylesheet,
+            Text = _html,
+            BaseStylesheet = BaseStylesheet,
             AutoSize = false,
             AutoSizeHeightOnly = true,
-            Background = Brushes.White,
+            Background = sheetBrush,
             IsContextMenuEnabled = false,
+            IsSelectionEnabled = true,
         };
-        // HTML mails are designed for a light background; show them on a white sheet of "paper",
-        // centred in the reader, in dark mode too.
         _paper = new Border
         {
-            Background = Brushes.White,
+            Background = sheetBrush,
             Padding = new Thickness(PaperPadding),
             CornerRadius = new CornerRadius(8),
             BorderThickness = new Thickness(1),
-            BorderBrush = new SolidColorBrush(Color.Parse("#E4E6EB")),
             Child = Html,
         };
+        _paper.Bind(Border.BorderBrushProperty, this.GetResourceObservable("WispBorder"));
         _transform = new LayoutTransformControl
         {
             Child = _paper,
@@ -112,6 +150,16 @@ public sealed class HtmlMailView : Grid
         };
         Children.Add(zoomBar);
 
+        Html.ImageLoad += (_, e) => LoadImage(e.Event);
+        Html.StylesheetLoad += (_, e) => e.Event.SetStyleSheet = ""; // never fetch external CSS
+        Html.LinkClicked += (_, e) =>
+        {
+            e.Event.Handled = true;
+            if (e.Event.Link is { Length: > 0 } url) LinkClicked?.Invoke(url);
+        };
+        // A click into the mail takes the keyboard (the renderer handles the click itself, so this also sees handled ones).
+        AddHandler(PointerPressedEvent, (_, _) => Focus(), Avalonia.Interactivity.RoutingStrategies.Bubble, handledEventsToo: true);
+
         // Never resize from inside a layout pass: queue it, so layout always settles in one go.
         _scroll.SizeChanged += (_, _) => QueueRefit();
         // Ctrl + mouse wheel zooms, like in a browser.
@@ -134,6 +182,77 @@ public sealed class HtmlMailView : Grid
         UpdateZoomText(_zoom);
     }
 
+    // ───────────────────────── Selecting & copying ─────────────────────────
+
+    public string SelectedText => Html.SelectedText ?? "";
+
+    /// <summary>The renderer selects everything on Strg+A; it has no method for it, so it is handed that key.</summary>
+    public void SelectAll()
+    {
+        Html.Container?.HandleKeyDown(Html, new KeyEventArgs { RoutedEvent = KeyDownEvent, Key = Key.A, KeyModifiers = KeyModifiers.Control, Source = Html });
+        Html.InvalidateVisual();
+    }
+
+    public string? LinkAt(Point point) =>
+        this.TranslatePoint(point, Html) is { } local && Html.Container?.GetLinkAt(local) is { Length: > 0 } link ? link : null;
+
+    // ───────────────────────── Images ─────────────────────────
+
+    void LoadImage(TheArtOfDev.HtmlRenderer.Core.Entities.HtmlImageLoadEventArgs args)
+    {
+        var src = args.Src ?? "";
+        if (src.StartsWith("data:", StringComparison.OrdinalIgnoreCase)) return; // decoded locally by the renderer
+        args.Handled = true;
+        // An image without a size of its own is drawn pixel for pixel: a photo from a phone made the whole mail
+        // several thousand pixels wide (and it was then shrunk to unreadable). Such images are fitted to the sheet.
+        var sized = args.Attributes is { } attributes && (attributes.ContainsKey("width")
+            || attributes.TryGetValue("style", out var style) && style.Contains("width", StringComparison.OrdinalIgnoreCase));
+
+        if (src.StartsWith("cid:", StringComparison.OrdinalIgnoreCase))
+        {
+            args.Callback(_mail.InlineImages.TryGetValue(src[4..].Trim('<', '>'), out var bytes) && TryBitmap(bytes, sized) is { } inline ? inline : Blank);
+            return;
+        }
+        if (!_mail.RemoteImagesAllowed || !HtmlSanitizer.IsRemote(src))
+        {
+            args.Callback(Blank); // blocked: nothing is contacted, and no "broken image" icon either
+            return;
+        }
+        _ = Task.Run(async () =>
+        {
+            var data = await RemoteImageLoader.LoadAsync(src, CancellationToken.None);
+            var bitmap = data is null ? null : TryBitmap(data, sized); // decoded off the UI thread
+            await Dispatcher.UIThread.InvokeAsync(() => args.Callback(bitmap ?? Blank));
+        });
+    }
+
+    static Bitmap? TryBitmap(byte[] data, bool sized)
+    {
+        try
+        {
+            var bitmap = new Bitmap(new MemoryStream(data));
+            var max = (int)(MaxPaperWidth - 2 * PaperPadding - 2);
+            if (sized || bitmap.PixelSize.Width <= max) return bitmap;
+            using (bitmap)
+                return bitmap.CreateScaledBitmap(new PixelSize(max, Math.Max(1, (int)Math.Round((double)bitmap.PixelSize.Height * max / bitmap.PixelSize.Width))));
+        }
+        catch { return null; } // corrupt or unsupported (e.g. SVG)
+    }
+
+    /// <summary>A fresh transparent 1×1 image; the renderer may dispose what it is given.</summary>
+    static Bitmap Blank
+    {
+        get
+        {
+            var bitmap = new WriteableBitmap(new PixelSize(1, 1), new Vector(96, 96), Avalonia.Platform.PixelFormat.Bgra8888, Avalonia.Platform.AlphaFormat.Premul);
+            using (var frame = bitmap.Lock())
+                System.Runtime.InteropServices.Marshal.WriteInt32(frame.Address, 0);
+            return bitmap;
+        }
+    }
+
+    // ───────────────────────── Zoom ─────────────────────────
+
     Button ZoomButton(string text, string tip, Action action)
     {
         var button = new Button { Content = text, Classes = { "icon" }, Padding = new Thickness(8, 4) };
@@ -155,11 +274,11 @@ public sealed class HtmlMailView : Grid
     {
         if (_refitQueued) return;
         _refitQueued = true;
-        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+        Dispatcher.UIThread.Post(() =>
         {
             _refitQueued = false;
             Refit(force: false);
-        }, Avalonia.Threading.DispatcherPriority.Background);
+        }, DispatcherPriority.Background);
     }
 
     /// <summary>
@@ -176,11 +295,16 @@ public sealed class HtmlMailView : Grid
 
         var padding = _paper.Padding.Left + _paper.Padding.Right + _paper.BorderThickness.Left + _paper.BorderThickness.Right;
         var width = Math.Min(available / _zoom, MaxPaperWidth);
-        var natural = MeasureContent(width - padding) + padding;
-        var scale = _zoom;
-        if (natural > width + OverflowTolerance)
+        // The natural width does not depend on the zoom or the reader: measured once per offered width.
+        if (Math.Abs(width - _measuredFor) > 0.5)
         {
-            width = Math.Ceiling(natural);
+            _natural = MeasureContent(width - padding) + padding;
+            _measuredFor = width;
+        }
+        var scale = _zoom;
+        if (_natural > width + OverflowTolerance)
+        {
+            width = Math.Ceiling(_natural);
             scale = Math.Max(MinZoom / 2, Math.Min(_zoom, available / width));
         }
 
@@ -189,12 +313,14 @@ public sealed class HtmlMailView : Grid
         UpdateZoomText(scale);
     }
 
+    double _natural, _measuredFor = -1;
+
     /// <summary>Width the mail needs when given <paramref name="maxWidth"/>. Blocks all images and style sheets while measuring.</summary>
     double MeasureContent(double maxWidth)
     {
         try
         {
-            return HtmlRender.Measure(_html, Math.Max(1, maxWidth), _css,
+            return HtmlRender.Measure(_html, Math.Max(1, maxWidth), Css,
                 (_, e) => e.SetStyleSheet = "",
                 (_, e) => { e.Handled = true; e.Callback(); }).Width;
         }

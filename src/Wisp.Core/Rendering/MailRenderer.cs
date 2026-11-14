@@ -25,6 +25,7 @@ public static partial class MailRenderer
 
         string? html = null;
         var remoteImages = false;
+        string? background = null;
         if (htmlBody is not null)
         {
             var sanitized = HtmlSanitizer.Sanitize(htmlBody);
@@ -32,6 +33,7 @@ public static partial class MailRenderer
             if (options.ShowHtml)
             {
                 html = sanitized.Html;
+                background = sanitized.Background;
                 if (textBody is not null) // collect links from the HTML too, for the phishing check
                     FromHtml(htmlBody, links);
             }
@@ -62,6 +64,7 @@ public static partial class MailRenderer
             Date = message.Date,
             Blocks = blocks,
             Html = html,
+            HtmlBackground = background,
             InlineImages = inline,
             Links = links.Links,
             Attachments = attachments,
@@ -211,6 +214,8 @@ public static partial class MailRenderer
 
             var name = child.Name.ToLowerInvariant();
             if (Skip.Contains(name)) continue;
+            // Preview text the sender hides (display: none, max-height: 0 …) is not part of the readable text either.
+            if (HtmlSanitizer.IsHidden(child.GetAttributeValue("style", ""))) continue;
 
             switch (name)
             {

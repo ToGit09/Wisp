@@ -2,15 +2,14 @@ using System.ComponentModel;
 using System.Globalization;
 using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Controls.Documents;
 using Avalonia.Input;
+using Avalonia.Input.Platform;
 using Avalonia.Layout;
 using Avalonia.Media;
-using Avalonia.Media.Imaging;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
-using TheArtOfDev.HtmlRenderer.Avalonia;
+using CommunityToolkit.Mvvm.Input;
 using Wisp.App.ViewModels;
 using Wisp.Core;
 using Wisp.Core.Mail;
@@ -55,6 +54,7 @@ public partial class MainWindow : Window, IDialogs
         };
 
         MessageList.ContextRequested += OnMessageContextRequested;
+        ReaderBody.ContextRequested += OnBodyContextRequested;
         // After deleting (archiving, moving …) the next mail is selected and opened. The keyboard stays in the
         // list, so Entf right away deletes that one too.
         _vm.SelectRequested += item =>
@@ -283,166 +283,70 @@ public partial class MainWindow : Window, IDialogs
 
     Control TextView(RenderedMail mail)
     {
-        var panel = new StackPanel { Spacing = 10, Margin = new Thickness(24, 16, 24, 24), MaxWidth = 820, HorizontalAlignment = HorizontalAlignment.Left };
-        var accent = this.Brush("WispAccent");
-        var muted = this.Brush("WispMuted");
-
-        foreach (var block in mail.Blocks)
-        {
-            if (block.Kind == BlockKind.Separator)
-            {
-                panel.Children.Add(new Border { Height = 1, Background = this.Brush("WispBorder"), Margin = new Thickness(0, 6) });
-                continue;
-            }
-            var text = new SelectableTextBlock { TextWrapping = TextWrapping.Wrap };
-            switch (block.Kind)
-            {
-                case BlockKind.Heading:
-                    text.FontWeight = FontWeight.SemiBold;
-                    text.FontSize = (double)(this.FindResource("WispFontSize") ?? 14.0) + 3;
-                    break;
-                case BlockKind.Quote:
-                    text.Foreground = muted;
-                    break;
-                case BlockKind.Preformatted:
-                    text.FontFamily = new FontFamily("Cascadia Mono, Consolas, DejaVu Sans Mono, monospace");
-                    break;
-            }
-            if (block.Kind == BlockKind.ListItem) text.Inlines!.Add(new Run("•  "));
-            foreach (var span in block.Spans)
-            {
-                var run = new Run(span.Text)
-                {
-                    FontWeight = span.Bold ? FontWeight.SemiBold : FontWeight.Normal,
-                    FontStyle = span.Italic ? FontStyle.Italic : FontStyle.Normal,
-                };
-                text.Inlines!.Add(run);
-                if (span.LinkIndex >= 0)
-                {
-                    run.Foreground = accent;
-                    run.TextDecorations = TextDecorations.Underline;
-                    var link = mail.Links[span.LinkIndex];
-                    if (link.Url != span.Text && link.Url.StartsWith("http", StringComparison.OrdinalIgnoreCase))
-                        text.Inlines.Add(new Run($" [{link.Index + 1}]") { Foreground = muted, FontSize = 11 });
-                }
-            }
-
-            Control element = text;
-            if (block.Kind == BlockKind.Quote)
-            {
-                element = new Border
-                {
-                    BorderBrush = this.Brush("WispBorder"),
-                    BorderThickness = new Thickness(3, 0, 0, 0),
-                    Padding = new Thickness(12, 0, 0, 0),
-                    Child = text,
-                };
-            }
-            panel.Children.Add(element);
-        }
-
-        if (mail.Blocks.Count == 0)
-            panel.Children.Add(new TextBlock { Text = "(Diese Mail hat keinen Textinhalt.)", Foreground = muted });
-
-        var links = mail.Links.Where(l => l.Url.StartsWith("http", StringComparison.OrdinalIgnoreCase)).ToList();
-        if (links.Count > 0 && _mail.Settings.Reading.ShowLinkList)
-        {
-            panel.Children.Add(new TextBlock { Text = "Links in dieser Mail", FontWeight = FontWeight.SemiBold, Margin = new Thickness(0, 16, 0, 0) });
-            foreach (var link in links)
-            {
-                var row = new StackPanel { Spacing = 2 };
-                var button = new Button
-                {
-                    Classes = { "link" },
-                    Content = new TextBlock { Text = $"[{link.Index + 1}]  {link.Url}", TextWrapping = TextWrapping.Wrap },
-                    HorizontalAlignment = HorizontalAlignment.Left,
-                };
-                button.Click += async (_, _) => await OpenLinkAsync(link.Url, link.Suspicious);
-                row.Children.Add(button);
-                if (link.Suspicious && _mail.Settings.Reading.WarnSuspiciousLinks)
-                {
-                    row.Children.Add(new TextBlock
-                    {
-                        Text = $"⚠ Vorsicht: Der Linktext zeigt eine andere Adresse als das tatsächliche Ziel ({link.Host}).",
-                        Foreground = this.Brush("WispDanger"),
-                        TextWrapping = TextWrapping.Wrap,
-                        FontSize = 12,
-                    });
-                }
-                panel.Children.Add(row);
-            }
-        }
-
-        return new ScrollViewer { Content = panel };
+        var reading = _mail.Settings.Reading;
+        var view = new TextMailView(mail, reading.ShowLinkList, reading.WarnSuspiciousLinks, this);
+        view.LinkClicked += link => _ = OpenLinkAsync(link.Url, link.Suspicious);
+        return view;
     }
 
     Control HtmlView(RenderedMail mail)
     {
-        var view = new HtmlMailView(mail.Html!,
-            "body { font-family: Segoe UI, Ubuntu, Cantarell, sans-serif; font-size: 10.5pt; color: #1d1f24; } a { color: #3557d4; }",
-            _mail.Settings.Appearance.HtmlZoom);
+        var view = new HtmlMailView(mail, _mail.Settings.Appearance.HtmlZoom);
         view.ZoomChanged += zoom =>
         {
             _mail.Settings.Appearance.HtmlZoom = zoom;
             try { _mail.SaveSettings(); } catch (IOException) { }
         };
-        var html = view.Html;
-
-        html.ImageLoad += (_, e) =>
-        {
-            var args = e.Event;
-            var src = args.Src ?? "";
-            if (src.StartsWith("data:", StringComparison.OrdinalIgnoreCase)) return; // decoded locally by the renderer
-            args.Handled = true;
-
-            if (src.StartsWith("cid:", StringComparison.OrdinalIgnoreCase))
-            {
-                if (mail.InlineImages.TryGetValue(src[4..].Trim('<', '>'), out var bytes) && TryBitmap(bytes) is { } inline) args.Callback(inline);
-                else args.Callback(Blank);
-                return;
-            }
-            if (!mail.RemoteImagesAllowed || !HtmlSanitizer.IsRemote(src))
-            {
-                args.Callback(Blank); // blocked: nothing is contacted, and no "broken image" icon either
-                return;
-            }
-            _ = Task.Run(async () =>
-            {
-                var data = await RemoteImageLoader.LoadAsync(src, CancellationToken.None);
-                await Dispatcher.UIThread.InvokeAsync(() =>
-                {
-                    if (data is not null && TryBitmap(data) is { } bitmap) args.Callback(bitmap);
-                    else args.Callback(Blank);
-                });
-            });
-        };
-        html.StylesheetLoad += (_, e) => e.Event.SetStyleSheet = ""; // never fetch external CSS
-        html.LinkClicked += async (_, e) =>
-        {
-            e.Event.Handled = true;
-            var url = e.Event.Link ?? "";
-            var known = mail.Links.FirstOrDefault(l => l.Url == url);
-            await OpenLinkAsync(url, known?.Suspicious ?? false);
-        };
+        view.LinkClicked += url => _ = OpenLinkAsync(url, mail.Links.FirstOrDefault(l => l.Url == url)?.Suspicious ?? false);
         return view;
     }
 
-    static Bitmap? TryBitmap(byte[] data)
+    // ───────────────────────── Selecting & copying mail text ─────────────────────────
+
+    IMailBody? Body => ReaderBody.Content as IMailBody;
+
+    /// <summary>Strg+C: the text selected in the open mail. False if nothing is selected there.</summary>
+    bool CopySelection()
     {
-        try { return new Bitmap(new MemoryStream(data)); }
-        catch { return null; } // corrupt or unsupported (e.g. SVG)
+        if (Body?.SelectedText is not { Length: > 0 } text) return false;
+        _ = CopyTextAsync(text);
+        return true;
     }
 
-    /// <summary>A fresh transparent 1×1 image; the renderer may dispose what it is given.</summary>
-    static Bitmap Blank
+    async Task CopyTextAsync(string text, string? notice = null)
     {
-        get
+        try
         {
-            var bitmap = new WriteableBitmap(new PixelSize(1, 1), new Vector(96, 96), Avalonia.Platform.PixelFormat.Bgra8888, Avalonia.Platform.AlphaFormat.Premul);
-            using (var frame = bitmap.Lock())
-                System.Runtime.InteropServices.Marshal.WriteInt32(frame.Address, 0);
-            return bitmap;
+            if (Clipboard is null) return;
+            await Clipboard.SetTextAsync(text);
+            if (notice is not null) _vm.ShowNotice(notice);
         }
+        catch (Exception)
+        {
+            _vm.ShowNotice("Die Zwischenablage ist gerade von einem anderen Programm belegt. Bitte noch einmal versuchen.");
+        }
+    }
+
+    /// <summary>Right-click in the open mail: copy the selection, select everything, copy the address of a link.</summary>
+    void OnBodyContextRequested(object? sender, ContextRequestedEventArgs e)
+    {
+        if (Body is not { } body || !_vm.ShowContextMenu) return;
+        e.Handled = true;
+        var selected = body.SelectedText;
+        var items = new List<Control>
+        {
+            MenuEntry("Kopieren", "IconCopy", new RelayCommand(() => _ = CopyTextAsync(selected)), keys: "Strg C", enabled: selected.Length > 0),
+            MenuEntry("Alles markieren", "IconSelectAll", new RelayCommand(body.SelectAll), keys: "Strg A"),
+        };
+        if (e.TryGetPosition((Control)body, out var point) && body.LinkAt(point) is { } link)
+        {
+            var isMail = link.StartsWith("mailto:", StringComparison.OrdinalIgnoreCase);
+            var address = isMail ? Uri.UnescapeDataString(link[7..].Split('?')[0]) : link;
+            items.Add(new Separator());
+            if (!isMail) items.Add(MenuEntry("Link öffnen", "IconExternal", new RelayCommand(() => _ = _vm.OpenLinkUrl(link, _vm.CurrentMail?.Links.FirstOrDefault(l => l.Url == link)?.Suspicious ?? false))));
+            items.Add(MenuEntry(isMail ? "E-Mail-Adresse kopieren" : "Link-Adresse kopieren", "IconLink", new RelayCommand(() => _ = CopyTextAsync(address))));
+        }
+        new ContextMenu { ItemsSource = items }.Open(ReaderBody);
     }
 
     /// <summary>
