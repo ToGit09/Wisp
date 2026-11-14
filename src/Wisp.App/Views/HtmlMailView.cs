@@ -218,12 +218,27 @@ public sealed class HtmlMailView : Grid, IMailBody
             args.Callback(Blank); // blocked: nothing is contacted, and no "broken image" icon either
             return;
         }
+        var ct = _closed.Token;
         _ = Task.Run(async () =>
         {
-            var data = await RemoteImageLoader.LoadAsync(src, CancellationToken.None);
-            var bitmap = data is null ? null : TryBitmap(data, sized); // decoded off the UI thread
-            await Dispatcher.UIThread.InvokeAsync(() => args.Callback(bitmap ?? Blank));
+            try
+            {
+                var data = await RemoteImageLoader.LoadAsync(src, ct);
+                var bitmap = data is null ? null : TryBitmap(data, sized); // decoded off the UI thread
+                if (ct.IsCancellationRequested) return;
+                await Dispatcher.UIThread.InvokeAsync(() => args.Callback(bitmap ?? Blank));
+            }
+            catch (OperationCanceledException) { /* another mail is open by now */ }
         });
+    }
+
+    // Images still on their way when another mail is opened are of no use any more: stop loading them.
+    readonly CancellationTokenSource _closed = new();
+
+    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnDetachedFromVisualTree(e);
+        _closed.Cancel();
     }
 
     static Bitmap? TryBitmap(byte[] data, bool sized)

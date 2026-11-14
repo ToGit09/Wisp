@@ -58,6 +58,22 @@ public sealed class StoreTests : IDisposable
     }
 
     [Fact]
+    public void Envelopes_are_decrypted_once_and_stay_correct()
+    {
+        _store.StoreServerMessages(_inbox, 1, [Server(1, "Erste"), Server(2, "Zweite")]);
+
+        var first = _store.ListMessages(_inbox, 10);
+        var again = _store.ListMessages(_inbox, 10);
+
+        // Listing again reuses the decrypted envelope instead of decrypting and parsing it a second time …
+        Assert.All(first.Zip(again), pair => Assert.Same(pair.First.Envelope, pair.Second.Envelope));
+        Assert.Same(first[0].Envelope, _store.GetMessage(first[0].Id)!.Envelope);
+        // … and a message stored later is never mixed up with a cached one.
+        _store.StoreServerMessages(_inbox, 1, [Server(3, "Dritte")]);
+        Assert.Equal(["Dritte", "Erste", "Zweite"], _store.ListMessages(_inbox, 10).Select(m => m.Envelope.Subject).Order());
+    }
+
+    [Fact]
     public void Moving_offline_keeps_the_message_visible_in_the_target_and_queues_the_move()
     {
         _store.StoreServerMessages(_inbox, 1, [Server(5, "Hallo")]);

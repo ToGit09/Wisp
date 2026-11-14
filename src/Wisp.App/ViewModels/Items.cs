@@ -33,8 +33,8 @@ public sealed partial class SidebarItem : ObservableObject
         : "#";
 
     // Each name keeps its colour, so "Projekte" and "Privat" are told apart at a glance.
-    public IBrush BadgeForeground => new SolidColorBrush(BadgeColors.For(Name));
-    public IBrush BadgeBackground => new SolidColorBrush(BadgeColors.For(Name), 0.16);
+    public IBrush BadgeForeground => BadgeColors.Brush(Name);
+    public IBrush BadgeBackground => BadgeColors.SoftBrush(Name);
 
     partial void OnNameChanged(string value)
     {
@@ -95,7 +95,7 @@ public sealed partial class AccountItem : ObservableObject
         : "@";
 
     // Each account keeps its colour, so the active one is recognised at a glance, also in the collapsed sidebar.
-    public IBrush BadgeBackground => new SolidColorBrush(BadgeColors.For(Email));
+    public IBrush BadgeBackground => BadgeColors.Brush(Email);
 }
 
 /// <summary>A stable colour per name (folder initials, sender avatars).</summary>
@@ -104,11 +104,19 @@ static class BadgeColors
     static readonly Color[] Palette = new[] { "#6B4EE6", "#4F6BED", "#0E8F8A", "#2F9A5B", "#D9771F", "#D64550", "#D2468C", "#5E6272" }
         .Select(Color.Parse).ToArray();
 
-    public static Color For(string text)
+    // One shared, immutable brush per colour: a list of 500 mails used to create 1000 brushes on every load.
+    static readonly IBrush[] Solid = Palette.Select(c => (IBrush)new Avalonia.Media.Immutable.ImmutableSolidColorBrush(c)).ToArray();
+    static readonly IBrush[] Soft = Palette.Select(c => (IBrush)new Avalonia.Media.Immutable.ImmutableSolidColorBrush(c, 0.16)).ToArray();
+
+    public static IBrush Brush(string text) => Solid[Index(text)];
+    public static IBrush SoftBrush(string text) => Soft[Index(text)];
+    public static Color For(string text) => Palette[Index(text)];
+
+    static int Index(string text)
     {
         var hash = 17;
         foreach (var c in text.ToLowerInvariant()) hash = unchecked(hash * 31 + c);
-        return Palette[(hash & 0x7FFFFFFF) % Palette.Length];
+        return (hash & 0x7FFFFFFF) % Palette.Length;
     }
 }
 
@@ -236,10 +244,10 @@ public sealed partial class MessageItem : ObservableObject
         FolderId = m.FolderId;
         if (From != m.Envelope.FromDisplay || AvatarForeground is null)
         {
-            var color = BadgeColors.For(m.Envelope.FromAddress.Length > 0 ? m.Envelope.FromAddress : m.Envelope.FromDisplay);
+            var key = m.Envelope.FromAddress.Length > 0 ? m.Envelope.FromAddress : m.Envelope.FromDisplay;
             Initials = InitialsOf(m.Envelope.FromDisplay);
-            AvatarForeground = new SolidColorBrush(color);
-            AvatarBackground = new SolidColorBrush(color, 0.16);
+            AvatarForeground = BadgeColors.Brush(key);
+            AvatarBackground = BadgeColors.SoftBrush(key);
         }
         From = m.Envelope.FromDisplay;
         Subject = string.IsNullOrWhiteSpace(m.Envelope.Subject) ? "(kein Betreff)" : m.Envelope.Subject;
