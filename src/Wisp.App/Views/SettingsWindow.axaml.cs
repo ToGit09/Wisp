@@ -11,5 +11,12 @@ public partial class SettingsWindow : Window
     {
         InitializeComponent();
         DataContext = vm;
+        // Esc closes (changes are already saved). Bubbling, so an open dropdown closes first.
+        KeyDown += (_, e) =>
+        {
+            if (e.Key != Avalonia.Input.Key.Escape || e.KeyModifiers != Avalonia.Input.KeyModifiers.None) return;
+            e.Handled = true;
+            Close();
+        };
     }
 }

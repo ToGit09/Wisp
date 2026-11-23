@@ -1,8 +1,22 @@
 # Änderungen
 
-## 1.0.4 – Mails schließen
+## 1.0.4 – Mails schließen, Text kopieren, Fehlerbehebungen
+
+Fehlerbehebungen und Verbesserungen aus Wisp 2, für alle, die bei Wisp 1 bleiben.
 
 - Eine geöffnete Mail lässt sich schließen: Knopf „✕“ rechts oben im Lesebereich oder Esc. Danach ist keine Mail mehr ausgewählt und der Lesebereich ist leer. Esc beendet wie bisher auch den Auswahlmodus
+- **Mailtext markieren und kopieren**: Text lässt sich mit der Maus markieren – über mehrere Absätze hinweg, Doppelklick nimmt ein Wort, Dreifachklick einen Absatz, Umschalt+Klick erweitert. Strg+C kopiert, Strg+A markiert nach einem Klick in die Mail ihren ganzen Text; per Rechtsklick gibt es „Kopieren“, „Alles markieren“ und auf Links „Link-Adresse kopieren“. Links im Text der Textansicht lassen sich direkt anklicken
+- Nach dem Löschen (ebenso Archivieren, Verschieben, Spam, Wiederherstellen) wird gleich die nächste Mail der Liste ausgewählt und geöffnet
+- Esc schließt die Einstellungen und ein noch leeres Fenster „Neue Mail“ (mit Text bleibt es offen)
+- Das App-Icon in der Titelleiste ist bei 125 %, 150 % und 175 % Skalierung nicht mehr unscharf
+- Schneller: Die Mail-Liste entschlüsselt die Kopfzeilen jeder Mail nur noch einmal statt bei jeder Aktualisierung (spürbar beim Suchen und in großen Ordnern); HTML-Mails ohne Textteil werden beim Öffnen einmal weniger durchlaufen; externe Bilder einer Mail werden nicht mehr weitergeladen, wenn man schon die nächste liest
+- HTML-Mails sehen deutlich mehr so aus wie gedacht:
+  - Knöpfe und farbige Flächen, die ihre Farbe über `background:` setzen, waren unsichtbar (weiße Schrift auf Weiß) – jetzt mit Farbe, auch bei Farbverläufen; runde Ecken werden gezeichnet
+  - Der versteckte Vorschautext am Anfang von Newslettern („Preheader“) erscheint nicht mehr als erste Zeile – auch nicht in der Textansicht
+  - Schrift, Textfarbe und Hintergrundfarbe, die eine Mail für die ganze Seite festlegt, gingen verloren; der Hintergrund färbt jetzt das ganze Blatt
+  - Fotos ohne Größenangabe machten die Mail tausende Pixel breit und damit winzig – sie werden auf Blattbreite eingepasst
+  - Zitate bekommen eine ruhige Linie am Rand, Code eine Festbreitenschrift mit erhaltenen Zeilenumbrüchen; Inhalte mit `margin: auto` stehen mittig
+  - Zählpixel (1×1-Bilder zur Lesebestätigung) werden entfernt und nie geladen, auch nicht mit „Bilder laden“
 
 ## 1.0.3 – Weg zu Wisp 2
 

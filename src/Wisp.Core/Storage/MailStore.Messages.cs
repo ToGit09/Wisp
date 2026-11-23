@@ -118,9 +118,25 @@ public sealed partial class MailStore
         FROM messages m JOIN folders f ON f.id = m.folder_id
         """;
 
+    // Decrypting and parsing an envelope is the expensive part of listing a folder, and the list is read again
+    // after every change (and, while searching, up to 20 000 rows per keystroke). The same ciphertext always
+    // gives the same envelope, so the result is kept per message and reused while the stored blob is unchanged.
+    // Envelopes are immutable; the cache lives in memory only and is guarded by the store's lock.
+    const int EnvelopeCacheLimit = 30_000;
+    readonly Dictionary<long, (byte[] Blob, Envelope Envelope)> _envelopes = [];
+
+    Envelope EnvelopeOf(long id, byte[] blob)
+    {
+        if (_envelopes.TryGetValue(id, out var cached) && cached.Blob.AsSpan().SequenceEqual(blob)) return cached.Envelope;
+        var envelope = _crypto.DecryptJson<Envelope>(blob, "message.envelope");
+        if (_envelopes.Count >= EnvelopeCacheLimit) _envelopes.Clear();
+        _envelopes[id] = (blob, envelope);
+        return envelope;
+    }
+
     MessageListItem ReadListItem(SqliteDataReader r) => new(
         r.GetInt64(0), r.GetInt64(1), r.GetInt64(2),
-        _crypto.DecryptJson<Envelope>(Blob(r, 3), "message.envelope"),
+        EnvelopeOf(r.GetInt64(0), Blob(r, 3)),
         DateTimeOffset.FromUnixTimeSeconds(r.GetInt64(4)), r.GetInt64(5),
         (MessageFlags)r.GetInt32(6), r.GetBoolean(7), r.GetBoolean(8), r.GetBoolean(9));
 

@@ -25,6 +25,7 @@ public static partial class MailRenderer
 
         string? html = null;
         var remoteImages = false;
+        string? background = null;
         if (htmlBody is not null)
         {
             var sanitized = HtmlSanitizer.Sanitize(htmlBody);
@@ -32,6 +33,7 @@ public static partial class MailRenderer
             if (options.ShowHtml)
             {
                 html = sanitized.Html;
+                background = sanitized.Background;
                 if (textBody is not null) // collect links from the HTML too, for the phishing check
                     FromHtml(htmlBody, links);
             }
@@ -62,6 +64,7 @@ public static partial class MailRenderer
             Date = message.Date,
             Blocks = blocks,
             Html = html,
+            HtmlBackground = background,
             InlineImages = inline,
             Links = links.Links,
             Attachments = attachments,
@@ -76,7 +79,8 @@ public static partial class MailRenderer
                 message.To.Mailboxes.Select(m => m.ToString()).ToList(),
                 message.Cc.Mailboxes.Select(m => m.ToString()).ToList(),
                 message.Subject ?? "", message.Date,
-                textBody ?? (htmlBody is null ? "" : ToPlainText(FromHtml(htmlBody, new LinkCollector())))),
+                // Without a text part the blocks above already are the converted HTML: no second pass over it.
+                textBody ?? ToPlainText(blocks)),
         };
     }
 
@@ -85,11 +89,13 @@ public static partial class MailRenderer
         : entity is MessagePart ? $"Nachricht-{index + 1}.eml"
         : $"Anhang-{index + 1}";
 
+    static readonly HashSet<char> InvalidFileNameChars = Path.GetInvalidFileNameChars().Concat(['<', '>', ':', '"', '/', '\\', '|', '?', '*']).ToHashSet();
+
     /// <summary>Removes path components and characters that are invalid on Windows or Linux.</summary>
     public static string SafeFileName(string name)
     {
         name = Path.GetFileName(name.Replace('\\', '/'));
-        var invalid = Path.GetInvalidFileNameChars().Concat(['<', '>', ':', '"', '/', '\\', '|', '?', '*']).ToHashSet();
+        var invalid = InvalidFileNameChars;
         var clean = new string(name.Where(c => !invalid.Contains(c) && !char.IsControl(c)).ToArray()).Trim(' ', '.');
         return clean.Length == 0 ? "Anhang" : clean;
     }
@@ -211,6 +217,8 @@ public static partial class MailRenderer
 
             var name = child.Name.ToLowerInvariant();
             if (Skip.Contains(name)) continue;
+            // Preview text the sender hides (display: none, max-height: 0 …) is not part of the readable text either.
+            if (HtmlSanitizer.IsHidden(child.GetAttributeValue("style", ""))) continue;
 
             switch (name)
             {

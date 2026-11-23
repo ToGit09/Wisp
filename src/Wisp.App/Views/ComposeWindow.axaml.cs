@@ -55,6 +55,14 @@ public partial class ComposeWindow : Window
                 vm.SendCommand.Execute(null);
             }
         }, Avalonia.Interactivity.RoutingStrategies.Tunnel);
+        // Esc closes an untouched window. Bubbling, so an open address suggestion list closes first;
+        // with text in it the window stays, nothing gets lost by a stray Esc.
+        KeyDown += (_, e) =>
+        {
+            if (e.Key != Key.Escape || e.KeyModifiers != KeyModifiers.None || vm.IsDirty) return;
+            e.Handled = true;
+            Close();
+        };
         Closing += async (_, e) =>
         {
             if (_closingConfirmed || !vm.IsDirty || !vm.ConfirmDiscard) return;
