@@ -11,24 +11,32 @@ public enum LinkConfirmation { SuspiciousOnly, Always }
 public sealed class AppearanceSettings
 {
     public ThemeMode Theme { get; set; } = ThemeMode.System;
-    /// <summary>Wisp 2: violet, like the app icon.</summary>
-    public const string DefaultAccent = "#6B4EE6";
+    /// <summary>Wisp 2: turquoise, like the app icon.</summary>
+    public const string DefaultAccent = "#0E8F8A";
     /// <summary>The blue of Wisp 1; still offered as a preset.</summary>
     public const string Wisp1Accent = "#4F6BED";
+    /// <summary>The violet of the Wisp 2 previews (colour scheme 2); still offered as a preset.</summary>
+    public const string PreviewAccent = "#6B4EE6";
+    /// <summary>The colour scheme of this version.</summary>
+    public const int CurrentPalette = 3;
 
     public string Accent { get; set; } = DefaultAccent;
     /// <summary>
-    /// Colour scheme the settings were last saved with (2 = Wisp 2). Older files have none: on the first start
-    /// with the new scheme, an accent still on the old default moves to the new one; a colour the user chose stays.
+    /// Colour scheme the settings were last saved with (3 = Wisp 2 turquoise, 2 = violet previews). Older files
+    /// have none: on the first start with the new scheme, an accent still on an old default moves to the new one;
+    /// a colour the user chose stays.
     /// </summary>
     public int Palette { get; set; }
 
-    /// <summary>Brings settings written by Wisp 1 to the Wisp 2 colour scheme. True if something changed.</summary>
+    /// <summary>Brings settings written by Wisp 1 or a preview to the current colour scheme. True if something changed.</summary>
     public bool Upgrade()
     {
-        if (Palette >= 2) return false;
-        if (string.Equals(Accent?.Trim(), Wisp1Accent, StringComparison.OrdinalIgnoreCase)) Accent = DefaultAccent;
-        Palette = 2;
+        if (Palette >= CurrentPalette) return false;
+        var accent = Accent?.Trim();
+        if (string.Equals(accent, Wisp1Accent, StringComparison.OrdinalIgnoreCase)
+            || (Palette == 2 && string.Equals(accent, PreviewAccent, StringComparison.OrdinalIgnoreCase)))
+            Accent = DefaultAccent;
+        Palette = CurrentPalette;
         return true;
     }
     public string Font { get; set; } = "Inter";

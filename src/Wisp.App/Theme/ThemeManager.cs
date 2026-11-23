@@ -9,12 +9,12 @@ namespace Wisp.App.Theme;
 /// <summary>Applies the appearance settings live — no restart, no code, no files to edit.</summary>
 public static class ThemeManager
 {
-    /// <summary>Wisp 2: violet, like the app icon (Wisp 1 was blue, still among the presets).</summary>
+    /// <summary>Wisp 2: turquoise, like the app icon (Wisp 1 was blue, still among the presets).</summary>
     public const string DefaultAccent = AppearanceSettings.DefaultAccent;
 
     public static readonly (string Name, string Hex)[] AccentPresets =
     [
-        ("Violett", DefaultAccent), ("Blau", "#4F6BED"), ("Türkis", "#0E8F8A"), ("Grün", "#2F9A5B"),
+        ("Türkis", DefaultAccent), ("Blau", AppearanceSettings.Wisp1Accent), ("Violett", AppearanceSettings.PreviewAccent), ("Grün", "#2F9A5B"),
         ("Orange", "#D9771F"), ("Rot", "#D64550"), ("Rosa", "#D2468C"), ("Graphit", "#5E6272"),
     ];
 

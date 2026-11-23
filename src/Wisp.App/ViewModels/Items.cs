@@ -101,7 +101,7 @@ public sealed partial class AccountItem : ObservableObject
 /// <summary>A stable colour per name (folder initials, sender avatars).</summary>
 static class BadgeColors
 {
-    static readonly Color[] Palette = new[] { "#6B4EE6", "#4F6BED", "#0E8F8A", "#2F9A5B", "#D9771F", "#D64550", "#D2468C", "#5E6272" }
+    static readonly Color[] Palette = new[] { "#0E8F8A", "#4F6BED", "#6B4EE6", "#2F9A5B", "#D9771F", "#D64550", "#D2468C", "#5E6272" }
         .Select(Color.Parse).ToArray();
 
     // One shared, immutable brush per colour: a list of 500 mails used to create 1000 brushes on every load.
@@ -212,8 +212,8 @@ public sealed partial class MessageItem : ObservableObject
 
     static class CategoryBrushes
     {
-        public static readonly IBrush Personal = new SolidColorBrush(Color.Parse("#6B4EE6"));
-        public static readonly IBrush Invoice = new SolidColorBrush(Color.Parse("#0E8F8A"));
+        public static readonly IBrush Personal = new SolidColorBrush(Color.Parse("#0E8F8A"));
+        public static readonly IBrush Invoice = new SolidColorBrush(Color.Parse("#6B4EE6"));
         public static readonly IBrush Promotion = new SolidColorBrush(Color.Parse("#D9771F"));
         public static readonly IBrush Spam = new SolidColorBrush(Color.Parse("#D64550"));
     }

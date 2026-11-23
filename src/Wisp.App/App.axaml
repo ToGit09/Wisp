@@ -11,52 +11,52 @@
 
       <ResourceDictionary.ThemeDictionaries>
         <ResourceDictionary x:Key="Light">
-          <SolidColorBrush x:Key="WispWindow" Color="#FBFAFD" />
-          <SolidColorBrush x:Key="WispSidebar" Color="#F3F1F8" />
+          <SolidColorBrush x:Key="WispWindow" Color="#FAFCFC" />
+          <SolidColorBrush x:Key="WispSidebar" Color="#EEF5F4" />
           <SolidColorBrush x:Key="WispSurface" Color="#FFFFFF" />
-          <SolidColorBrush x:Key="WispBorder" Color="#E5E2EC" />
-          <SolidColorBrush x:Key="WispText" Color="#1C1A24" />
-          <SolidColorBrush x:Key="WispMuted" Color="#6B6878" />
+          <SolidColorBrush x:Key="WispBorder" Color="#DFE8E7" />
+          <SolidColorBrush x:Key="WispText" Color="#172120" />
+          <SolidColorBrush x:Key="WispMuted" Color="#5E6D6B" />
           <SolidColorBrush x:Key="WispHover" Color="#0D000000" />
           <SolidColorBrush x:Key="WispNoticeBg" Color="#FFF5E1" />
           <SolidColorBrush x:Key="WispNotice" Color="#8A5200" />
           <SolidColorBrush x:Key="WispDanger" Color="#C62F3B" />
           <SolidColorBrush x:Key="WispOk" Color="#2E9D57" />
           <!-- Wisp 2 UI: quiet input fields, floating toast (inverted), dimmed backdrop of the command field -->
-          <SolidColorBrush x:Key="WispField" Color="#EFEDF4" />
-          <SolidColorBrush x:Key="WispToastBg" Color="#25232E" />
-          <SolidColorBrush x:Key="WispToastText" Color="#F5F4F9" />
-          <SolidColorBrush x:Key="WispToastMuted" Color="#A9A6B8" />
+          <SolidColorBrush x:Key="WispField" Color="#EBF2F1" />
+          <SolidColorBrush x:Key="WispToastBg" Color="#1E2928" />
+          <SolidColorBrush x:Key="WispToastText" Color="#F2F8F7" />
+          <SolidColorBrush x:Key="WispToastMuted" Color="#A0B2B0" />
           <SolidColorBrush x:Key="WispBackdrop" Color="#1F000000" />
           <BoxShadows x:Key="WispFloatShadow">0 8 28 0 #26000000, 0 1 3 0 #14000000</BoxShadows>
           <!-- Fluent menus (submenus, drop-down menus) on the same card as the right-click menu -->
           <SolidColorBrush x:Key="MenuFlyoutPresenterBackground" Color="#FFFFFF" />
-          <SolidColorBrush x:Key="MenuFlyoutPresenterBorderBrush" Color="#E5E2EC" />
+          <SolidColorBrush x:Key="MenuFlyoutPresenterBorderBrush" Color="#DFE8E7" />
           <SolidColorBrush x:Key="FlyoutPresenterBackground" Color="#FFFFFF" />
-          <SolidColorBrush x:Key="FlyoutBorderThemeBrush" Color="#E5E2EC" />
+          <SolidColorBrush x:Key="FlyoutBorderThemeBrush" Color="#DFE8E7" />
         </ResourceDictionary>
         <ResourceDictionary x:Key="Dark">
-          <SolidColorBrush x:Key="WispWindow" Color="#15141A" />
-          <SolidColorBrush x:Key="WispSidebar" Color="#1C1B23" />
-          <SolidColorBrush x:Key="WispSurface" Color="#1A1920" />
-          <SolidColorBrush x:Key="WispBorder" Color="#2D2B37" />
-          <SolidColorBrush x:Key="WispText" Color="#E9E7F0" />
-          <SolidColorBrush x:Key="WispMuted" Color="#9895A8" />
+          <SolidColorBrush x:Key="WispWindow" Color="#111918" />
+          <SolidColorBrush x:Key="WispSidebar" Color="#172120" />
+          <SolidColorBrush x:Key="WispSurface" Color="#141D1C" />
+          <SolidColorBrush x:Key="WispBorder" Color="#253231" />
+          <SolidColorBrush x:Key="WispText" Color="#E4EDEC" />
+          <SolidColorBrush x:Key="WispMuted" Color="#8EA19F" />
           <SolidColorBrush x:Key="WispHover" Color="#14FFFFFF" />
           <SolidColorBrush x:Key="WispNoticeBg" Color="#3A2E17" />
           <SolidColorBrush x:Key="WispNotice" Color="#F2C27A" />
           <SolidColorBrush x:Key="WispDanger" Color="#F06B74" />
           <SolidColorBrush x:Key="WispOk" Color="#5CC587" />
-          <SolidColorBrush x:Key="WispField" Color="#24222D" />
-          <SolidColorBrush x:Key="WispToastBg" Color="#EEEDF3" />
-          <SolidColorBrush x:Key="WispToastText" Color="#15141A" />
-          <SolidColorBrush x:Key="WispToastMuted" Color="#625F70" />
+          <SolidColorBrush x:Key="WispField" Color="#1E2A29" />
+          <SolidColorBrush x:Key="WispToastBg" Color="#E8F0EF" />
+          <SolidColorBrush x:Key="WispToastText" Color="#111918" />
+          <SolidColorBrush x:Key="WispToastMuted" Color="#596A68" />
           <SolidColorBrush x:Key="WispBackdrop" Color="#59000000" />
           <BoxShadows x:Key="WispFloatShadow">0 10 32 0 #66000000, 0 1 3 0 #33000000</BoxShadows>
-          <SolidColorBrush x:Key="MenuFlyoutPresenterBackground" Color="#1A1920" />
-          <SolidColorBrush x:Key="MenuFlyoutPresenterBorderBrush" Color="#2D2B37" />
-          <SolidColorBrush x:Key="FlyoutPresenterBackground" Color="#1A1920" />
-          <SolidColorBrush x:Key="FlyoutBorderThemeBrush" Color="#2D2B37" />
+          <SolidColorBrush x:Key="MenuFlyoutPresenterBackground" Color="#141D1C" />
+          <SolidColorBrush x:Key="MenuFlyoutPresenterBorderBrush" Color="#253231" />
+          <SolidColorBrush x:Key="FlyoutPresenterBackground" Color="#141D1C" />
+          <SolidColorBrush x:Key="FlyoutBorderThemeBrush" Color="#253231" />
         </ResourceDictionary>
       </ResourceDictionary.ThemeDictionaries>
 
